@@ -1,0 +1,15 @@
+# 敏感資料 - 絕對不能進 git
+.env
+
+# Playwright
+test-results/
+playwright-report/
+
+# Python
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Reports
+reports/*.html
+reports/*.xml

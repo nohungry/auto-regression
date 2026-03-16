@@ -1,0 +1,10 @@
+pytest
+pytest-playwright
+pytest-html
+pytest-base-url
+pytest-metadata
+python-dotenv
+playwright
+pygments
+python-slugify
+requests
