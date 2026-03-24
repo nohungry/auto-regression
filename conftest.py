@@ -3,23 +3,100 @@ pytest 全域設定
 - 讀取 --site 參數
 - 提供 site_config / page / logged_in_page fixture
 - 每個測試結束後自動登出
+
+執行環境自動偵測：
+- Windows：Playwright 直接啟動 Chrome（無需手動開瀏覽器）
+- WSL/Linux：透過 CDP 連線到已開啟的 Windows Chrome（需設定 CDP_URL）
 """
 
 import os
+import sys
+import socket
+import subprocess
 import time
 import pytest
+from urllib.parse import urlparse
 from playwright.sync_api import Page, Playwright
 from config.settings import get_site_config
 from pages.login_page import LoginPage
 from pages.home_page import HomePage
 
+
+def _is_wsl() -> bool:
+    """偵測是否在 WSL 環境下執行"""
+    if sys.platform != 'linux':
+        return False
+    try:
+        with open('/proc/version', 'r') as f:
+            return 'microsoft' in f.read().lower()
+    except Exception:
+        return False
+
+
+def _is_cdp_ready(cdp_url: str) -> bool:
+    """檢查 CDP port 是否已在監聽"""
+    parsed = urlparse(cdp_url)
+    host = parsed.hostname or '127.0.0.1'
+    port = parsed.port or 9222
+    try:
+        with socket.create_connection((host, port), timeout=1):
+            return True
+    except OSError:
+        return False
+
+
+def _start_chrome_from_wsl(cdp_url: str) -> None:
+    """WSL 環境下自動啟動 Windows Chrome（帶 remote debugging）"""
+    chrome_path = '/mnt/c/Program Files/Google/Chrome/Application/chrome.exe'
+    if not os.path.exists(chrome_path):
+        raise RuntimeError(
+            f'找不到 Chrome：{chrome_path}\n'
+            '請確認 Chrome 已安裝於 C:\\Program Files\\Google\\Chrome\\Application\\'
+        )
+
+    parsed = urlparse(cdp_url)
+    port = parsed.port or 9222
+
+    subprocess.Popen([
+        chrome_path,
+        f'--remote-debugging-port={port}',
+        '--remote-debugging-address=0.0.0.0',
+        '--user-data-dir=C:\\temp\\chrome-cdp-debug',
+        '--no-first-run',
+        '--no-default-browser-check',
+    ])
+
+    # 等待 Chrome 就緒（最多 10 秒）
+    for _ in range(20):
+        time.sleep(0.5)
+        if _is_cdp_ready(cdp_url):
+            return
+
+    raise RuntimeError(f'Chrome 啟動超時，無法連線到 {cdp_url}')
+
+
 @pytest.fixture(scope="session")
 def browser(playwright: Playwright):
-    """透過 CDP 連接已開啟的 Windows Chrome（CDP_URL 從 .env 讀取）"""
-    cdp_url = os.getenv("CDP_URL", "http://localhost:9222")
-    browser = playwright.chromium.connect_over_cdp(cdp_url)
-    yield browser
-    # 不關閉 browser，避免把 Windows Chrome 一起關掉
+    if sys.platform == 'win32':
+        # Windows：Playwright 直接啟動 Chrome
+        headless = os.getenv("HEADLESS", "false").lower() == "true"
+        browser = playwright.chromium.launch(channel="chrome", headless=headless)
+        yield browser
+        browser.close()
+    elif _is_wsl():
+        # WSL：自動啟動 Windows Chrome（若尚未開啟），再透過 CDP 連線
+        cdp_url = os.getenv("CDP_URL", "http://127.0.0.1:9222")
+        if not _is_cdp_ready(cdp_url):
+            print(f'\n[WSL] Chrome 尚未啟動，自動開啟中... ({cdp_url})')
+            _start_chrome_from_wsl(cdp_url)
+        browser = playwright.chromium.connect_over_cdp(cdp_url)
+        yield browser
+        # 不關閉 browser，避免把 Windows Chrome 一起關掉
+    else:
+        # 純 Linux：透過 CDP 連線（需自行確保 Chrome 已啟動）
+        cdp_url = os.getenv("CDP_URL", "http://localhost:9222")
+        browser = playwright.chromium.connect_over_cdp(cdp_url)
+        yield browser
 
 
 @pytest.fixture(scope="function")
