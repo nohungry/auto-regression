@@ -16,3 +16,9 @@ reports/*.xml
 
 # VS Code (machine-specific settings)
 .vscode/
+
+# Claude Code
+.claude/
+
+# Python virtual environment
+.venv/
