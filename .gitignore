@@ -14,8 +14,17 @@ __pycache__/
 reports/*.html
 reports/*.xml
 
+# Screenshots (test run artifacts)
+screenshots/
+
 # VS Code (machine-specific settings)
 .vscode/
+
+# MCP config (contains machine-specific Windows host IP)
+.mcp.json
+
+# Playwright MCP runtime logs
+.playwright-mcp/
 
 # Claude Code
 .claude/

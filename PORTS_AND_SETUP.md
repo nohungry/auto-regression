@@ -66,6 +66,16 @@ netstat -ano | findstr :9224
 應看到 `127.0.0.1:9224` 或 `0.0.0.0:9224` 的 LISTENING。
 
 ### .mcp.json 設定
+
+`.mcp.json` 包含機器專屬的 Windows host IP，已加入 `.gitignore`。請從範本建立：
+
+```bash
+cp .mcp.json.example .mcp.json
+```
+
+再將 `<WINDOWS_HOST_IP>` 替換為實際 IP（查詢方式：`cat /etc/resolv.conf | grep nameserver`）。
+
+範本內容（`.mcp.json.example`）：
 ```json
 {
   "mcpServers": {
@@ -77,7 +87,14 @@ netstat -ano | findstr :9224
         "chrome-devtools-mcp@latest",
         "--slim",
         "--browser-url=http://<WINDOWS_HOST_IP>:9224"
-      ]
+      ],
+      "env": {}
+    },
+    "playwright": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "@playwright/mcp@latest", "--cdp-endpoint", "http://<WINDOWS_HOST_IP>:9224"],
+      "env": {}
     }
   }
 }
@@ -114,7 +131,7 @@ HEADLESS=false    # false = 顯示瀏覽器視窗，true = 背景執行
 ### 執行方式
 ```bash
 cd ~/projects/auto-regression
-pytest
+.venv/bin/pytest
 ```
 
 **不需要手動開 Chrome**，`conftest.py` 偵測到 WSL 環境後，若 Chrome 尚未啟動，會自動呼叫 `chrome.exe` 並帶入以下參數：

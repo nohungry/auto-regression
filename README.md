@@ -7,9 +7,10 @@
 - `tests/test_p0_smoke.py`：P0 冒煙測試，涵蓋登入、首頁、個人資訊、收件匣、遊戲廳、導覽列等核心流程（TC-001 ～ TC-022）
 - `pages/login_page.py`：登入頁 Page Object，封裝導覽、開啟登入表單、送出帳密等操作
 - `pages/home_page.py`：首頁 Page Object，封裝驗證登入狀態、導覽列點擊、登出等操作
-- `utils/dialog_helper.py`：通用 UI 輔助，處理「伺服器錯誤」彈窗自動關閉
+- `utils/dialog_helper.py`：通用 UI 輔助，處理「伺服器錯誤」彈窗自動關閉、Loading 動畫等待
+- `utils/screenshot_helper.py`：截圖系統，每個操作步驟自動高亮元素（紅框）並截圖，測試結束後產生繁體中文 README.md
 - `config/settings.py`：多站台設定載入器，從 `.env` 讀取各站台的 URL / 帳號 / 密碼
-- `conftest.py`：全域 pytest fixtures，處理環境偵測、瀏覽器啟動、自動登出、視窗最大化
+- `conftest.py`：全域 pytest fixtures，處理環境偵測、瀏覽器啟動、自動登出、視窗最大化、截圖 attach/detach
 
 ## 安裝
 
@@ -22,34 +23,36 @@ playwright install chromium
 
 ## 執行
 
+**請使用專案的 virtualenv（`.venv/`）執行所有指令。**
+
 ### 跑全部測試（使用 .env 預設站台）
 ```bash
-pytest
+.venv/bin/pytest
 ```
 
 ### 指定站台
 ```bash
-pytest --site=drc
+.venv/bin/pytest --site=drc
 ```
 
 ### 只跑 P0
 ```bash
-pytest -m p0
+.venv/bin/pytest -m p0
 ```
 
 ### 只跑登入相關
 ```bash
-pytest -m login
+.venv/bin/pytest -m login
 ```
 
 ### 只跑首頁相關
 ```bash
-pytest -m home
+.venv/bin/pytest -m home
 ```
 
 ### 跑單一測試
 ```bash
-pytest tests/test_p0_smoke.py::TestLogin::test_login_success
+.venv/bin/pytest tests/test_p0_smoke.py::TestLogin::test_login_success
 ```
 
 ### 查看 HTML 報表
@@ -116,3 +119,4 @@ Port 轉發與環境設定細節請參考 [PORTS_AND_SETUP.md](PORTS_AND_SETUP.m
 - `conftest.py` 內建 MutationObserver 注入，自動處理「伺服器錯誤」彈窗，避免測試中斷
 - WSL 下若 Chrome 尚未開啟，`conftest.py` 會自動透過 `cmd.exe` 啟動並等待就緒
 - 報表輸出至 `reports/report.html`，已加入 `.gitignore`
+- 每個測試自動截圖並高亮操作元素（紅框），存於 `screenshots/<test_name>/`，並產生繁體中文操作流程 `README.md`；`screenshots/` 已加入 `.gitignore`

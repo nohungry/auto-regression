@@ -4,7 +4,8 @@
 """
 
 from playwright.sync_api import Page, expect
-from utils.dialog_helper import dismiss_server_error_if_present
+from utils.dialog_helper import dismiss_server_error_if_present, wait_loading_if_present
+from utils.screenshot_helper import get_screenshotter
 
 
 class HomePage:
@@ -19,7 +20,10 @@ class HomePage:
 
     def verify_login_success(self, username: str):
         """驗證登入成功：右上角應顯示帳號名稱"""
-        expect(self.page.locator(f"text={username}")).to_be_visible(timeout=10000)
+        sh = get_screenshotter(self.page)
+        username_el = self.page.locator(f"text={username}")
+        expect(username_el).to_be_visible(timeout=10000)
+        if sh: sh.capture(username_el, f"verify_帳號顯示_{username}")
 
     def dismiss_any_popups(self):
         """進首頁後清除可能出現的彈窗"""
@@ -27,19 +31,33 @@ class HomePage:
 
     def open_user_dropdown(self):
         """點擊頭像，展開下拉選單"""
+        sh = get_screenshotter(self.page)
+        self.avatar.scroll_into_view_if_needed()
+        if sh: sh.capture(self.avatar, "click_頭像開啟選單")
         self.avatar.click()
         self.logout_btn.wait_for(state="visible", timeout=5000)
 
     def click_nav_item(self, name: str):
         """點擊主導覽列項目（真人 / 電子 / 捕魚 等）"""
-        self.page.locator(f"text={name}").first.click()
+        sh = get_screenshotter(self.page)
+        nav = self.page.locator(f"text={name}").first
+        nav.scroll_into_view_if_needed()
+        if sh: sh.capture(nav, f"click_導覽_{name}")
+        nav.click()
+        # 切換分類頁會觸發 loading 動畫，等待消失後再繼續
+        if wait_loading_if_present(self.page):
+            if sh: sh.full_page(f"loading_完成_分類_{name}")
 
     def logout(self):
         """點擊頭像 → 選擇登出 → 驗證登出成功"""
+        sh = get_screenshotter(self.page)
         dismiss_server_error_if_present(self.page)
         self.open_user_dropdown()
         # 下拉選單開啟後可能再次出現伺服器錯誤彈窗
         dismiss_server_error_if_present(self.page)
+        self.logout_btn.scroll_into_view_if_needed()
+        if sh: sh.capture(self.logout_btn, "click_登出")
         self.logout_btn.click()
         # 驗證登出成功：右上角出現「登入」按鈕
         expect(self.login_btn).to_be_visible(timeout=5000)
+        if sh: sh.capture(self.login_btn, "verify_登出成功")
