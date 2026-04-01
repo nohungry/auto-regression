@@ -4,8 +4,8 @@
 - attach/detach/get：讓 POM 方法不需傳參也能取得 screenshotter
 - _highlight_and_screenshot：在元素上畫紅框 + 標籤後截圖
 
-截圖存放路徑：screenshots/<test_name>/<001_label>.png
-測試說明文件：screenshots/<test_name>/README.md
+截圖存放路徑：screenshots/<site_id>/<timestamp>/<test_name>/<001_label>.png
+測試說明文件：screenshots/<site_id>/<timestamp>/<test_name>/README.md
 """
 
 import re
@@ -14,6 +14,16 @@ from pathlib import Path
 from playwright.sync_api import Page, Locator
 
 SCREENSHOTS_DIR = Path("screenshots")
+
+# 整個 session 共用同一個 timestamp（第一次建立時設定）
+_SESSION_TIMESTAMP: str | None = None
+
+
+def _get_session_timestamp() -> str:
+    global _SESSION_TIMESTAMP
+    if _SESSION_TIMESTAMP is None:
+        _SESSION_TIMESTAMP = datetime.now().strftime("%Y%m%d_%H%M")
+    return _SESSION_TIMESTAMP
 
 # page id -> ScreenshotHelper，讓 POM 可以免傳參取得
 _registry: dict[int, "ScreenshotHelper"] = {}
@@ -69,10 +79,10 @@ class ScreenshotHelper:
             sh.capture(self.some_locator, "click_動作描述")
     """
 
-    def __init__(self, page: Page, test_name: str, description: str = ""):
+    def __init__(self, page: Page, test_name: str, description: str = "", site_id: str = "unknown"):
         self.page = page
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M")
-        self.folder = SCREENSHOTS_DIR / f"{_sanitize(test_name)}_{timestamp}"
+        timestamp = _get_session_timestamp()
+        self.folder = SCREENSHOTS_DIR / site_id / timestamp / _sanitize(test_name)
         self.folder.mkdir(parents=True, exist_ok=True)
         self._test_name = test_name
         self._description = description.strip()

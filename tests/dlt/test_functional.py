@@ -42,8 +42,8 @@ _BANNER_SELECTORS = [
 def _save_screenshot(img_bytes: bytes, name: str) -> None:
     """存檔截圖（不比對 baseline），供人工視覺確認用"""
     import os
-    os.makedirs("screenshots/vr_reference", exist_ok=True)
-    with open(f"screenshots/vr_reference/{name}", "wb") as f:
+    os.makedirs("screenshots/dlt/vr_reference", exist_ok=True)
+    with open(f"screenshots/dlt/vr_reference/{name}", "wb") as f:
         f.write(img_bytes)
 
 

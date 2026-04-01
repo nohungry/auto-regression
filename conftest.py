@@ -252,7 +252,7 @@ def go_home(class_logged_in_page, site_config):
 def auto_screenshot(request):
     """
     自動為每個測試建立 ScreenshotHelper 並 attach 到對應 page。
-    POM 方法會自動偵測並使用，截圖存於 screenshots/<test_name>/。
+    POM 方法會自動偵測並使用，截圖存於 screenshots/<site_id>/<timestamp>/<test_name>/。
     測試結束後自動產生 README.md 操作流程說明。
     """
     # 取得測試 docstring 作為說明文字
@@ -261,13 +261,17 @@ def auto_screenshot(request):
     if fn and fn.__doc__:
         description = fn.__doc__.strip()
 
+    site_id = "unknown"
+    if 'site_config' in request.fixturenames:
+        site_id = request.getfixturevalue('site_config').site_id
+
     attached_pages = []
     helpers = []
 
     for fixture_name in ('page', 'class_logged_in_page'):
         if fixture_name in request.fixturenames:
             pg = request.getfixturevalue(fixture_name)
-            sh = ScreenshotHelper(pg, request.node.name, description)
+            sh = ScreenshotHelper(pg, request.node.name, description, site_id=site_id)
             attach_screenshotter(pg, sh)
             attached_pages.append(pg)
             helpers.append(sh)
