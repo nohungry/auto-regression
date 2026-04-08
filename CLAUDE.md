@@ -49,19 +49,20 @@ Reports are written to `reports/report.html` (self-contained HTML).
 ```
 conftest.py                  — browser setup, environment detection (Windows/WSL/Linux), global fixtures
 config/settings.py           — multi-site SiteConfig dataclass loaded from .env
-pages/factory.py             — routes site_id → correct LoginPage/HomePage class
+pages/factory.py             — routes site_id → LoginPage/HomePage class via registry dict (no if/else fallback; unknown site_id raises ValueError)
 pages/drc/                   — drc site Page Objects (LoginPage, HomePage)
 pages/dlt/                   — dlt site Page Objects (LoginPage, HomePage)
-tests/drc/                   — drc site tests (test_p0_smoke.py p0, feature/<name>/ p1)
+tests/api/dlt/               — dlt site API-layer tests (no browser)
+tests/drc/                   — drc site tests (test_p0_smoke.py p0, feature/<name>/ p1: announcement_popup, i18n, navigation, wallet)
 tests/drc/conftest.py        — drc-specific overrides: site_config=drc, go_home (+ dismiss announcement popup)
-tests/dlt/                   — dlt site tests (test_p0_smoke.py p0, test_functional.py p1/p2, test_locale_visual_matrix.py p2)
+tests/dlt/                   — dlt site tests (test_p0_smoke.py p0, test_locale_visual_matrix.py p2 [skipped], feature/<name>/ p1: auth, copy, i18n, member, public, visual, wallet)
 tests/dlt/conftest.py        — dlt-specific overrides: site_config=dlt, page fixture without MutationObserver
-tests/dlt/__snapshots__/     — Visual Regression baseline PNGs (pytest-playwright-snapshot)
+tests/dlt/__snapshots__/     — Visual Regression baseline PNGs (legacy, currently unused)
 utils/locale_helper.py       — set_locale(): injects i18n_redirected_lt cookie for lt site
 utils/dialog_helper.py       — helpers: dismiss server error popups, wait for loading animation
 utils/screenshot_helper.py   — element-highlight screenshot system, auto README.md generation
-screenshots/                 — per-test screenshot folders (auto-generated, in .gitignore)
-screenshots/vr_reference/    — home_shell / member_menu archive screenshots (no comparison, for manual review)
+screenshots/<site_id>/<timestamp>/<test_name>/  — per-test screenshot folders (auto-generated, in .gitignore)
+screenshots/dlt/vr_reference/                    — VR reference screenshots (no comparison, manual review only)
 docs/                        — team-shared documentation (tracked in git)
 dev-notes/                   — personal developer notes (gitignored except README.md)
 ```
@@ -74,10 +75,32 @@ dev-notes/                   — personal developer notes (gitignored except REA
 - `logged_in_page` (function-scoped) — pre-authenticated page for smoke tests
 - `class_logged_in_page` (class-scoped) — logs in once per class; share session across functional tests
 - `go_home` (function-scoped) — navigates back to home + clears popups before each functional test; use with `class_logged_in_page`
-- `auto_screenshot` (autouse) — attaches `ScreenshotHelper` to page; generates `screenshots/<test_name>/README.md` after each test
+- `auto_screenshot` (autouse) — attaches `ScreenshotHelper` to page; generates `screenshots/<site_id>/<timestamp>/<test_name>/README.md` after each test
 - `auto_logout_after_test` (autouse) — logs out after each smoke test (`page` fixture only)
 
-**Markers** (pytest.ini): `p0`, `p1`, `p2`, `login`, `home`, `visual_regression`, `locale_visual`, `dlt`
+**Markers** (pytest.ini): `p0`, `p1`, `p2`, `login`, `home`, `member`, `wallet`, `i18n`, `language`, `copy`, `visual`, `visual_regression`, `locale_visual`, `api`, `dlt`
+
+## Multi-site Factory Pattern
+
+`pages/factory.py` 使用兩個 registry dict 路由 `site_id` → page class：
+- `_LOGIN_PAGE_REGISTRY`：`site_id` → `(module_path, class_name)`
+- `_HOME_PAGE_REGISTRY`：同上
+- 外部只透過 `get_login_page_class(site_id)` / `get_home_page_class(site_id)` 存取
+- **不使用 if/else fallback 到預設站台**；未註冊的 `site_id` 必須拋 `ValueError`，訊息包含可用站台列表
+- 新增站點只需在兩個 registry 各加一行，不動 function 邏輯
+
+測試檔**禁止**直接 `from pages.<site_id>.xxx import ...`，必須透過 factory 取得 class 以維持跨站復用彈性。
+
+## Agent Skills
+
+本 repo 有兩個 user-invocable skills（位於 `.claude/skills/`），用於不同類型的工作：
+
+| Skill | 用途 |
+|-------|------|
+| `ui-test-author` | 新增/修改 testcase、page object、fixture；含新增站點 onboarding checklist |
+| `test-review` | Review 測試變更，逐項檢查 flaky、脆弱 selector、multi-site 擴展性風險 |
+
+兩個 skill 的指引與本 CLAUDE.md 互補：CLAUDE.md 是 repo 層級的 source of truth，skills 包含更詳細的 checklist 與實戰 pitfalls。Authoring 工作優先參考 `ui-test-author`，review 工作優先參考 `test-review`。
 
 ## Documentation vs Developer Notes
 
@@ -124,23 +147,17 @@ This repo has **two distinct documentation folders** with different purposes and
 
 ## Visual Regression (dlt site)
 
-Uses `pytest-playwright-snapshot` (not `expect(page).to_have_screenshot()` which is JS-only).
+DLT 目前採用 **reference screenshot** 策略：存檔供人工確認，不做 pixel 比對（跨環境無法穩定）。
 
-**Building / updating baselines:**
 ```bash
-.venv/bin/pytest tests/dlt/test_functional.py -m visual_regression --update-snapshots
-.venv/bin/pytest tests/dlt/test_locale_visual_matrix.py --update-snapshots
+# VR reference 截圖（輸出至 screenshots/dlt/vr_reference/）
+.venv/bin/pytest tests/dlt/feature/visual/test_visual_regression.py -m visual_regression
+
+# DOM 層視覺健康度（非截圖）
+.venv/bin/pytest tests/dlt/feature/visual/test_visual.py -m visual
 ```
 
-**Comparing against baselines:**
-```bash
-.venv/bin/pytest tests/dlt/test_functional.py -m visual_regression
-.venv/bin/pytest tests/dlt/test_locale_visual_matrix.py
-```
-
-**Dynamic content masking** — `_screenshot_with_mask()` hides banner images, game thumbnails, and the announcement bar before screenshotting, then restores them. Also stops Swiper carousel autoplay and resets to slide 0 for consistency.
-
-**home_shell and member_menu** — These tests contain live dynamic content (announcement ticker, hot games list) that changes too frequently for pixel-perfect comparison. They use `_save_screenshot()` instead: screenshots are saved to `screenshots/vr_reference/` for manual review but no assertion is made.
+> `tests/dlt/test_locale_visual_matrix.py`（WIN-LVIS）目前全部 `skip`；`tests/dlt/__snapshots__/` 為舊版 baseline 暫留，目前無測試引用。
 
 ## Screenshot System
 
@@ -160,109 +177,45 @@ Label naming convention:
 - `verify_XXX` → 驗證
 - `loading_XXX` → Loading 狀態
 
-After each test, `screenshots/<test_name>/README.md` is auto-generated in Traditional Chinese with step-by-step screenshots embedded.
+After each test, `screenshots/<site_id>/<timestamp>/<test_name>/README.md` is auto-generated in Traditional Chinese with step-by-step screenshots embedded.
 
 ## Coding Conventions
 
-### Element Interaction Rule
-**Always call `scroll_into_view_if_needed()` before any element interaction** (`.click()`, `.fill()`, `.type()`, etc.) in both Page Objects (`pages/`) and test files (`tests/`).
+### 元素互動
+一般元素互動前先呼叫 `scroll_into_view_if_needed()` 再 click/fill/type。
 
 ```python
-# Correct
 element.scroll_into_view_if_needed()
 element.click()
-
-# Wrong
-element.click()
 ```
 
-**Exception — CSS-hidden sidebar items** (`.sidebar-item.*`): these elements live in a container with `width=0` and are permanently outside the viewport. `scroll_into_view_if_needed()` and `click(force=True)` both fail with "Element is outside of the viewport". Use `dispatch_event("click")` instead to fire the DOM event directly:
+### 已知互動例外（改用 `dispatch_event("click")`）
 
-```python
-# Correct for sidebar items
-page.locator(".sidebar-item.user").dispatch_event("click")
+以下情境 `.click()`（含 `force=True`）會固定 timeout 或丟 "Element is outside of the viewport"，必須改用 `dispatch_event("click")` 直接觸發 DOM event：
 
-# Wrong — will throw "Element is outside of the viewport"
-sidebar.scroll_into_view_if_needed()
-sidebar.click(force=True)
-```
+| 情境 | Selector 範例 | 原因 |
+|------|---------------|------|
+| DRC CSS-hidden sidebar | `.sidebar-item.*`（`width=0` 容器） | 永遠在 viewport 外 |
+| DLT member drawer 按鈕（如登出） | drawer 內按鈕 | 渲染位置在 viewport 外 |
+| 常駐 overlay backdrop 攔截點擊 | 如 DLT drawer closed 狀態 | Pointer events 被攔截 |
 
-### Exception — DOM Re-render After Tab/Navigation Clicks
+### 其他互動規則
+- **DOM re-render 後不要對舊 locator 呼叫 `scroll_into_view_if_needed()`**（element 可能 detached）。改用 `page.evaluate("window.scrollBy(0, N)")`。
+- **Sidebar hidden nodes 與 content 同文案**（DRC 站 `p.text-black`）：用 `p:not(.text-black)` 排除，避免 `text=XXX` 命中 hidden node。
+- 禁止裸 `time.sleep()`，優先使用 Playwright `expect` 與可判定事件等待。
 
-When a click triggers a DOM re-render (e.g., switching tabs that rebuild a grid), **do not call `scroll_into_view_if_needed()` on the target element** — the element reference may become detached. Use `page.evaluate("window.scrollBy(0, N)")` to scroll the window instead:
+### Selector 規則
+- **多語系站台（DLT）禁止綁死文案**：placeholder、button name 會隨 locale 變化。使用 CSS-based selector（如 `input.input-style`、`button.primary-btn`）或結構化 locator。
+- **`.first` / `.last` 是 property，不是 method**：寫成 `.first()` 會觸發 `__call__` 錯誤。
+- Selector 優先順序：穩定屬性 > role/結構化 locator > 穩定文案 > nth-child/深 CSS 鏈。
 
-```python
-# Wrong — element may be detached after tab re-render
-grid.scroll_into_view_if_needed()
-
-# Correct
-page.evaluate("window.scrollBy(0, 400)")
-```
-
-### Exception — Sidebar Hidden Nodes Shadowing Content Nodes
-
-The sidebar uses `p.text-black` for nav labels (hidden, `width=0` container). These same texts (e.g., "T9真人") also appear in the main content area. Using `locator("text=T9真人").first` will resolve to the hidden sidebar node. Exclude with `:not(.text-black)`:
-
-```python
-# Wrong — resolves to hidden sidebar p.text-black node
-el = page.locator("text=T9真人").first
-
-# Correct — targets visible content card
-el = page.locator("p:not(.text-black)", has_text="T9真人").first
-```
-
-### Exception — lt 站 Drawer 按鈕（登出）Outside Viewport
-
-The lt site's member drawer renders its buttons (登出) outside the viewport. `scroll_into_view_if_needed()` + `click()` will always fail with "Element is outside of the viewport". Use `dispatch_event("click")` instead:
-
-```python
-# Correct for lt drawer buttons (e.g., logout)
-self.logout_btn.wait_for(state="visible", timeout=5000)
-self.logout_btn.dispatch_event("click")
-
-# Wrong — will throw "Element is outside of the viewport"
-self.logout_btn.scroll_into_view_if_needed()
-self.logout_btn.click()
-```
-
-### Exception — dlt 站 Login Form: Locale-agnostic Selectors
-
-The dlt login form's placeholder text and button label change with locale. Always use CSS-based selectors instead of text-based ones:
-
-```python
-# Correct — works for all 5 locales (tw/cn/en/th/vn)
-self.username_input = page.locator("input.input-style").nth(0)
-self.password_input = page.locator("input.input-style").nth(1)
-self.login_btn      = page.locator("button").first   # property, NOT method call
-
-# Wrong — only works for tw locale
-self.username_input = page.get_by_placeholder("請填寫4-10位的字母或數字")
-self.login_btn      = page.get_by_role("button", name="登入")
-```
-
-Note: `.last` and `.first` in Python Playwright are **properties**, not methods. Do NOT call them as `.last()` or `.first()`.
-
-### Exception — lt 站 SPA Login Form: Must Wait for networkidle
-
-The lt site uses React (SPA). If form inputs are filled before the page reaches `networkidle`, the login succeeds at API level (cookie is set) but the SPA does **not** navigate away from `/login`. Always use `wait_until="networkidle"` when going to `/login`:
-
-```python
-# Correct
-self.page.goto(self.login_url, wait_until="networkidle")
-
-# Wrong — form may not be fully initialized; SPA won't redirect after submit
-self.page.goto(self.login_url, wait_until="domcontentloaded")
-```
+### DLT SPA Login：必須等 `networkidle`
+DLT 使用 React SPA。若 form 在 `networkidle` 前被填入，登入 API 會成功但 SPA 不會離開 `/login`。前往 `/login` 時必須使用 `wait_until="networkidle"`。
 
 ### Exception Handling
-Only catch `PlaywrightTimeoutError` (imported as `from playwright.sync_api import TimeoutError as PlaywrightTimeoutError`) when the intent is to handle an expected element absence/timeout. Never use bare `except Exception: pass` to silence playwright interactions.
+只在預期元素缺席或 timeout 時 catch `PlaywrightTimeoutError`（`from playwright.sync_api import TimeoutError as PlaywrightTimeoutError`）。禁止 `except Exception: pass` 靜默 playwright 操作錯誤。
 
 ## Git Commit Rules
 
-- **Never** include `Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>` (or any Claude co-author line) in commit messages.
-
-## Adding Tests / Sites
-
-- New page objects go in `pages/`, following the existing POM pattern.
-- New sites: add `SITE_XXX_URL`, `SITE_XXX_USERNAME`, `SITE_XXX_PASSWORD` to `.env`.
-- New test markers must be declared in `pytest.ini` under `markers`.
+- 任何 commit / push 動作需先經使用者確認。
+- **禁止**在 commit message 加入 `Co-Authored-By: Claude ...` 或任何 Claude 署名。
