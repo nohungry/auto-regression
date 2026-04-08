@@ -62,6 +62,8 @@ utils/dialog_helper.py       — helpers: dismiss server error popups, wait for 
 utils/screenshot_helper.py   — element-highlight screenshot system, auto README.md generation
 screenshots/                 — per-test screenshot folders (auto-generated, in .gitignore)
 screenshots/vr_reference/    — home_shell / member_menu archive screenshots (no comparison, for manual review)
+docs/                        — team-shared documentation (tracked in git)
+dev-notes/                   — personal developer notes (gitignored except README.md)
 ```
 
 **Environment detection** in `conftest.py`: detects WSL vs Windows vs Linux, auto-starts Windows Chrome over CDP if needed, injects a MutationObserver to auto-close server error popups.
@@ -76,6 +78,49 @@ screenshots/vr_reference/    — home_shell / member_menu archive screenshots (n
 - `auto_logout_after_test` (autouse) — logs out after each smoke test (`page` fixture only)
 
 **Markers** (pytest.ini): `p0`, `p1`, `p2`, `login`, `home`, `visual_regression`, `locale_visual`, `dlt`
+
+## Documentation vs Developer Notes
+
+This repo has **two distinct documentation folders** with different purposes and git-tracking policy. When creating or editing markdown files, pick the right folder and follow the convention.
+
+### `docs/` — Team-shared, tracked in git
+
+存放「**需要跨開發者共享、且相對穩定**」的文件。任何新加入的團隊成員應該能透過閱讀本資料夾建立對測試套件與產品的理解。
+
+**應放入的內容**：
+- 產品/技術**事實參考**（例如多語系文案對照、API 契約、測試資料定義）
+- 測試策略與規格（測試方向、覆蓋原則、case 設計規範）
+- 架構決策（page object 設計、fixture 分層、站台擴充方式）
+- 慣例定義（命名規則、selector 策略、截圖規範）
+- Onboarding 指南
+
+**特徵**：不常變動、需要共識、跨開發者有效、新進成員必讀。
+
+### `dev-notes/` — Personal, gitignored (except README.md)
+
+存放「**個人的、經常變動的、不需團隊共識**」的工作筆記。文件僅代表撰寫者當下的觀察或想法，不是產品/測試的事實來源。
+
+**應放入的內容**：
+- 個人 TODO / 待辦清單、改善提案
+- 探索筆記、實機發現、selector 嘗試紀錄
+- Debug 紀錄、問題排查過程
+- 效能實驗、benchmark 結果
+- 想法草稿、未成熟的架構構想
+- 測試覆蓋比對（與舊版/其他專案對照）
+
+**特徵**：經常變動、個人觀點、可能未成熟、可丟棄。
+
+**Git 設定**：`.gitignore` 設為 `dev-notes/*` 與 `!dev-notes/README.md`，只有 README 被追蹤。
+
+### 判斷原則（when in doubt）
+
+寫新文件前先問自己：
+
+1. **「半年後任何人看到這份文件都能理解並受用嗎？」** → 是 `docs/` / 否 `dev-notes/`
+2. **「這是產品/測試的事實，還是我目前的想法？」** → 事實 `docs/` / 想法 `dev-notes/`
+3. **「新進成員需要讀這份文件才能上手嗎？」** → 需要 `docs/` / 不需要 `dev-notes/`
+
+若某份 `dev-notes/` 的筆記後來成熟並獲得團隊共識，請**升級**移到 `docs/` 並調整內容為正式文件。反之，若 `docs/` 中某份文件變成僅個人觀點的 WIP 清單，應移到 `dev-notes/`。
 
 ## Visual Regression (dlt site)
 
