@@ -1,5 +1,5 @@
 """
-多語系文案驗證
+多語系文案驗證 — 首頁 nav
 WIN-I18N-001~005
 """
 
@@ -21,8 +21,8 @@ _LOCALE_CHECKS = [
 @pytest.mark.p1
 @pytest.mark.dlt
 @pytest.mark.i18n
-class TestI18N:
-    """WIN-I18N-001~005：多語系首頁文案驗證"""
+class TestI18NHome:
+    """WIN-I18N-001~005：多語系首頁 nav 文案驗證"""
 
     @pytest.mark.parametrize("case_id,locale,texts,title", _LOCALE_CHECKS,
                              ids=[c[0] for c in _LOCALE_CHECKS])

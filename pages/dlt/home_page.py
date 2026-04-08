@@ -10,8 +10,8 @@ Selector 來源：probe_lt_selectors.py 實機驗證 dev-lt.t9platform.com
   即使 drawer 關閉也持續攔截 pointer events，導致一般 click() 永遠 timeout
 - drawer 關閉：無法用 Escape 或點擊外側可靠關閉（CSS transform 滑動，非 display:none），
   verify_login_success 改用 page.reload() 重置狀態
-- 無 .dialog-container / .close-wrap（會員功能用 drawer 模式）
 - 無 .coin-wrap-bg（lt 站餘額位置不同）
+- 會員功能以 drawer 為入口，再展開 .dialog-container / .close-wrap 對話框
 - 無 .sidebar-item.* CSS 隱藏側邊欄
 - 無伺服器錯誤彈窗（toast-confirm-btn）
 """
