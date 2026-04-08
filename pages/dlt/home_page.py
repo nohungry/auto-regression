@@ -10,8 +10,8 @@ Selector 來源：probe_lt_selectors.py 實機驗證 dev-lt.t9platform.com
   即使 drawer 關閉也持續攔截 pointer events，導致一般 click() 永遠 timeout
 - drawer 關閉：無法用 Escape 或點擊外側可靠關閉（CSS transform 滑動，非 display:none），
   verify_login_success 改用 page.reload() 重置狀態
-- 無 .dialog-container / .close-wrap（會員功能用 drawer 模式）
 - 無 .coin-wrap-bg（lt 站餘額位置不同）
+- 會員功能以 drawer 為入口，再展開 .dialog-container / .close-wrap 對話框
 - 無 .sidebar-item.* CSS 隱藏側邊欄
 - 無伺服器錯誤彈窗（toast-confirm-btn）
 """
@@ -76,6 +76,53 @@ class HomePage:
         if sh: sh.capture(nav, f"click_導覽_{name}")
         nav.click()
         if sh: sh.full_page(f"loading_完成_分類_{name}")
+
+    def open_betting_history_dialog(self):
+        """開啟會員 drawer → 點選投注紀錄，展開投注紀錄面板"""
+        sh = get_screenshotter(self.page)
+        self.open_member_drawer()
+        betting_icon = self.page.locator('img[alt="投注紀錄"]')
+        if sh: sh.capture(betting_icon, "click_投注紀錄入口")
+        betting_icon.dispatch_event("click")
+        self.page.locator('.dialog-container').wait_for(state="visible", timeout=5000)
+        if sh: sh.full_page("verify_投注紀錄面板")
+
+    def open_personal_info_dialog(self):
+        """開啟會員 drawer → 點選 Edit 圖示，展開個人資料（會員帳號）面板"""
+        sh = get_screenshotter(self.page)
+        self.open_member_drawer()
+        edit_icon = self.page.locator('img[alt="Edit"]').first
+        if sh: sh.capture(edit_icon, "click_個人資料入口")
+        edit_icon.dispatch_event("click")
+        self.page.locator('.dialog-container').wait_for(state="visible", timeout=5000)
+        if sh: sh.full_page("verify_個人資料面板")
+
+    def open_inbox_dialog(self):
+        """開啟會員 drawer → 點選會員訊息，展開收件匣面板"""
+        sh = get_screenshotter(self.page)
+        self.open_member_drawer()
+        inbox_icon = self.page.locator('img[alt="會員訊息"]')
+        if sh: sh.capture(inbox_icon, "click_收件匣入口")
+        inbox_icon.dispatch_event("click")
+        self.page.locator('.dialog-container').wait_for(state="visible", timeout=5000)
+        if sh: sh.full_page("verify_收件匣面板")
+
+    def open_deposit_dialog(self):
+        """開啟會員 drawer → 點選存款/維護時間按鈕，展開對話框
+        按鈕文案在存款功能開放時為「存款」，維護期間顯示「維護時間」。
+        以 button[class*='mb-5'] 定位（位於登出按鈕上方，具唯一 mb-5 margin）。
+        """
+        sh = get_screenshotter(self.page)
+        self.open_member_drawer()
+        deposit_btn = self.page.locator("button[class*='mb-5']").first
+        if sh: sh.capture(deposit_btn, "click_存款入口")
+        deposit_btn.dispatch_event("click")
+        self.page.locator('.dialog-mask').wait_for(state="visible", timeout=5000)
+        if sh: sh.full_page("verify_存款對話框")
+
+    def close_dialog(self):
+        """關閉 dialog-container（點選 close-wrap 關閉圖示）"""
+        self.page.locator('.close-wrap img').first.click()
 
     def logout(self):
         """開啟漢堡選單 → 點登出 → 驗證登出成功"""

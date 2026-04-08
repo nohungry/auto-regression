@@ -199,7 +199,13 @@ DEFAULT_SITE=drc
 HEADLESS=false
 CDP_URL=http://<WINDOWS_HOST_IP>:9223
 
-SITE_DRC_URL=https://your-site-url.com/
+SITE_DRC_URL=https://dev-drc.t9platform-ph.com/
 SITE_DRC_USERNAME=your_username
 SITE_DRC_PASSWORD=your_password
+
+SITE_DLT_URL=https://dev-lt.t9platform.com/
+SITE_DLT_USERNAME=your_username
+SITE_DLT_PASSWORD=your_password
 ```
+
+> 使用 `pytest tests/drc/` 或 `pytest tests/dlt/` 指定站點時，可忽略 `DEFAULT_SITE`（各站 conftest 會覆寫）。
