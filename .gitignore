@@ -26,6 +26,10 @@ screenshots/
 # Playwright MCP runtime logs
 .playwright-mcp/
 
+# Dev notes (personal scratch area, not shipped)
+dev-notes/*
+!dev-notes/README.md
+
 # Claude Code
 .claude/
 
