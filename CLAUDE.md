@@ -42,7 +42,7 @@ Reports are written to `reports/report.html` (self-contained HTML).
 | Smoke | `page` / `logged_in_page` | function | 每次測試獨立 context，測試後自動登出。驗證核心流程（登入/登出）。 |
 | Functional | `class_logged_in_page` + `go_home` | class | 一個 class 只登入一次，測試間共用 session，`go_home` 每個測試前回首頁。適合功能驗證。 |
 
-各站點測試放在 `tests/<site_id>/` 下；smoke 測試統一命名 `test_p0_smoke.py`，功能型測試用 `test_functional.py`（或依功能拆分）。
+各站點測試放在 `tests/<site_id>/` 下；smoke 測試統一命名 `test_p0_smoke.py`，功能型測試放 `tests/<site_id>/feature/<feature_name>/`。
 
 ## Architecture
 
@@ -52,8 +52,8 @@ config/settings.py           — multi-site SiteConfig dataclass loaded from .en
 pages/factory.py             — routes site_id → correct LoginPage/HomePage class
 pages/drc/                   — drc site Page Objects (LoginPage, HomePage)
 pages/dlt/                   — dlt site Page Objects (LoginPage, HomePage)
-tests/drc/                   — drc site tests (test_p0_smoke.py p0, test_functional.py p1/p2)
-tests/drc/conftest.py        — drc-specific overrides: site_config=drc
+tests/drc/                   — drc site tests (test_p0_smoke.py p0, feature/<name>/ p1)
+tests/drc/conftest.py        — drc-specific overrides: site_config=drc, go_home (+ dismiss announcement popup)
 tests/dlt/                   — dlt site tests (test_p0_smoke.py p0, test_functional.py p1/p2, test_locale_visual_matrix.py p2)
 tests/dlt/conftest.py        — dlt-specific overrides: site_config=dlt, page fixture without MutationObserver
 tests/dlt/__snapshots__/     — Visual Regression baseline PNGs (pytest-playwright-snapshot)
