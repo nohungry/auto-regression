@@ -4,7 +4,7 @@
 """
 
 from playwright.sync_api import Page, expect
-from utils.dialog_helper import dismiss_server_error_if_present, wait_loading_if_present
+from utils.dialog_helper import dismiss_server_error_if_present, dismiss_announcement_popup_if_present, wait_loading_if_present
 from utils.screenshot_helper import get_screenshotter
 
 
@@ -33,8 +33,9 @@ class HomePage:
         if sh: sh.capture(username_el, f"verify_帳號顯示_{username}")
 
     def dismiss_any_popups(self):
-        """進首頁後清除可能出現的彈窗"""
+        """進首頁後清除可能出現的彈窗（伺服器錯誤 / 老吉公告）"""
         dismiss_server_error_if_present(self.page)
+        dismiss_announcement_popup_if_present(self.page)
 
     def open_user_dropdown(self):
         """點擊頭像，展開下拉選單"""

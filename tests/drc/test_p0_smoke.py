@@ -79,7 +79,7 @@ class TestLogin:
 @pytest.mark.p0
 @pytest.mark.home
 class TestHomePage:
-    """TC-005 ~ TC-007：首頁核心元素"""
+    """TC-005 ~ TC-007, TC-023：首頁核心元素"""
 
     def test_home_page_loads(self, logged_in_page: Page, site_config):
         """TC-005：登入後首頁正常載入"""
@@ -100,6 +100,20 @@ class TestHomePage:
         home = HomePage(logged_in_page)
         home.logout()
         expect(home.login_btn).to_be_visible(timeout=5000)
+
+    def test_login_form_elements_exist(self, page: Page, site_config):
+        """TC-023：登入 modal 元素存在（帳號/密碼輸入框/送出按鈕）"""
+        login = LoginPage(page, site_config.url)
+        login.goto()
+        login.open_login_form()
+        sh = get_screenshotter(page)
+
+        expect(login.username_input).to_be_visible()
+        expect(login.password_input).to_be_visible()
+        expect(login.login_btn).to_be_visible()
+        if sh: sh.capture(login.username_input, "verify_帳號欄位")
+        if sh: sh.capture(login.password_input, "verify_密碼欄位")
+        if sh: sh.capture(login.login_btn,      "verify_登入按鈕")
 
 
 @pytest.mark.p0

@@ -35,6 +35,32 @@ def dismiss_server_error_if_present(page: Page, timeout: int = 3000) -> bool:
     return False
 
 
+def dismiss_announcement_popup_if_present(page: Page, timeout: int = 3000) -> bool:
+    """
+    關閉老吉公告彈窗（popup-announcement-mask）。
+    彈窗為多張輪播，每次點擊 close-circle-btn 僅推進一張，
+    需持續點擊直到所有張數翻完後 popup 自動消失。
+
+    Returns:
+        True  - 有彈窗且已關閉
+        False - 沒有彈窗
+    """
+    mask = page.locator(".popup-announcement-mask")
+    try:
+        mask.wait_for(state="visible", timeout=timeout)
+    except PlaywrightTimeoutError:
+        return False
+
+    close_btn = page.locator("button.close-circle-btn")
+    for _ in range(30):
+        try:
+            close_btn.wait_for(state="visible", timeout=1000)
+            close_btn.click()
+        except PlaywrightTimeoutError:
+            break  # 按鈕消失 = 所有張數已翻完，popup 關閉
+    return True
+
+
 def wait_loading_if_present(page: Page, timeout: int = 2000) -> bool:
     """
     等待 loading 狗動畫（img[alt="Loading"] / ALL_Loading.gif）消失。

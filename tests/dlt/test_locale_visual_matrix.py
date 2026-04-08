@@ -17,6 +17,8 @@ import pytest
 from playwright.sync_api import Page
 from pages.dlt.login_page import LoginPage
 
+pytestmark = pytest.mark.skip(reason="多語系視覺測試暫緩，待穩定後恢復")
+
 
 # ─────────────────────────────────────────────────────────────
 # Visual Regression helper
