@@ -4,7 +4,7 @@ Selector 來源：Chrome DevTools MCP 探索 dev-drc.t9platform-ph.com
 """
 
 from playwright.sync_api import Page, expect, TimeoutError as PlaywrightTimeoutError
-from utils.dialog_helper import dismiss_server_error_if_present
+from utils.dialog_helper import dismiss_server_error_if_present, dismiss_announcement_popup_if_present
 from utils.screenshot_helper import get_screenshotter
 
 
@@ -21,10 +21,11 @@ class LoginPage:
         self.login_trigger_btn = page.locator("button", has_text="登入").first
 
     def goto(self):
-        """開啟首頁，並處理進站伺服器錯誤彈窗"""
+        """開啟首頁，並處理進站彈窗（伺服器錯誤 / 公告大圖輪播）"""
         self.page.goto(self.base_url)
         self.page.wait_for_load_state("networkidle")
         dismiss_server_error_if_present(self.page)
+        dismiss_announcement_popup_if_present(self.page, timeout=5000)
 
     def open_login_form(self):
         """點擊右上角「登入」按鈕開啟登入表單"""
