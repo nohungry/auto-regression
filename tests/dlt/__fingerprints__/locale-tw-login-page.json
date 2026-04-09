@@ -1,0 +1,38 @@
+{
+  "count": 4,
+  "items": [
+    {
+      "cls": "mb-5 h-10 w-full",
+      "font_size": "14px",
+      "font_weight": "600",
+      "placeholder": "",
+      "tag": "button",
+      "text": "先去逛逛"
+    },
+    {
+      "cls": "mb-5 h-10 w-full",
+      "font_size": "14px",
+      "font_weight": "600",
+      "placeholder": "",
+      "tag": "button",
+      "text": "登入"
+    },
+    {
+      "cls": "input-style",
+      "font_size": "16px",
+      "font_weight": "400",
+      "placeholder": "請填寫4-10位的字母或數字",
+      "tag": "input",
+      "text": ""
+    },
+    {
+      "cls": "input-style",
+      "font_size": "16px",
+      "font_weight": "400",
+      "placeholder": "請填寫 8-20 位的字母或數字",
+      "tag": "input",
+      "text": ""
+    }
+  ],
+  "version": 1
+}

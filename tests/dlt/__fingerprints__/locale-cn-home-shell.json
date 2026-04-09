@@ -1,0 +1,78 @@
+{
+  "count": 9,
+  "items": [
+    {
+      "cls": "router-link-active router-link-exact-active relative",
+      "font_size": "16px",
+      "font_weight": "400",
+      "placeholder": "",
+      "tag": "a",
+      "text": ""
+    },
+    {
+      "cls": "bubble-bg relative z-[9]",
+      "font_size": "16px",
+      "font_weight": "400",
+      "placeholder": "",
+      "tag": "a",
+      "text": "客服"
+    },
+    {
+      "cls": "",
+      "font_size": "18px",
+      "font_weight": "400",
+      "placeholder": "",
+      "tag": "a",
+      "text": "捕鱼"
+    },
+    {
+      "cls": "",
+      "font_size": "18px",
+      "font_weight": "400",
+      "placeholder": "",
+      "tag": "a",
+      "text": "热门"
+    },
+    {
+      "cls": "",
+      "font_size": "18px",
+      "font_weight": "400",
+      "placeholder": "",
+      "tag": "a",
+      "text": "电子"
+    },
+    {
+      "cls": "",
+      "font_size": "18px",
+      "font_weight": "400",
+      "placeholder": "",
+      "tag": "a",
+      "text": "真人"
+    },
+    {
+      "cls": "block h-[54px] w-full",
+      "font_size": "20px",
+      "font_weight": "600",
+      "placeholder": "",
+      "tag": "button",
+      "text": "登出"
+    },
+    {
+      "cls": "hidden h-10 w-[110px]",
+      "font_size": "16px",
+      "font_weight": "400",
+      "placeholder": "",
+      "tag": "button",
+      "text": "登录"
+    },
+    {
+      "cls": "mb-5 block h-[54px]",
+      "font_size": "20px",
+      "font_weight": "600",
+      "placeholder": "",
+      "tag": "button",
+      "text": "维护时间"
+    }
+  ],
+  "version": 1
+}

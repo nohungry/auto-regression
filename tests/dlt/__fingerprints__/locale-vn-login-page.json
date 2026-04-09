@@ -1,0 +1,38 @@
+{
+  "count": 4,
+  "items": [
+    {
+      "cls": "mb-5 h-10 w-full",
+      "font_size": "14px",
+      "font_weight": "600",
+      "placeholder": "",
+      "tag": "button",
+      "text": "Đăng nhập"
+    },
+    {
+      "cls": "mb-5 h-10 w-full",
+      "font_size": "14px",
+      "font_weight": "600",
+      "placeholder": "",
+      "tag": "button",
+      "text": "先去逛逛"
+    },
+    {
+      "cls": "input-style",
+      "font_size": "16px",
+      "font_weight": "400",
+      "placeholder": "Vui lòng điền 4-10 chữ cái hoặc số",
+      "tag": "input",
+      "text": ""
+    },
+    {
+      "cls": "input-style",
+      "font_size": "16px",
+      "font_weight": "400",
+      "placeholder": "Vui lòng điền 4-10 chữ cái hoặc số",
+      "tag": "input",
+      "text": ""
+    }
+  ],
+  "version": 1
+}

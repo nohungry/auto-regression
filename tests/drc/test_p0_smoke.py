@@ -1,14 +1,19 @@
 """
-P0 Smoke Test
-每次 Release 必跑，驗證核心功能正常
+DRC P0 Smoke Test
+每次 Release 必跑，只保留核心健康度流程（登入、首頁載入、登出、登入表單可見性）。
+
+功能型測試已遷移：
+- 個人資訊 / 站內信  → tests/drc/feature/member/test_member.py
+- 首頁區塊（熱門/最新/公告/餘額）→ tests/drc/feature/home_sections/test_home_sections.py
+- 側邊欄彈窗（遊戲明細/老吉公告 / 未登入跳登入）→ tests/drc/feature/sidebar/test_sidebar.py
+- 真人廳館顯示             → tests/drc/feature/navigation/test_navigation.py
+- 分類頁跳轉（真人/電子/捕魚）→ tests/drc/feature/navigation/test_navigation.py
 """
 
-import re
 import pytest
 from playwright.sync_api import Page, expect
 from pages.drc.login_page import LoginPage
 from pages.drc.home_page import HomePage
-from utils.dialog_helper import wait_loading_if_present
 from utils.screenshot_helper import get_screenshotter
 
 
@@ -32,10 +37,8 @@ class TestLogin:
         login.open_login_form()
         login.login(site_config.username, "wrong_password_123")
 
-        # 確定按鈕出現
         toast_btn = page.locator("button.toast-confirm-btn")
         expect(toast_btn).to_be_visible(timeout=5000)
-        # 驗證彈窗訊息為「密碼錯誤」
         error_msg = page.locator("p", has_text="密碼錯誤")
         expect(error_msg).to_be_visible()
         sh = get_screenshotter(page)
@@ -49,10 +52,8 @@ class TestLogin:
         login.open_login_form()
         login.login("nonexistent_user_xyz", site_config.password)
 
-        # 確定按鈕出現
         toast_btn = page.locator("button.toast-confirm-btn")
         expect(toast_btn).to_be_visible(timeout=5000)
-        # 驗證彈窗訊息為「帳號不存在」
         error_msg = page.locator("p", has_text="帳號不存在")
         expect(error_msg).to_be_visible()
         sh = get_screenshotter(page)
@@ -65,13 +66,11 @@ class TestLogin:
         login.goto()
         login.open_login_form()
 
-        # 直接點登入按鈕（不填資料）
         login.login_btn.scroll_into_view_if_needed()
         sh = get_screenshotter(page)
         if sh: sh.capture(login.login_btn, "click_送出登入_空白欄位")
         login.login_btn.click()
 
-        # 不應跳轉（仍在登入頁）
         expect(login.username_input).to_be_visible(timeout=3000)
         if sh: sh.capture(login.username_input, "verify_仍在登入頁")
 
@@ -87,9 +86,8 @@ class TestHomePage:
         home.verify_login_success(site_config.username)
 
     def test_navigation_visible(self, logged_in_page: Page):
-        """TC-006：主要導覽列應顯示"""
+        """TC-006：主要導覽列應顯示（真人/電子/捕魚）"""
         sh = get_screenshotter(logged_in_page)
-        # 驗證導覽列項目（真人、電子、捕魚）
         for nav_item in ["真人", "電子", "捕魚"]:
             el = logged_in_page.locator(f"text={nav_item}").first
             expect(el).to_be_visible()
@@ -114,188 +112,3 @@ class TestHomePage:
         if sh: sh.capture(login.username_input, "verify_帳號欄位")
         if sh: sh.capture(login.password_input, "verify_密碼欄位")
         if sh: sh.capture(login.login_btn,      "verify_登入按鈕")
-
-
-@pytest.mark.p0
-class TestPersonalInfo:
-    """TC-011 ~ TC-012：個人資訊彈窗"""
-
-    def test_personal_info_opens(self, logged_in_page: Page, site_config):
-        """TC-011：個人資訊彈窗可正常開啟，帳號欄位顯示正確用戶名"""
-        # sidebar 容器 CSS width=0，dispatch_event 直接觸發 DOM 事件；點擊後有 loading
-        logged_in_page.locator(".sidebar-item.user").dispatch_event("click")
-        wait_loading_if_present(logged_in_page)
-        dialog = logged_in_page.locator(".dialog-container")
-        expect(dialog).to_be_visible(timeout=5000)
-        sh = get_screenshotter(logged_in_page)
-        if sh: sh.capture(dialog, "verify_個人資訊彈窗開啟")
-        username_field = logged_in_page.locator(".dialog-container input[disabled]").first
-        expect(username_field).to_have_value(site_config.username)
-        if sh: sh.capture(username_field, "verify_帳號欄位顯示正確")
-
-    def test_personal_info_closes(self, logged_in_page: Page):
-        """TC-012：個人資訊彈窗可正常關閉（X 按鈕）"""
-        logged_in_page.locator(".sidebar-item.user").dispatch_event("click")
-        wait_loading_if_present(logged_in_page)
-        expect(logged_in_page.locator(".dialog-container")).to_be_visible(timeout=5000)
-        close_btn = logged_in_page.locator(".close-wrap")
-        close_btn.scroll_into_view_if_needed()
-        sh = get_screenshotter(logged_in_page)
-        if sh: sh.capture(close_btn, "click_關閉彈窗")
-        close_btn.click()
-        expect(logged_in_page.locator(".dialog-container")).not_to_be_visible(timeout=5000)
-        if sh: sh.full_page("verify_個人資訊彈窗已關閉")
-
-
-@pytest.mark.p0
-class TestInbox:
-    """TC-013 ~ TC-014：站內信彈窗"""
-
-    def test_inbox_opens(self, logged_in_page: Page):
-        """TC-013：站內信彈窗可正常開啟"""
-        # sidebar 容器 CSS width=0，dispatch_event 直接觸發 DOM 事件
-        logged_in_page.locator(".sidebar-item.mail").dispatch_event("click")
-        wait_loading_if_present(logged_in_page)
-        dialog = logged_in_page.locator(".dialog-container")
-        expect(dialog).to_be_visible(timeout=5000)
-        expect(dialog).to_contain_text("站內信")
-        sh = get_screenshotter(logged_in_page)
-        if sh: sh.capture(dialog, "verify_站內信彈窗開啟")
-
-    def test_inbox_closes(self, logged_in_page: Page):
-        """TC-014：站內信彈窗可正常關閉"""
-        logged_in_page.locator(".sidebar-item.mail").dispatch_event("click")
-        wait_loading_if_present(logged_in_page)
-        expect(logged_in_page.locator(".dialog-container")).to_be_visible(timeout=5000)
-        close_btn = logged_in_page.locator(".close-wrap")
-        close_btn.scroll_into_view_if_needed()
-        sh = get_screenshotter(logged_in_page)
-        if sh: sh.capture(close_btn, "click_關閉彈窗")
-        close_btn.click()
-        expect(logged_in_page.locator(".dialog-container")).not_to_be_visible(timeout=5000)
-        if sh: sh.full_page("verify_站內信彈窗已關閉")
-
-
-@pytest.mark.p0
-class TestCasinoPage:
-    """TC-015：真人頁廳館"""
-
-    def test_casino_halls_visible(self, logged_in_page: Page):
-        """TC-015：真人頁顯示所有廳館（T9真人、RC真人、DG真人、MT真人、歐博）"""
-        home = HomePage(logged_in_page)
-        home.click_nav_item("真人")
-        sh = get_screenshotter(logged_in_page)
-        for hall in ["T9真人", "RC真人", "DG真人", "MT真人", "歐博"]:
-            # sidebar 的廳館文字使用 text-black，排除後取廳館卡片內的可見節點
-            el = logged_in_page.locator("p:not(.text-black)", has_text=hall).first
-            expect(el).to_be_visible(timeout=8000)
-            el.scroll_into_view_if_needed()
-            if sh: sh.capture(el, f"verify_廳館_{hall}")
-        if sh: sh.full_page("verify_所有廳館卡片_全頁")
-
-
-@pytest.mark.p0
-@pytest.mark.home
-class TestHomePageSections:
-    """TC-016 ~ TC-019：首頁各區塊"""
-
-    def test_hot_games_section(self, logged_in_page: Page):
-        """TC-016：首頁顯示「熱門遊戲」區塊且有遊戲卡片"""
-        sh = get_screenshotter(logged_in_page)
-        title = logged_in_page.locator("text=熱門遊戲").first
-        expect(title).to_be_visible()
-        if sh: sh.capture(title, "verify_熱門遊戲標題")
-        grid = logged_in_page.locator(".mt-d-20.grid").first
-        expect(grid).to_be_visible()
-        grid.scroll_into_view_if_needed()
-        if sh: sh.capture(grid, "verify_遊戲卡片區塊")
-        if sh: sh.full_page("verify_遊戲卡片區塊_全頁")
-
-    def test_new_games_section(self, logged_in_page: Page):
-        """TC-017：首頁顯示「最新遊戲」區塊且有遊戲卡片"""
-        sh = get_screenshotter(logged_in_page)
-        # 熱門/最新共用同一個 grid，點 tab 切換後確認有卡片
-        tab = logged_in_page.locator("text=最新遊戲").first
-        tab.scroll_into_view_if_needed()
-        if sh: sh.capture(tab, "click_最新遊戲Tab")
-        tab.click()
-        grid = logged_in_page.locator(".mt-d-20.grid").first
-        expect(grid).to_be_visible()
-        # tab 切換後 grid 重繪，用 evaluate 捲動視窗避免操作不穩定的元素
-        logged_in_page.evaluate("window.scrollBy(0, 400)")
-        if sh: sh.capture(grid, "verify_最新遊戲卡片區塊")
-        if sh: sh.full_page("verify_最新遊戲卡片區塊_全頁")
-
-    def test_announcement_marquee(self, logged_in_page: Page):
-        """TC-018：首頁公告跑馬燈有內容顯示"""
-        # 多個 p.h-full 存在，取第一個含公告文字的
-        marquee = logged_in_page.locator("p.h-full").first
-        expect(marquee).to_be_visible()
-        expect(marquee).to_contain_text("公告")
-        sh = get_screenshotter(logged_in_page)
-        if sh: sh.capture(marquee, "verify_公告跑馬燈有內容")
-
-    def test_balance_visible(self, logged_in_page: Page):
-        """TC-019：登入後右上角餘額數字顯示（非空白）"""
-        balance = logged_in_page.locator(".coin-wrap-bg span")
-        expect(balance).to_be_visible()
-        sh = get_screenshotter(logged_in_page)
-        if sh: sh.capture(balance, "verify_餘額數字顯示")
-
-
-@pytest.mark.p0
-class TestUnauthenticated:
-    """TC-020：未登入功能"""
-
-    def test_sidebar_triggers_login(self, page: Page, site_config):
-        """TC-020：未登入時點側邊欄個人資訊應跳出登入表單"""
-        login = LoginPage(page, site_config.url)
-        login.goto()
-        # sidebar 容器 CSS width=0，dispatch_event 直接觸發 DOM 事件
-        page.locator(".sidebar-item.user").dispatch_event("click")
-        wait_loading_if_present(page)
-        expect(login.username_input).to_be_visible(timeout=5000)
-        sh = get_screenshotter(page)
-        if sh: sh.capture(login.username_input, "verify_登入表單出現")
-
-
-@pytest.mark.p0
-class TestSidebarFeatures:
-    """TC-021 ~ TC-022：側邊欄彈窗功能"""
-
-    def test_game_details_opens(self, logged_in_page: Page):
-        """TC-021：遊戲明細彈窗可正常開啟"""
-        # sidebar 容器 CSS width=0，dispatch_event 直接觸發 DOM 事件
-        logged_in_page.locator(".sidebar-item.game-details").dispatch_event("click")
-        dialog = logged_in_page.locator(".dialog-container")
-        expect(dialog).to_be_visible(timeout=5000)
-        sh = get_screenshotter(logged_in_page)
-        if sh: sh.capture(dialog, "verify_遊戲明細彈窗開啟")
-
-    def test_announcement_opens(self, logged_in_page: Page):
-        """TC-022：老吉公告彈窗可正常開啟且有公告內容"""
-        logged_in_page.locator(".sidebar-item.announce").dispatch_event("click")
-        wait_loading_if_present(logged_in_page)
-        dialog = logged_in_page.locator(".dialog-container")
-        expect(dialog).to_be_visible(timeout=5000)
-        expect(dialog).to_contain_text("公告")
-        sh = get_screenshotter(logged_in_page)
-        if sh: sh.capture(dialog, "verify_公告彈窗開啟")
-
-
-@pytest.mark.p0
-class TestNavigation:
-    """TC-008 ~ TC-010：導覽列分類頁跳轉"""
-
-    @pytest.mark.parametrize("nav_item,expected_path", [
-        ("真人", "/Categories/casino"),
-        ("電子", "/Categories/slots"),
-        ("捕魚", "/Categories/fishing"),
-    ])
-    def test_nav_to_category(self, logged_in_page: Page, nav_item, expected_path):
-        """TC-008/009/010：點擊導覽列項目應跳轉至對應分類頁"""
-        home = HomePage(logged_in_page)
-        home.click_nav_item(nav_item)
-        expect(logged_in_page).to_have_url(re.compile(re.escape(expected_path)), timeout=8000)
-        sh = get_screenshotter(logged_in_page)
-        if sh: sh.full_page(f"verify_已跳轉至_{nav_item}分類頁")
