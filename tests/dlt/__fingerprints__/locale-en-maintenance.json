@@ -1,0 +1,70 @@
+{
+  "count": 8,
+  "items": [
+    {
+      "cls": "router-link-active router-link-exact-active relative",
+      "font_size": "16px",
+      "font_weight": "400",
+      "placeholder": "",
+      "tag": "a",
+      "text": ""
+    },
+    {
+      "cls": "bubble-bg relative z-[9]",
+      "font_size": "16px",
+      "font_weight": "400",
+      "placeholder": "",
+      "tag": "a",
+      "text": "CS"
+    },
+    {
+      "cls": "",
+      "font_size": "18px",
+      "font_weight": "400",
+      "placeholder": "",
+      "tag": "a",
+      "text": "Fishing"
+    },
+    {
+      "cls": "",
+      "font_size": "18px",
+      "font_weight": "400",
+      "placeholder": "",
+      "tag": "a",
+      "text": "Hot"
+    },
+    {
+      "cls": "",
+      "font_size": "18px",
+      "font_weight": "400",
+      "placeholder": "",
+      "tag": "a",
+      "text": "Live Casino"
+    },
+    {
+      "cls": "",
+      "font_size": "18px",
+      "font_weight": "400",
+      "placeholder": "",
+      "tag": "a",
+      "text": "Slots"
+    },
+    {
+      "cls": "block h-[54px] w-full",
+      "font_size": "20px",
+      "font_weight": "600",
+      "placeholder": "",
+      "tag": "button",
+      "text": "Logout"
+    },
+    {
+      "cls": "mb-5 block h-[54px]",
+      "font_size": "20px",
+      "font_weight": "600",
+      "placeholder": "",
+      "tag": "button",
+      "text": "Maintenance Time"
+    }
+  ],
+  "version": 1
+}
