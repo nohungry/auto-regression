@@ -30,8 +30,10 @@ screenshots/
 dev-notes/*
 !dev-notes/README.md
 
-# Claude Code
-.claude/
+# Claude Code — 只追蹤 skills（團隊共用）
+.claude/*
+!.claude/skills/
+.claude/skills/playwright-pro/
 
 # Python virtual environment
 .venv/
