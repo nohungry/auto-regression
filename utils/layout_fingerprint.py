@@ -9,7 +9,7 @@ DOM 指紋（Layout Fingerprint）工具 — 方向 5
 使用方式：
     from utils.layout_fingerprint import assert_fingerprint
 
-    assert_fingerprint(page, "tests/dlt/__fingerprints__/locale-tw-login.json")
+    assert_fingerprint(page, "tests/lt/__fingerprints__/locale-tw-login.json")
 
     # 首次執行若 baseline 不存在，會自動建立並通過。
     # 若要強制更新 baseline，可刪除對應 JSON 檔案後重跑。

@@ -104,7 +104,7 @@ def _new_configured_page(browser):
 
     page.add_init_script("""
         new MutationObserver(() => {
-            // 自動關閉伺服器錯誤彈窗（DRC 站特有）
+            // 自動關閉伺服器錯誤彈窗（RC 站特有）
             const toastBtn = document.querySelector('button.toast-confirm-btn');
             if (toastBtn && toastBtn.offsetParent !== null) toastBtn.click();
         }).observe(document.body, { childList: true, subtree: true });
