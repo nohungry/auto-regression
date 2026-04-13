@@ -86,19 +86,23 @@ class TestLogin:
         expect(login.username_input).to_be_visible(timeout=3000)
         if sh: sh.capture(login.username_input, "verify_仍在登入頁")
 
-    def test_logout(self, logged_in_page: Page, site_config):
+    def test_logout(self, page: Page, site_config):
         """TC-005：可登出並回到未登入狀態"""
-        home = HomePage(logged_in_page)
+        login = LoginPage(page, site_config.url)
+        login.goto_and_login(site_config.username, site_config.password)
+
+        home = HomePage(page)
+        expect(home.hamburger).to_be_visible(timeout=10000)
         home.logout()
 
         # 驗證 LaiTsai cookie 已消失
-        cookies = logged_in_page.context.cookies()
+        cookies = page.context.cookies()
         cookie_names = [c["name"] for c in cookies]
         assert "LaiTsai" not in cookie_names, \
             "登出後 LaiTsai cookie 仍存在"
 
         # 驗證登入按鈕重新出現
-        expect(logged_in_page.get_by_role("button", name="登入")).to_be_visible()
+        expect(page.get_by_role("button", name="登入")).to_be_visible()
 
 
 # ─────────────────────────────────────────────────────────────
@@ -164,53 +168,82 @@ class TestHomePage:
         if sh: sh.full_page("verify_進入登入頁")
 
 
-    def test_balance_visible(self, logged_in_page: Page, site_config):
-        """TC-010：登入後 navbar 餘額顯示（非空白）"""
-        sh = get_screenshotter(logged_in_page)
-        # navbar 內有兩個 img[alt="Balance"]：nth(0) = mobile（lg:hidden，0×0），nth(1) = desktop（visible）
-        # drawer 的 Balance icon 在 navbar 元素外，不在此 locator 範圍內
-        navbar = logged_in_page.locator('[class*="bg-navbar"]')
-        balance_icon = navbar.locator('img[alt="Balance"]').nth(1)
-        expect(balance_icon).to_be_visible(timeout=5000)
-        balance_text = balance_icon.locator('..').locator('p').text_content()
-        assert balance_text and balance_text.strip(), "餘額顯示為空"
-        if sh: sh.capture(balance_icon, "verify_餘額顯示")
+    def test_balance_visible(self, page: Page, site_config):
+        """TC-010：登入後開啟漢堡選單，從 drawer 驗證帳號與餘額顯示"""
+        login = LoginPage(page, site_config.url)
+        login.goto_and_login(site_config.username, site_config.password)
 
-    def test_announcement_marquee(self, logged_in_page: Page, site_config):
+        home = HomePage(page)
+        sh = get_screenshotter(page)
+
+        # 漢堡選單出現（代表已登入）
+        expect(home.hamburger).to_be_visible(timeout=10000)
+        if sh: sh.capture(home.hamburger, "verify_漢堡選單出現")
+
+        # 點擊漢堡選單開啟 drawer
+        home.open_member_drawer()
+
+        # 從 drawer 驗證帳號顯示
+        username_el = page.locator('p[class*="text-xl"]', has_text=site_config.username).first
+        expect(username_el).to_be_visible(timeout=5000)
+        if sh: sh.capture(username_el, f"verify_drawer帳號顯示_{site_config.username}")
+
+        # 從 drawer 驗證餘額顯示（非空白）
+        balance = page.locator("p.font-bold.text-amount")
+        expect(balance).to_be_visible(timeout=5000)
+        balance_text = balance.text_content() or ""
+        assert balance_text.strip() != "", "drawer 餘額欄位不應為空"
+        if sh: sh.capture(balance, "verify_drawer餘額顯示")
+
+    def test_announcement_marquee(self, page: Page, site_config):
         """TC-011：首頁公告跑馬燈有內容顯示"""
-        sh = get_screenshotter(logged_in_page)
-        announcement = logged_in_page.locator('img[alt="Annt"]')
+        login = LoginPage(page, site_config.url)
+        login.goto_and_login(site_config.username, site_config.password)
+
+        sh = get_screenshotter(page)
+        announcement = page.locator('img[alt="Annt"]')
         expect(announcement).to_be_visible(timeout=5000)
         # 公告文字內容用 img[alt="Annt"] 的父容器確認有文字，locale-agnostic
         marquee_container = announcement.locator('..').locator('..')
         expect(marquee_container).not_to_be_empty()
         if sh: sh.capture(announcement, "verify_公告跑馬燈")
 
-    def test_hot_games_section(self, logged_in_page: Page, site_config):
+    def test_hot_games_section(self, page: Page, site_config):
         """TC-012：首頁顯示「熱門」區塊且有遊戲卡片"""
-        sh = get_screenshotter(logged_in_page)
-        hot_label = logged_in_page.get_by_text("熱門", exact=True).first
+        login = LoginPage(page, site_config.url)
+        login.goto_and_login(site_config.username, site_config.password)
+
+        sh = get_screenshotter(page)
+        hot_label = page.get_by_text("熱門", exact=True).first
         expect(hot_label).to_be_visible(timeout=5000)
         if sh: sh.capture(hot_label, "verify_熱門區塊標題")
-        game_cards = logged_in_page.locator('img[alt="Hot"]')
+        game_cards = page.locator('img[alt="Hot"]')
         expect(game_cards.first).to_be_visible()
         if sh: sh.full_page("verify_熱門遊戲區塊")
 
-    def test_casino_halls_visible(self, logged_in_page: Page, site_config):
+    def test_casino_halls_visible(self, page: Page, site_config):
         """TC-013：首頁顯示所有真人廳館（T9真人、RC真人、DG真人、MT真人、歐博）"""
-        sh = get_screenshotter(logged_in_page)
+        login = LoginPage(page, site_config.url)
+        login.goto_and_login(site_config.username, site_config.password)
+
+        sh = get_screenshotter(page)
         for hall in ["T9真人", "RC真人", "DG真人", "MT真人", "歐博"]:
-            el = logged_in_page.get_by_text(hall, exact=True).first
+            el = page.get_by_text(hall, exact=True).first
             expect(el).to_be_visible()
             if sh: sh.capture(el, f"verify_廳館_{hall}")
 
-    def test_member_drawer_opens(self, logged_in_page: Page, site_config):
+    def test_member_drawer_opens(self, page: Page, site_config):
         """TC-014：會員 drawer 可正常開啟並顯示帳號名稱"""
-        home = HomePage(logged_in_page)
-        sh = get_screenshotter(logged_in_page)
+        login = LoginPage(page, site_config.url)
+        login.goto_and_login(site_config.username, site_config.password)
+
+        home = HomePage(page)
+        sh = get_screenshotter(page)
+        expect(home.hamburger).to_be_visible(timeout=10000)
+        if sh: sh.capture(home.hamburger, "verify_漢堡選單出現")
         home.open_member_drawer()
         # drawer 內帳號 p 有 text-xl class，navbar 帳號 p 沒有，以此區分 drawer 與 navbar
-        username_el = logged_in_page.locator('p[class*="text-xl"]', has_text=site_config.username).first
+        username_el = page.locator('p[class*="text-xl"]', has_text=site_config.username).first
         expect(username_el).to_be_visible(timeout=5000)
         if sh: sh.capture(username_el, f"verify_drawer_帳號顯示_{site_config.username}")
 
