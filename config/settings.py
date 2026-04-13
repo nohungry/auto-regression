@@ -16,6 +16,7 @@ class SiteConfig:
     url: str
     username: str
     password: str
+    dashboard_url: str = ""
 
 
 def get_site_config(site_id: str = None) -> SiteConfig:
@@ -31,6 +32,7 @@ def get_site_config(site_id: str = None) -> SiteConfig:
     url = os.getenv(f"SITE_{site_id}_URL")
     username = os.getenv(f"SITE_{site_id}_USERNAME")
     password = os.getenv(f"SITE_{site_id}_PASSWORD")
+    dashboard_url = os.getenv(f"SITE_{site_id}_DASHBOARD_URL", "")
 
     if not url:
         raise ValueError(
@@ -42,4 +44,5 @@ def get_site_config(site_id: str = None) -> SiteConfig:
         url=url,
         username=username,
         password=password,
+        dashboard_url=dashboard_url,
     )
