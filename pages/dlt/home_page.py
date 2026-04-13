@@ -1,6 +1,6 @@
 """
 首頁 Page Object — lt 站點
-Selector 來源：probe_lt_selectors.py 實機驗證 dev-lt.t9platform.com
+Selector 來源：probe_lt_selectors.py 實機驗證（見 .env SITE_DLT_URL）
 
 與 drc 站主要差異：
 - 帳號顯示：[class*="font-medium"] has_text=username（非 text=username，後者不可見）

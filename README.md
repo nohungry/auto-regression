@@ -6,8 +6,8 @@
 
 | 站台 ID | 網址 | 測試數 |
 |---------|------|--------|
-| `drc` | dev-drc.t9platform-ph.com | 51 |
-| `dlt` | dev-lt.t9platform.com | 93（含 30 tests SKIP 中）|
+| `drc` | 見 .env `SITE_DRC_URL` | 51 |
+| `dlt` | 見 .env `SITE_DLT_URL` | 93（含 30 tests SKIP 中）|
 | API | - | 2 |
 
 > 測試數以 `.venv/bin/pytest --collect-only -q` 為準，會隨新增測試變動。
@@ -48,7 +48,7 @@ utils/dialog_helper.py               — 伺服器錯誤彈窗、公告彈窗、
 utils/screenshot_helper.py           — 截圖系統（元素高亮 + 自動產生繁中 README）
 docs/                                — 團隊共用文件（追蹤於 git）
 dev-notes/                           — 個人開發筆記（gitignored，僅 README 追蹤）
-screenshots/                         — 每個測試的截圖與報告（gitignored）
+screenshots/                         — 截圖與報告，自動分為 smoke/ 與 feature/（gitignored）
 reports/report.html                  — pytest-html 測試報表
 ```
 
@@ -179,5 +179,5 @@ Port 轉發與環境設定細節請參考 [PORTS_AND_SETUP.md](PORTS_AND_SETUP.m
 
 - **多站台支援**：在 `.env` 增加 `SITE_XXX_URL / SITE_XXX_USERNAME / SITE_XXX_PASSWORD`，於 `pages/<site_id>/` 建立 page objects，在 `pages/factory.py` 的 registry dict 註冊，再於 `tests/<site_id>/` 建立測試目錄即可
 - **伺服器錯誤彈窗**：`conftest.py` 內建 MutationObserver 注入，自動處理 drc 站的伺服器錯誤彈窗；dlt 站在 `tests/dlt/conftest.py` 覆寫 `page` fixture 關閉此注入
-- **截圖系統**：每個測試自動截圖並高亮操作元素（紅框），存於 `screenshots/<site_id>/<timestamp>/<test_name>/`，並產生繁中操作流程 README
+- **截圖系統**：每個測試自動截圖並高亮操作元素（紅框），存於 `screenshots/<site_id>/<timestamp>/<smoke|feature>/<test_name>/`，自動依測試路徑分類，並產生繁中操作流程 README
 - **報表與截圖**：`reports/`、`screenshots/` 均已加入 `.gitignore`

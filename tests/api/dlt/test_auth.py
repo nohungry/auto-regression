@@ -6,8 +6,8 @@ Cookie（LaiTsai / userLaiTsai）由前端 SPA 拿到 token 後自行寫入，
 屬於前端行為，由 UI 層 test_login_success 間接覆蓋。
 
 API endpoint 與 site domain 不同：
-  Site:  https://dev-lt.t9platform.com      (SITE_DLT_URL)
-  API:   https://dev-web-api.t9platform.com  (SITE_DLT_API_URL)
+  Site:  見 .env SITE_DLT_URL
+  API:   見 .env SITE_DLT_API_URL
 
 必要 headers：
   companycode — 站點識別碼（同 site_id）

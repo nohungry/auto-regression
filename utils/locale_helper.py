@@ -1,6 +1,6 @@
 """
 語系 Cookie 輔助函式
-適用於 lt 站點（dev-lt.t9platform.com）的多語系測試
+適用於 lt 站點（見 .env SITE_DLT_URL）的多語系測試
 cookie 名稱：i18n_redirected_lt
 支援語系：tw（繁中）/ cn（簡中）/ en（英文）/ th（泰文）/ vn（越文）
 """
