@@ -4,16 +4,16 @@
 
 ---
 
-# DLT 站台
+# LT 站台
 
-DLT 站台（SITE_DLT_URL）支援五種語系：繁中（tw）、簡中（cn）、英文（en）、泰文（th）、越文（vn）。  
+LT 站台（SITE_LT_URL）支援五種語系：繁中（tw）、簡中（cn）、英文（en）、泰文（th）、越文（vn）。  
 語系切換方式：注入 `i18n_redirected_lt` cookie（`utils/locale_helper.set_locale()`）。
 
 ---
 
 ## 首頁 Nav 文案（WIN-I18N-001~005）
 
-測試檔：`tests/dlt/feature/i18n/test_home_locale.py`
+測試檔：`tests/lt/feature/i18n/test_home_locale.py`
 
 | 語系 | 熱門 | 真人 | 電子 | 捕魚 | 登入 |
 |------|------|------|------|------|------|
@@ -27,7 +27,7 @@ DLT 站台（SITE_DLT_URL）支援五種語系：繁中（tw）、簡中（cn）
 
 ## 登入頁文案（WIN-I18N-LOGIN-001~005）
 
-測試檔：`tests/dlt/feature/i18n/test_login_locale.py`
+測試檔：`tests/lt/feature/i18n/test_login_locale.py`
 
 | 語系 | 帳號欄位標籤 | 密碼欄位標籤 | 登入按鈕 |
 |------|------------|------------|---------|
@@ -43,7 +43,7 @@ DLT 站台（SITE_DLT_URL）支援五種語系：繁中（tw）、簡中（cn）
 
 ## 會員 Drawer 選單文案（WIN-I18N-DRAWER-001~005）
 
-測試檔：`tests/dlt/feature/i18n/test_drawer_locale.py`
+測試檔：`tests/lt/feature/i18n/test_drawer_locale.py`
 
 | 語系 | 投注紀錄 | 會員訊息 | 維護時間／存款 |
 |------|---------|---------|--------------|
@@ -59,7 +59,7 @@ DLT 站台（SITE_DLT_URL）支援五種語系：繁中（tw）、簡中（cn）
 
 ---
 
-## DLT Selector 備註
+## LT Selector 備註
 
 | 元素 | Selector | 說明 |
 |------|----------|------|
@@ -72,16 +72,16 @@ DLT 站台（SITE_DLT_URL）支援五種語系：繁中（tw）、簡中（cn）
 
 ---
 
-# DRC 站台
+# RC 站台
 
-DRC 站台（SITE_DRC_URL）支援六種語系：繁體中文、簡体中文、日本語、ภาษาไทย、Tiếng Việt、English。  
+RC 站台（SITE_RC_URL）支援六種語系：繁體中文、簡体中文、日本語、ภาษาไทย、Tiếng Việt、English。  
 語系切換方式：點擊 globe icon（`img[src*='global']`）→ 選擇語系名稱（`p.whitespace-nowrap`）。
 
-> **注意**：DRC 比 DLT 多一個語系（日本語）。
+> **注意**：RC 比 LT 多一個語系（日本語）。
 
-## 首頁 Nav 文案（DRC-I18N-HOME-001~006）
+## 首頁 Nav 文案（RC-I18N-HOME-001~006）
 
-測試檔：`tests/drc/feature/i18n/test_home_locale.py`
+測試檔：`tests/rc/feature/i18n/test_home_locale.py`
 
 | 語系 | 首頁 | 真人 | 電子 | 捕魚 | 登入 |
 |------|------|------|------|------|------|
@@ -94,11 +94,11 @@ DRC 站台（SITE_DRC_URL）支援六種語系：繁體中文、簡体中文、�
 
 ---
 
-## 登入 Modal 文案（DRC-I18N-LOGIN-001~006）
+## 登入 Modal 文案（RC-I18N-LOGIN-001~006）
 
-測試檔：`tests/drc/feature/i18n/test_login_locale.py`
+測試檔：`tests/rc/feature/i18n/test_login_locale.py`
 
-> DRC 登入為 **Modal 形式**（非獨立頁面），欄位用 `placeholder` 識別（非 label）。
+> RC 登入為 **Modal 形式**（非獨立頁面），欄位用 `placeholder` 識別（非 label）。
 
 | 語系 | 帳號 placeholder | 密碼 placeholder | 送出按鈕 |
 |------|----------------|----------------|---------|
@@ -111,11 +111,11 @@ DRC 站台（SITE_DRC_URL）支援六種語系：繁體中文、簡体中文、�
 
 ---
 
-## 側邊欄文案（DRC-I18N-SIDEBAR-001~006）
+## 側邊欄文案（RC-I18N-SIDEBAR-001~006）
 
-測試檔：`tests/drc/feature/i18n/test_sidebar_locale.py`
+測試檔：`tests/rc/feature/i18n/test_sidebar_locale.py`
 
-> 對應 DLT 的 hamburger drawer。Sidebar container 為 CSS `width=0`（隱藏），但文字仍在 DOM 中，用 `body.to_contain_text()` 驗證。
+> 對應 LT 的 hamburger drawer。Sidebar container 為 CSS `width=0`（隱藏），但文字仍在 DOM 中，用 `body.to_contain_text()` 驗證。
 
 | 語系 | 個人資訊 | 遊戲明細 | 站內信 |
 |------|---------|---------|-------|
@@ -128,7 +128,7 @@ DRC 站台（SITE_DRC_URL）支援六種語系：繁體中文、簡体中文、�
 
 ---
 
-## DRC Selector 備註
+## RC Selector 備註
 
 | 元素 | Selector | 說明 |
 |------|----------|------|

@@ -19,13 +19,13 @@ def _import_class(module_path: str, class_name: str):
 # 新增站點只需在這裡加一行
 # -----------------------------------------------
 _LOGIN_PAGE_REGISTRY = {
-    'drc': ('pages.drc.login_page', 'LoginPage'),
-    'dlt': ('pages.dlt.login_page', 'LoginPage'),
+    'rc': ('pages.rc.login_page', 'LoginPage'),
+    'lt': ('pages.lt.login_page', 'LoginPage'),
 }
 
 _HOME_PAGE_REGISTRY = {
-    'drc': ('pages.drc.home_page', 'HomePage'),
-    'dlt': ('pages.dlt.home_page', 'HomePage'),
+    'rc': ('pages.rc.home_page', 'HomePage'),
+    'lt': ('pages.lt.home_page', 'HomePage'),
 }
 
 
