@@ -4,8 +4,9 @@
 - attach/detach/get：讓 POM 方法不需傳參也能取得 screenshotter
 - _highlight_and_screenshot：在元素上畫紅框 + 標籤後截圖
 
-截圖存放路徑：screenshots/<site_id>/<timestamp>/<test_name>/<001_label>.png
-測試說明文件：screenshots/<site_id>/<timestamp>/<test_name>/README.md
+截圖存放路徑：screenshots/<site_id>/<timestamp>/<category>/<test_name>/<001_label>.png
+測試說明文件：screenshots/<site_id>/<timestamp>/<category>/<test_name>/README.md
+category 由 conftest auto_screenshot 自動判斷：feature/ 下為 feature，其餘為 smoke
 """
 
 import re
@@ -79,10 +80,10 @@ class ScreenshotHelper:
             sh.capture(self.some_locator, "click_動作描述")
     """
 
-    def __init__(self, page: Page, test_name: str, description: str = "", site_id: str = "unknown"):
+    def __init__(self, page: Page, test_name: str, description: str = "", site_id: str = "unknown", category: str = "smoke"):
         self.page = page
         timestamp = _get_session_timestamp()
-        self.folder = SCREENSHOTS_DIR / site_id / timestamp / _sanitize(test_name)
+        self.folder = SCREENSHOTS_DIR / site_id / timestamp / category / _sanitize(test_name)
         self.folder.mkdir(parents=True, exist_ok=True)
         self._test_name = test_name
         self._description = description.strip()
