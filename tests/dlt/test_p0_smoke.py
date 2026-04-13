@@ -119,7 +119,9 @@ class TestHomePage:
         """TC-006：首頁可正常開啟"""
         login = LoginPage(page, site_config.url)
         login.goto()
-        expect(page).to_have_url(re.compile(r"dev-lt\.t9platform\.com"))
+        # 驗證 URL 包含 site_config 中設定的域名
+        domain = site_config.url.split("//")[-1].rstrip("/")
+        expect(page).to_have_url(re.compile(re.escape(domain)))
         sh = get_screenshotter(page)
         if sh: sh.full_page("verify_首頁正常開啟")
 

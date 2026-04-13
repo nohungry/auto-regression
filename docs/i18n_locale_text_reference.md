@@ -6,7 +6,7 @@
 
 # DLT 站台
 
-DLT 站台（dev-lt.t9platform.com）支援五種語系：繁中（tw）、簡中（cn）、英文（en）、泰文（th）、越文（vn）。  
+DLT 站台（SITE_DLT_URL）支援五種語系：繁中（tw）、簡中（cn）、英文（en）、泰文（th）、越文（vn）。  
 語系切換方式：注入 `i18n_redirected_lt` cookie（`utils/locale_helper.set_locale()`）。
 
 ---
@@ -74,7 +74,7 @@ DLT 站台（dev-lt.t9platform.com）支援五種語系：繁中（tw）、簡�
 
 # DRC 站台
 
-DRC 站台（dev-drc.t9platform-ph.com）支援六種語系：繁體中文、簡体中文、日本語、ภาษาไทย、Tiếng Việt、English。  
+DRC 站台（SITE_DRC_URL）支援六種語系：繁體中文、簡体中文、日本語、ภาษาไทย、Tiếng Việt、English。  
 語系切換方式：點擊 globe icon（`img[src*='global']`）→ 選擇語系名稱（`p.whitespace-nowrap`）。
 
 > **注意**：DRC 比 DLT 多一個語系（日本語）。

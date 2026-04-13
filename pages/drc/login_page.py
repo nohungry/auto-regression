@@ -1,6 +1,6 @@
 """
 登入頁面 Page Object — drc 站點
-Selector 來源：Chrome DevTools MCP 探索 dev-drc.t9platform-ph.com
+Selector 來源：Chrome DevTools MCP 探索（見 .env SITE_DRC_URL）
 """
 
 from playwright.sync_api import Page, expect, TimeoutError as PlaywrightTimeoutError

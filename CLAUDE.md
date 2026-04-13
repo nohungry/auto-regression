@@ -39,7 +39,7 @@ Reports are written to `reports/report.html` (self-contained HTML).
 
 | 測試類型 | Fixture | Scope | 適用情境 |
 |---------|---------|-------|---------|
-| Smoke | `page` / `logged_in_page` | function | 每次測試獨立 context，測試後自動登出。驗證核心流程（登入/登出）。 |
+| Smoke | `page` | function | 每次測試獨立 context，各自登入登出。驗證核心流程（登入/登出/首頁元素）。DLT smoke 不使用 `logged_in_page`，避免 fixture 的 drawer 開關汙染截圖流程。 |
 | Functional | `class_logged_in_page` + `go_home` | class | 一個 class 只登入一次，測試間共用 session，`go_home` 每個測試前回首頁。適合功能驗證。 |
 
 各站點測試放在 `tests/<site_id>/` 下；smoke 測試統一命名 `test_p0_smoke.py`，功能型測試放 `tests/<site_id>/feature/<feature_name>/`。
@@ -61,7 +61,7 @@ tests/dlt/__snapshots__/     — Visual Regression baseline PNGs (legacy, curren
 utils/locale_helper.py       — set_locale(): injects i18n_redirected_lt cookie for lt site
 utils/dialog_helper.py       — helpers: dismiss server error popups, wait for loading animation
 utils/screenshot_helper.py   — element-highlight screenshot system, auto README.md generation
-screenshots/<site_id>/<timestamp>/<test_name>/  — per-test screenshot folders (auto-generated, in .gitignore)
+screenshots/<site_id>/<timestamp>/<smoke|feature>/<test_name>/  — per-test screenshot folders, auto-categorized (in .gitignore)
 screenshots/dlt/vr_reference/                    — VR reference screenshots (no comparison, manual review only)
 docs/                        — team-shared documentation (tracked in git)
 dev-notes/                   — personal developer notes (gitignored except README.md)
@@ -72,10 +72,10 @@ dev-notes/                   — personal developer notes (gitignored except REA
 **Fixtures** (conftest.py):
 - `site_config` (session-scoped) — loads credentials for the selected site
 - `page` (function-scoped) — fresh browser context per test, window maximized
-- `logged_in_page` (function-scoped) — pre-authenticated page for smoke tests
+- `logged_in_page` (function-scoped) — pre-authenticated page (DRC smoke 使用；DLT smoke 已改用 `page` 自行登入)
 - `class_logged_in_page` (class-scoped) — logs in once per class; share session across functional tests
 - `go_home` (function-scoped) — navigates back to home + clears popups before each functional test; use with `class_logged_in_page`
-- `auto_screenshot` (autouse) — attaches `ScreenshotHelper` to page; generates `screenshots/<site_id>/<timestamp>/<test_name>/README.md` after each test
+- `auto_screenshot` (autouse) — attaches `ScreenshotHelper` to page; auto-categorizes tests into `smoke/` or `feature/` subfolder; generates `screenshots/<site_id>/<timestamp>/<category>/<test_name>/README.md` after each test
 - `auto_logout_after_test` (autouse) — logs out after each smoke test (`page` fixture only)
 
 **Markers** (pytest.ini): `p0`, `p1`, `p2`, `login`, `home`, `member`, `wallet`, `i18n`, `language`, `copy`, `visual`, `visual_regression`, `locale_visual`, `api`, `dlt`
@@ -177,7 +177,7 @@ Label naming convention:
 - `verify_XXX` → 驗證
 - `loading_XXX` → Loading 狀態
 
-After each test, `screenshots/<site_id>/<timestamp>/<test_name>/README.md` is auto-generated in Traditional Chinese with step-by-step screenshots embedded.
+After each test, `screenshots/<site_id>/<timestamp>/<smoke|feature>/<test_name>/README.md` is auto-generated in Traditional Chinese with step-by-step screenshots embedded. Category is auto-detected: tests under `feature/` → `feature`, others → `smoke`.
 
 ## Coding Conventions
 

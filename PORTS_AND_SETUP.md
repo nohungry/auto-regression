@@ -199,11 +199,11 @@ DEFAULT_SITE=drc
 HEADLESS=false
 CDP_URL=http://<WINDOWS_HOST_IP>:9223
 
-SITE_DRC_URL=https://dev-drc.t9platform-ph.com/
+SITE_DRC_URL=https://<your-drc-domain>/
 SITE_DRC_USERNAME=your_username
 SITE_DRC_PASSWORD=your_password
 
-SITE_DLT_URL=https://dev-lt.t9platform.com/
+SITE_DLT_URL=https://<your-dlt-domain>/
 SITE_DLT_USERNAME=your_username
 SITE_DLT_PASSWORD=your_password
 ```

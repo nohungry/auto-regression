@@ -1,8 +1,8 @@
 """
 DRC API 認證測試
 
-API server 與 DLT 共用 dev-web-api.t9platform.com，靠 header `companycode` / `domain` 區分站點。
-DRC 的 companycode=drc，domain=dev-drc.t9platform-ph.com。
+API server 與 DLT 共用同一個 API endpoint（見 .env SITE_DRC_API_URL），靠 header `companycode` / `domain` 區分站點。
+DRC 的 companycode=drc，domain 見 .env SITE_DRC_API_DOMAIN。
 
 Login endpoint 與 response 結構與 DLT 一致：
     POST /api/Member/memberLogin → {status: "Success", data: {token}}
