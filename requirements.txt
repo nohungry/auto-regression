@@ -9,5 +9,6 @@ playwright
 pygments
 python-slugify
 requests
+pyotp
 Pillow
 pixelmatch
