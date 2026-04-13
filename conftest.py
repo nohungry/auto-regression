@@ -266,13 +266,17 @@ def auto_screenshot(request):
     if 'site_config' in request.fixturenames:
         site_id = request.getfixturevalue('site_config').site_id
 
+    # 依測試檔案路徑判斷分類：feature/ 下為 feature，其餘為 smoke
+    test_path = str(request.fspath)
+    test_category = "feature" if "/feature/" in test_path else "smoke"
+
     attached_pages = []
     helpers = []
 
     for fixture_name in ('page', 'class_logged_in_page'):
         if fixture_name in request.fixturenames:
             pg = request.getfixturevalue(fixture_name)
-            sh = ScreenshotHelper(pg, request.node.name, description, site_id=site_id)
+            sh = ScreenshotHelper(pg, request.node.name, description, site_id=site_id, category=test_category)
             attach_screenshotter(pg, sh)
             attached_pages.append(pg)
             helpers.append(sh)
