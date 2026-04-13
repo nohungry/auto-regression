@@ -15,7 +15,7 @@ playwright install chromium
 ```
 
 Key `.env` variables:
-- `DEFAULT_SITE` — which site config to use (e.g. `drc`)
+- `DEFAULT_SITE` — which site config to use (e.g. `rc`)
 - `CDP_URL` — Chrome remote debug URL (WSL/Linux only; e.g. `http://<WINDOWS_IP>:9223`)
 - `SITE_<NAME>_URL/USERNAME/PASSWORD` — per-site credentials
 
@@ -25,12 +25,12 @@ Key `.env` variables:
 
 ```bash
 .venv/bin/pytest                                                        # all tests
-.venv/bin/pytest tests/drc/                                             # drc site only (no --site needed)
-.venv/bin/pytest tests/dlt/                                             # dlt site only (no --site needed)
-.venv/bin/pytest tests/dlt/test_p0_smoke.py -m p0                         # dlt p0 smoke tests
+.venv/bin/pytest tests/rc/                                             # rc site only (no --site needed)
+.venv/bin/pytest tests/lt/                                             # lt site only (no --site needed)
+.venv/bin/pytest tests/lt/test_p0_smoke.py -m p0                         # lt p0 smoke tests
 .venv/bin/pytest -m p0                                                  # by marker
 .venv/bin/pytest -m login                                               # by marker
-.venv/bin/pytest tests/drc/test_p0_smoke.py::TestLogin::test_login_success # single test
+.venv/bin/pytest tests/rc/test_p0_smoke.py::TestLogin::test_login_success # single test
 ```
 
 Reports are written to `reports/report.html` (self-contained HTML).
@@ -39,7 +39,7 @@ Reports are written to `reports/report.html` (self-contained HTML).
 
 | 測試類型 | Fixture | Scope | 適用情境 |
 |---------|---------|-------|---------|
-| Smoke | `page` | function | 每次測試獨立 context，各自登入登出。驗證核心流程（登入/登出/首頁元素）。DLT smoke 不使用 `logged_in_page`，避免 fixture 的 drawer 開關汙染截圖流程。 |
+| Smoke | `page` | function | 每次測試獨立 context，各自登入登出。驗證核心流程（登入/登出/首頁元素）。LT smoke 不使用 `logged_in_page`，避免 fixture 的 drawer 開關汙染截圖流程。 |
 | Functional | `class_logged_in_page` + `go_home` | class | 一個 class 只登入一次，測試間共用 session，`go_home` 每個測試前回首頁。適合功能驗證。 |
 
 各站點測試放在 `tests/<site_id>/` 下；smoke 測試統一命名 `test_p0_smoke.py`，功能型測試放 `tests/<site_id>/feature/<feature_name>/`。
@@ -50,19 +50,19 @@ Reports are written to `reports/report.html` (self-contained HTML).
 conftest.py                  — browser setup, environment detection (Windows/WSL/Linux), global fixtures
 config/settings.py           — multi-site SiteConfig dataclass loaded from .env
 pages/factory.py             — routes site_id → LoginPage/HomePage class via registry dict (no if/else fallback; unknown site_id raises ValueError)
-pages/drc/                   — drc site Page Objects (LoginPage, HomePage)
-pages/dlt/                   — dlt site Page Objects (LoginPage, HomePage)
-tests/api/dlt/               — dlt site API-layer tests (no browser)
-tests/drc/                   — drc site tests (test_p0_smoke.py p0, feature/<name>/ p1: announcement_popup, i18n, navigation, wallet)
-tests/drc/conftest.py        — drc-specific overrides: site_config=drc, go_home (+ dismiss announcement popup)
-tests/dlt/                   — dlt site tests (test_p0_smoke.py p0, test_locale_visual_matrix.py p2 [skipped], feature/<name>/ p1: auth, copy, i18n, member, public, visual, wallet)
-tests/dlt/conftest.py        — dlt-specific overrides: site_config=dlt, page fixture without MutationObserver
-tests/dlt/__snapshots__/     — Visual Regression baseline PNGs (legacy, currently unused)
+pages/rc/                   — rc site Page Objects (LoginPage, HomePage)
+pages/lt/                   — lt site Page Objects (LoginPage, HomePage)
+tests/api/lt/               — lt site API-layer tests (no browser)
+tests/rc/                   — rc site tests (test_p0_smoke.py p0, feature/<name>/ p1: announcement_popup, i18n, navigation, wallet)
+tests/rc/conftest.py        — rc-specific overrides: site_config=rc, go_home (+ dismiss announcement popup)
+tests/lt/                   — lt site tests (test_p0_smoke.py p0, test_locale_visual_matrix.py p2 [skipped], feature/<name>/ p1: auth, copy, i18n, member, public, visual, wallet)
+tests/lt/conftest.py        — lt-specific overrides: site_config=lt, page fixture without MutationObserver
+tests/lt/__snapshots__/     — Visual Regression baseline PNGs (legacy, currently unused)
 utils/locale_helper.py       — set_locale(): injects i18n_redirected_lt cookie for lt site
 utils/dialog_helper.py       — helpers: dismiss server error popups, wait for loading animation
 utils/screenshot_helper.py   — element-highlight screenshot system, auto README.md generation
 screenshots/<site_id>/<timestamp>/<smoke|feature>/<test_name>/  — per-test screenshot folders, auto-categorized (in .gitignore)
-screenshots/dlt/vr_reference/                    — VR reference screenshots (no comparison, manual review only)
+screenshots/lt/vr_reference/                    — VR reference screenshots (no comparison, manual review only)
 docs/                        — team-shared documentation (tracked in git)
 dev-notes/                   — personal developer notes (gitignored except README.md)
 ```
@@ -72,13 +72,13 @@ dev-notes/                   — personal developer notes (gitignored except REA
 **Fixtures** (conftest.py):
 - `site_config` (session-scoped) — loads credentials for the selected site
 - `page` (function-scoped) — fresh browser context per test, window maximized
-- `logged_in_page` (function-scoped) — pre-authenticated page (DRC smoke 使用；DLT smoke 已改用 `page` 自行登入)
+- `logged_in_page` (function-scoped) — pre-authenticated page (RC smoke 使用；LT smoke 已改用 `page` 自行登入)
 - `class_logged_in_page` (class-scoped) — logs in once per class; share session across functional tests
 - `go_home` (function-scoped) — navigates back to home + clears popups before each functional test; use with `class_logged_in_page`
 - `auto_screenshot` (autouse) — attaches `ScreenshotHelper` to page; auto-categorizes tests into `smoke/` or `feature/` subfolder; generates `screenshots/<site_id>/<timestamp>/<category>/<test_name>/README.md` after each test
 - `auto_logout_after_test` (autouse) — logs out after each smoke test (`page` fixture only)
 
-**Markers** (pytest.ini): `p0`, `p1`, `p2`, `login`, `home`, `member`, `wallet`, `i18n`, `language`, `copy`, `visual`, `visual_regression`, `locale_visual`, `api`, `dlt`
+**Markers** (pytest.ini): `p0`, `p1`, `p2`, `login`, `home`, `member`, `wallet`, `i18n`, `language`, `copy`, `visual`, `visual_regression`, `locale_visual`, `api`, `lt`
 
 ## Multi-site Factory Pattern
 
@@ -145,19 +145,19 @@ This repo has **two distinct documentation folders** with different purposes and
 
 若某份 `dev-notes/` 的筆記後來成熟並獲得團隊共識，請**升級**移到 `docs/` 並調整內容為正式文件。反之，若 `docs/` 中某份文件變成僅個人觀點的 WIP 清單，應移到 `dev-notes/`。
 
-## Visual Regression (dlt site)
+## Visual Regression (lt site)
 
-DLT 目前採用 **reference screenshot** 策略：存檔供人工確認，不做 pixel 比對（跨環境無法穩定）。
+LT 目前採用 **reference screenshot** 策略：存檔供人工確認，不做 pixel 比對（跨環境無法穩定）。
 
 ```bash
-# VR reference 截圖（輸出至 screenshots/dlt/vr_reference/）
-.venv/bin/pytest tests/dlt/feature/visual/test_visual_regression.py -m visual_regression
+# VR reference 截圖（輸出至 screenshots/lt/vr_reference/）
+.venv/bin/pytest tests/lt/feature/visual/test_visual_regression.py -m visual_regression
 
 # DOM 層視覺健康度（非截圖）
-.venv/bin/pytest tests/dlt/feature/visual/test_visual.py -m visual
+.venv/bin/pytest tests/lt/feature/visual/test_visual.py -m visual
 ```
 
-> `tests/dlt/test_locale_visual_matrix.py`（WIN-LVIS）目前全部 `skip`；`tests/dlt/__snapshots__/` 為舊版 baseline 暫留，目前無測試引用。
+> `tests/lt/test_locale_visual_matrix.py`（WIN-LVIS）目前全部 `skip`；`tests/lt/__snapshots__/` 為舊版 baseline 暫留，目前無測試引用。
 
 ## Screenshot System
 
@@ -195,22 +195,22 @@ element.click()
 
 | 情境 | Selector 範例 | 原因 |
 |------|---------------|------|
-| DRC CSS-hidden sidebar | `.sidebar-item.*`（`width=0` 容器） | 永遠在 viewport 外 |
-| DLT member drawer 按鈕（如登出） | drawer 內按鈕 | 渲染位置在 viewport 外 |
-| 常駐 overlay backdrop 攔截點擊 | 如 DLT drawer closed 狀態 | Pointer events 被攔截 |
+| RC CSS-hidden sidebar | `.sidebar-item.*`（`width=0` 容器） | 永遠在 viewport 外 |
+| LT member drawer 按鈕（如登出） | drawer 內按鈕 | 渲染位置在 viewport 外 |
+| 常駐 overlay backdrop 攔截點擊 | 如 LT drawer closed 狀態 | Pointer events 被攔截 |
 
 ### 其他互動規則
 - **DOM re-render 後不要對舊 locator 呼叫 `scroll_into_view_if_needed()`**（element 可能 detached）。改用 `page.evaluate("window.scrollBy(0, N)")`。
-- **Sidebar hidden nodes 與 content 同文案**（DRC 站 `p.text-black`）：用 `p:not(.text-black)` 排除，避免 `text=XXX` 命中 hidden node。
+- **Sidebar hidden nodes 與 content 同文案**（RC 站 `p.text-black`）：用 `p:not(.text-black)` 排除，避免 `text=XXX` 命中 hidden node。
 - 禁止裸 `time.sleep()`，優先使用 Playwright `expect` 與可判定事件等待。
 
 ### Selector 規則
-- **多語系站台（DLT）禁止綁死文案**：placeholder、button name 會隨 locale 變化。使用 CSS-based selector（如 `input.input-style`、`button.primary-btn`）或結構化 locator。
+- **多語系站台（LT）禁止綁死文案**：placeholder、button name 會隨 locale 變化。使用 CSS-based selector（如 `input.input-style`、`button.primary-btn`）或結構化 locator。
 - **`.first` / `.last` 是 property，不是 method**：寫成 `.first()` 會觸發 `__call__` 錯誤。
 - Selector 優先順序：穩定屬性 > role/結構化 locator > 穩定文案 > nth-child/深 CSS 鏈。
 
-### DLT SPA Login：必須等 `networkidle`
-DLT 使用 React SPA。若 form 在 `networkidle` 前被填入，登入 API 會成功但 SPA 不會離開 `/login`。前往 `/login` 時必須使用 `wait_until="networkidle"`。
+### LT SPA Login：必須等 `networkidle`
+LT 使用 React SPA。若 form 在 `networkidle` 前被填入，登入 API 會成功但 SPA 不會離開 `/login`。前往 `/login` 時必須使用 `wait_until="networkidle"`。
 
 ### Exception Handling
 只在預期元素缺席或 timeout 時 catch `PlaywrightTimeoutError`（`from playwright.sync_api import TimeoutError as PlaywrightTimeoutError`）。禁止 `except Exception: pass` 靜默 playwright 操作錯誤。

@@ -45,7 +45,7 @@
 
 | 檔名 | 用途 |
 |------|------|
-| [`i18n_locale_text_reference.md`](./i18n_locale_text_reference.md) | 多語系文案對照表（DLT 5 語系 + DRC 6 語系），`tests/**/feature/i18n/` 測試斷言的 source of truth |
+| [`i18n_locale_text_reference.md`](./i18n_locale_text_reference.md) | 多語系文案對照表（LT 5 語系 + RC 6 語系），`tests/**/feature/i18n/` 測試斷言的 source of truth |
 
 ---
 

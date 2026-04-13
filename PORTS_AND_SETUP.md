@@ -195,17 +195,17 @@ New-NetFirewallRule -DisplayName "WSL CDP 9223" -Direction Inbound -Protocol TCP
 ## .env 完整範例
 
 ```
-DEFAULT_SITE=drc
+DEFAULT_SITE=rc
 HEADLESS=false
 CDP_URL=http://<WINDOWS_HOST_IP>:9223
 
-SITE_DRC_URL=https://<your-drc-domain>/
-SITE_DRC_USERNAME=your_username
-SITE_DRC_PASSWORD=your_password
+SITE_RC_URL=https://<your-rc-domain>/
+SITE_RC_USERNAME=your_username
+SITE_RC_PASSWORD=your_password
 
-SITE_DLT_URL=https://<your-dlt-domain>/
-SITE_DLT_USERNAME=your_username
-SITE_DLT_PASSWORD=your_password
+SITE_LT_URL=https://<your-lt-domain>/
+SITE_LT_USERNAME=your_username
+SITE_LT_PASSWORD=your_password
 ```
 
-> 使用 `pytest tests/drc/` 或 `pytest tests/dlt/` 指定站點時，可忽略 `DEFAULT_SITE`（各站 conftest 會覆寫）。
+> 使用 `pytest tests/rc/` 或 `pytest tests/lt/` 指定站點時，可忽略 `DEFAULT_SITE`（各站 conftest 會覆寫）。
