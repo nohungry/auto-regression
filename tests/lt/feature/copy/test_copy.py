@@ -1,6 +1,18 @@
 """
-文案一致性驗證
+LT 文案一致性驗證（職責：預設語系繁中的品牌/結構文案）
 WIN-COPY-001~005
+
+本檔僅驗證預設語系（繁中）下的文案是否符合產品定義：
+- 首頁 title、頁尾版權
+- 登入頁 placeholder / CTA / 欄位標籤 / 免責聲明（**綁死繁中為刻意設計**）
+- 首頁分類排序（語系無關，以 href/src 識別）
+
+多語系切換後的文案驗證請見：
+- `tests/lt/feature/i18n/test_login_locale.py`（登入頁欄位）
+- `tests/lt/feature/i18n/test_home_locale.py`（首頁 nav）
+- `tests/lt/feature/i18n/test_drawer_locale.py`（會員 drawer）
+
+兩邊職責互補、不重疊：本檔守門繁中文案是否變更，i18n 套件守門語系切換是否完整覆蓋。
 """
 
 import pytest
