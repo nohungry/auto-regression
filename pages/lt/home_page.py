@@ -29,6 +29,11 @@ class HomePage:
         self.hamburger  = page.locator(".hamburger").first
         self.logout_btn = page.get_by_role("button", name="登出")
         self.login_btn  = page.get_by_role("button", name="登入")
+        # Locale-agnostic drawer 開啟信號（img src 不隨語系變動）
+        self.drawer_ready_indicator = page.locator('img[src*="betting-details"]')
+        # 桌機版 navbar 餘額（mobile 版同 class 但位於 .lg:hidden 容器，w=0）
+        # 用 `[class*="lg:flex"]` 屬性包含選到桌機版容器，可避開 drawer 內的 text-amount
+        self.navbar_balance = page.locator('div[class*="lg:flex"] p.text-amount').first
 
     def is_logged_in(self) -> bool:
         """判斷目前是否已登入（login_btn 不可見 = 已登入）"""
@@ -47,8 +52,11 @@ class HomePage:
         if sh: sh.capture(self.hamburger, "verify_漢堡選單出現")
         # 開啟 drawer 驗證帳號名稱（dispatch_event 繞過 overlay 攔截）
         self.hamburger.dispatch_event("click")
-        self.logout_btn.wait_for(state="visible", timeout=5000)
-        username_el = self.page.locator('[class*="font-medium"]', has_text=username).first
+        self.drawer_ready_indicator.wait_for(state="visible", timeout=5000)
+        # 必須 scope 到 drawer 容器：`[class*="font-medium"]` 在 navbar 與 drawer 內都會命中，
+        # .first 會抓到 navbar 那條（w=200 的小元素），截圖紅框落點不明顯。
+        drawer = self.page.locator('.fixed.bottom-0.right-0')
+        username_el = drawer.locator('[class*="font-medium"]', has_text=username).first
         expect(username_el).to_be_visible(timeout=5000)
         if sh: sh.capture(username_el, f"verify_帳號顯示_{username}")
         # 關閉 drawer：重新載入頁面（drawer 用 CSS transform，無法透過點擊可靠關閉）
@@ -60,13 +68,22 @@ class HomePage:
         pass
 
     def open_member_drawer(self):
-        """點擊漢堡選單，開啟會員 drawer
-        drawer overlay 常駐 DOM（closed 狀態仍攔截 pointer events），改用 dispatch_event
+        """點擊漢堡選單，開啟會員 drawer（冪等：drawer 已開啟則跳過點擊）
+        drawer overlay 常駐 DOM（closed 狀態仍攔截 pointer events），改用 dispatch_event。
+        等待信號改用 img[src*="betting-details"]（locale-agnostic），避免綁死「登出」繁中文案。
+        hamburger 是 toggle：若 drawer 已開再次點擊會關閉，故需先判斷狀態。
+        開啟判斷：drawer 容器不含 translate-x-full class 即為開啟（is_visible 對 transform 隱藏失效）。
         """
         sh = get_screenshotter(self.page)
+        is_open = self.page.evaluate(
+            "() => { const c = document.querySelector('.fixed.bottom-0.right-0'); "
+            "return c ? !c.className.includes('translate-x-full') : false; }"
+        )
+        if is_open:
+            return
         if sh: sh.capture(self.hamburger, "click_漢堡選單")
         self.hamburger.dispatch_event("click")
-        self.logout_btn.wait_for(state="visible", timeout=5000)
+        self.drawer_ready_indicator.wait_for(state="visible", timeout=5000)
 
     def click_nav_item(self, name: str):
         """點擊主導覽列項目（真人 / 電子 / 捕魚 等）"""
@@ -107,22 +124,43 @@ class HomePage:
         self.page.locator('.dialog-container').wait_for(state="visible", timeout=5000)
         if sh: sh.full_page("verify_收件匣面板")
 
-    def open_deposit_dialog(self):
-        """開啟會員 drawer → 點選存款/維護時間按鈕，展開對話框
-        按鈕文案在存款功能開放時為「存款」，維護期間顯示「維護時間」。
-        以 button[class*='mb-5'] 定位（位於登出按鈕上方，具唯一 mb-5 margin）。
+    def open_maintenance_time_dialog(self):
+        """開啟會員 drawer → 點選「維護時間」按鈕，展開維護時間對話框
+        此按鈕在存款功能開放時顯示「存款」，維護期間顯示「維護時間」。
+        dev 站點目前顯示為「維護時間」；以 button[class*='mb-5'] 定位
+        （位於登出按鈕上方，具唯一 mb-5 margin），locale-agnostic。
         """
         sh = get_screenshotter(self.page)
         self.open_member_drawer()
-        deposit_btn = self.page.locator("button[class*='mb-5']").first
-        if sh: sh.capture(deposit_btn, "click_存款入口")
-        deposit_btn.dispatch_event("click")
+        btn = self.page.locator("button[class*='mb-5']").first
+        if sh: sh.capture(btn, "click_維護時間入口")
+        btn.dispatch_event("click")
         self.page.locator('.dialog-mask').wait_for(state="visible", timeout=5000)
-        if sh: sh.full_page("verify_存款對話框")
+        if sh: sh.full_page("verify_維護時間對話框")
 
     def close_dialog(self):
         """關閉 dialog-container（點選 close-wrap 關閉圖示）"""
         self.page.locator('.close-wrap img').first.click()
+
+    def close_drawer_if_open(self):
+        """若 drawer 處於開啟狀態就點擊 hamburger 關閉（toggle）
+        drawer 狀態持久化在 cookie（appLaiTsai.sidebar），reload **不會**關閉——
+        唯一可靠關閉方式是再次觸發 hamburger toggle。
+        偵測：drawer 容器（.fixed.bottom-0.right-0）不含 translate-x-full 即為開啟。
+        （is_visible() 對 transform 隱藏失效——drawer 雖在 viewport 外仍為 visible。）
+        """
+        is_open = self.page.evaluate(
+            "() => { const c = document.querySelector('.fixed.bottom-0.right-0'); "
+            "return c ? !c.className.includes('translate-x-full') : false; }"
+        )
+        if is_open:
+            self.hamburger.dispatch_event("click")
+            # 等 drawer 容器再度出現 translate-x-full class（動畫可能需要時間）
+            self.page.wait_for_function(
+                "() => { const c = document.querySelector('.fixed.bottom-0.right-0'); "
+                "return c && c.className.includes('translate-x-full'); }",
+                timeout=3000,
+            )
 
     def logout(self):
         """開啟漢堡選單 → 點登出 → 驗證登出成功"""

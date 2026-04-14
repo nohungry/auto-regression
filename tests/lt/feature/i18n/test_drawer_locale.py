@@ -9,6 +9,7 @@ WIN-I18N-DRAWER-001~005
 
 import pytest
 from playwright.sync_api import Page, expect
+from pages.lt.home_page import HomePage
 from utils.locale_helper import set_locale
 from utils.screenshot_helper import get_screenshotter
 
@@ -42,9 +43,8 @@ class TestI18NMemberDrawer:
         set_locale(page, site_config.url, locale)
         page.goto(site_config.url, wait_until="networkidle")
 
-        # 開啟 drawer（使用 img src 等待，locale-agnostic）
-        page.locator(".hamburger").first.dispatch_event("click")
-        page.locator('img[src*="betting-details"]').wait_for(state="visible", timeout=5000)
+        # 開啟 drawer（冪等：drawer 可能因 cookie 已是開啟狀態，裸 toggle 會反而關閉）
+        HomePage(page).open_member_drawer()
 
         # 驗證選單文案（定位用 img src，text 用 sibling p）
         betting_el = page.locator('img[src*="betting-details"]').locator('..').locator('p')
