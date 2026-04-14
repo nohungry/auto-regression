@@ -145,17 +145,26 @@ This repo has **two distinct documentation folders** with different purposes and
 
 若某份 `dev-notes/` 的筆記後來成熟並獲得團隊共識，請**升級**移到 `docs/` 並調整內容為正式文件。反之，若 `docs/` 中某份文件變成僅個人觀點的 WIP 清單，應移到 `dev-notes/`。
 
-## Visual Regression (lt site)
+## Visual Regression (lt / rc)
 
-LT 目前採用 **reference screenshot** 策略：存檔供人工確認，不做 pixel 比對（跨環境無法穩定）。
+LT 與 RC 皆採用 **reference screenshot** 策略：存檔供人工確認，不做 pixel 比對（跨環境解析度不穩定）。
 
 ```bash
-# VR reference 截圖（輸出至 screenshots/lt/vr_reference/）
+# VR reference 截圖（輸出至 screenshots/<site_id>/vr_reference/）
 .venv/bin/pytest tests/lt/feature/visual/test_visual_regression.py -m visual_regression
+.venv/bin/pytest tests/rc/feature/visual/test_visual_regression.py -m visual_regression
 
 # DOM 層視覺健康度（非截圖）
-.venv/bin/pytest tests/lt/feature/visual/test_visual.py -m visual
+.venv/bin/pytest -m visual
 ```
+
+**架構**：
+- 共用邏輯（`save_vr_screenshot` / `screenshot_with_mask`）集中在 `utils/visual_helpers.py`
+- 各站動態元素 selector 放在 `tests/<site_id>/feature/visual/helpers.py` 的 `BANNER_SELECTORS`
+- `screenshots/<site_id>/vr_reference/` 為 gitignored（依 `screenshots/` 全站規則），僅本機存放供人工 review
+- 新增站點要加 VR：複製 `tests/<site_id>/feature/visual/` 模板，調整 BANNER_SELECTORS 與 test 檔中傳入 `save_vr_screenshot` 的 `site_id` 參數即可
+
+**swiper 相容性**：部分站點 `.swiper-wrapper` / `.swiper-slide` 也命中 `.swiper` selector 但沒掛 swiper instance；`screenshot_with_mask` 用 optional chaining（`autoplay?.stop?.()`、`slideTo?.(0, 0)`）保護，不可回退成直呼 method。
 
 > `tests/lt/test_locale_visual_matrix.py`（WIN-LVIS）目前全部 `skip`；`tests/lt/__snapshots__/` 為舊版 baseline 暫留，目前無測試引用。
 
