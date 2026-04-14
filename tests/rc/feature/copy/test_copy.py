@@ -1,15 +1,18 @@
 """
-RC 文案一致性驗證
+RC 文案一致性驗證（職責：預設語系下的品牌/結構文案）
+
+本檔只驗證 RC 站「不隨語系變動」或「預設語系」下的文案資產：
+- 網站標題
+- 主分類 href 順序（語系無關）
+- 廳館卡片順序與中文名稱（品牌固定中文）
+
+多語系切換後的文案驗證請見 `tests/rc/feature/i18n/test_login_locale.py`
+（登入 modal）與 `test_home_locale.py`（首頁 nav）、`test_sidebar_locale.py`（側邊欄）。
 
 與 LT `tests/lt/feature/copy/test_copy.py` 意圖對齊，但 RC 公開頁結構與 LT 差異極大：
 - RC 預設 nav 語系為英文（Live Casino / Slots / Fishing），非繁中
 - RC 公開頁無 copyright footer、無客服入口、無登入頁獨立 placeholder 欄位
 - RC 廳館名稱（T9真人/RC真人/DG真人/MT真人/歐博）為固定品牌中文，不隨語系變動
-
-因此本檔只驗證 RC 站確實穩定的文案資產：
-- 網站標題
-- 主分類 href 順序（語系無關）
-- 廳館卡片順序與中文名稱
 """
 
 import pytest
@@ -20,6 +23,7 @@ from utils.screenshot_helper import get_screenshotter
 
 
 @pytest.mark.p1
+@pytest.mark.rc
 @pytest.mark.copy
 class TestCopy:
     """RC 文案一致性驗證"""

@@ -12,6 +12,7 @@ from utils.screenshot_helper import get_screenshotter
 
 
 @pytest.mark.p1
+@pytest.mark.rc
 class TestWallet:
     """
     RC-WALLET-001~002：navbar 餘額顯示區 UI 驗證

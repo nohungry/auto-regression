@@ -25,6 +25,7 @@ EXPECTED_LANGUAGES = [
 
 
 @pytest.mark.p1
+@pytest.mark.rc
 @pytest.mark.language
 class TestLanguageDropdown:
     """TC-L01：語系下拉選單結構"""

@@ -11,6 +11,7 @@ from utils.screenshot_helper import get_screenshotter
 
 
 @pytest.mark.p1
+@pytest.mark.rc
 class TestSidebarFeatures:
     """TC-021 ~ TC-022：側邊欄彈窗功能（已登入）"""
 
@@ -36,6 +37,7 @@ class TestSidebarFeatures:
 
 
 @pytest.mark.p1
+@pytest.mark.rc
 @pytest.mark.login
 class TestUnauthenticatedSidebar:
     """TC-020：未登入時的側邊欄行為"""
