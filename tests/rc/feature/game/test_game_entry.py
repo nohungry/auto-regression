@@ -84,7 +84,6 @@ class TestGameEntry:
         page.wait_for_timeout(500)
         page.locator(".platform-list-bg").locator(f"text={PROVIDER_NAME}").first.click()
         wait_loading_if_present(page)
-        page.wait_for_timeout(2000)
 
         game_card = page.locator(f"text={GAME_NAME}").first
         game_card.wait_for(state="visible", timeout=8000)
@@ -92,7 +91,7 @@ class TestGameEntry:
 
         # 等待遊戲 iframe + canvas
         _get_game_frame(page, timeout=30000)
-        page.wait_for_timeout(8000)  # 等遊戲引擎完全初始化
+        page.wait_for_timeout(3000)  # 等遊戲引擎初始化
         if sh:
             sh.full_page("verify_遊戲載入完成")
 
@@ -129,11 +128,11 @@ class TestGameEntry:
                 if sh:
                     sh.full_page(f"click_遊戲_{btn_name}_after")
 
-            # 開始 → 機台選擇（等待 modal 完全渲染）
-            game_click("開始", wait_after=10000)
+            # 開始 → 機台選擇
+            game_click("開始", wait_after=8000)
 
-            # 確定機台 → 進入遊戲（單次點擊，充足等待）
-            game_click("確定", wait_after=12000)
+            # 確定機台 → 進入遊戲
+            game_click("確定", wait_after=10000)
 
             # 減注（8→4）
             game_click("減注", wait_after=1000)
@@ -148,7 +147,7 @@ class TestGameEntry:
             # Spin 下注
             if sh:
                 sh.full_page("verify_下注前")
-            game_click("spin", wait_after=10000)
+            game_click("spin", wait_after=6000)
 
             if sh:
                 sh.full_page("verify_Spin結果")

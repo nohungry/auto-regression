@@ -24,8 +24,8 @@ class LoginPage:
         """開啟首頁，並處理進站彈窗（伺服器錯誤 / 公告大圖輪播）"""
         self.page.goto(self.base_url)
         self.page.wait_for_load_state("networkidle")
-        dismiss_server_error_if_present(self.page)
-        dismiss_announcement_popup_if_present(self.page, timeout=5000)
+        dismiss_server_error_if_present(self.page, timeout=1000)
+        dismiss_announcement_popup_if_present(self.page, timeout=1000)
 
     def open_login_form(self):
         """點擊右上角「登入」按鈕開啟登入表單"""
@@ -56,7 +56,7 @@ class LoginPage:
         self._wait_for_loading()
 
         # 登入後可能出現伺服器錯誤彈窗
-        dismiss_server_error_if_present(self.page)
+        dismiss_server_error_if_present(self.page, timeout=1000)
 
         # 處理「用戶協議」彈窗（首次登入才會出現）
         self._handle_user_agreement()
@@ -82,7 +82,7 @@ class LoginPage:
         try:
             # 排除 toast-confirm-btn，避免誤關錯誤提示彈窗
             agreement_btn = self.page.locator("button:not(.toast-confirm-btn)", has_text="確定")
-            agreement_btn.wait_for(state="visible", timeout=3000)
+            agreement_btn.wait_for(state="visible", timeout=1000)
             sh = get_screenshotter(self.page)
             agreement_btn.scroll_into_view_if_needed()
             if sh: sh.capture(agreement_btn, "click_用戶協議確定")

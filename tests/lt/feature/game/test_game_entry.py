@@ -33,16 +33,19 @@ CATEGORY_NAV = "電子"
 PROVIDER_NAME = "T9電子"
 GAME_NAME = "關老爺"
 
-# LT canvas=826高，遊戲區在中間 ~762px（上下各 ~32px 黑邊）
-# 以下座標經 grid search 實測驗證
+# LT canvas=826高，座標經 grid search/截圖實測驗證
 GAME_BTN = {
-    "開始":    (0.50, 0.92),   # 與 RC 相同（開始按鈕在遊戲底部中央，黑邊外）
-    "確定":    (0.78, 0.86),   # grid search 驗證有效
-    "減注":    (0.62, 0.90),   # RC=0.94，LT 偏低
-    "spin":   (0.90, 0.85),   # grid search 驗證有效（start_spin API 觸發）
-    "選單":    (0.90, 0.56),   # RC=0.60，LT 偏低
-    "紀錄":    (0.88, 0.43),   # RC=0.46，LT 偏低
+    "開始":    (0.50, 0.92),
+    "確定":    (0.78, 0.86),   # grid search 驗證
+    "spin":   (0.90, 0.85),   # start_spin API 驗證
+    "選單":    (0.93, 0.60),   # 截圖驗證（側邊欄成功展開）
+    "紀錄":    (0.88, 0.47),   # 從展開側邊欄截圖量測
 }
+
+# 減注候選位置（grid search 有效但單點不穩，快速連點 3 位確保命中）
+REDUCE_BET_CANDIDATES = [
+    (0.59, 0.95), (0.61, 0.95), (0.59, 0.97),
+]
 
 
 @pytest.mark.p1
@@ -119,8 +122,21 @@ class TestGameEntry:
             # 確定機台 → 進入遊戲
             game_click("確定", wait_after=12000)
 
-            # 減注（8→4），與 RC 一致
-            game_click("減注", wait_after=1000)
+            # 減注（8→4）：LT 座標不穩定，快速嘗試多個候選位置
+            for xp, yp in REDUCE_BET_CANDIDATES:
+                abs_x = canvas_box["x"] + canvas_box["width"] * xp
+                abs_y = canvas_box["y"] + canvas_box["height"] * yp
+                cdp.send("Input.dispatchMouseEvent", {
+                    "type": "mousePressed",
+                    "x": abs_x, "y": abs_y,
+                    "button": "left", "clickCount": 1
+                })
+                cdp.send("Input.dispatchMouseEvent", {
+                    "type": "mouseReleased",
+                    "x": abs_x, "y": abs_y,
+                    "button": "left", "clickCount": 1
+                })
+                game_page.wait_for_timeout(300)
 
             # 監聽 start_spin API
             spin_api_called = []
