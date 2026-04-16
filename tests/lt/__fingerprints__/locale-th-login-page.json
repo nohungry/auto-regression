@@ -1,0 +1,38 @@
+{
+  "count": 4,
+  "items": [
+    {
+      "cls": "mb-5 h-10 w-full",
+      "font_size": "14px",
+      "font_weight": "600",
+      "placeholder": "",
+      "tag": "button",
+      "text": "เข้าสู่ระบบ"
+    },
+    {
+      "cls": "mb-5 h-10 w-full",
+      "font_size": "14px",
+      "font_weight": "600",
+      "placeholder": "",
+      "tag": "button",
+      "text": "先去逛逛"
+    },
+    {
+      "cls": "input-style",
+      "font_size": "16px",
+      "font_weight": "400",
+      "placeholder": "กรุณากรอกตัวอักษรหรือหมายเลข 4-10 ตัว",
+      "tag": "input",
+      "text": ""
+    },
+    {
+      "cls": "input-style",
+      "font_size": "16px",
+      "font_weight": "400",
+      "placeholder": "กรุณากรอกตัวอักษรหรือหมายเลข 8-20 ตัว",
+      "tag": "input",
+      "text": ""
+    }
+  ],
+  "version": 1
+}

@@ -1,0 +1,86 @@
+{
+  "count": 10,
+  "items": [
+    {
+      "cls": "router-link-active router-link-exact-active relative",
+      "font_size": "16px",
+      "font_weight": "400",
+      "placeholder": "",
+      "tag": "a",
+      "text": ""
+    },
+    {
+      "cls": "bubble-bg relative z-[9]",
+      "font_size": "16px",
+      "font_weight": "400",
+      "placeholder": "",
+      "tag": "a",
+      "text": "CS"
+    },
+    {
+      "cls": "",
+      "font_size": "18px",
+      "font_weight": "400",
+      "placeholder": "",
+      "tag": "a",
+      "text": "Câu cá"
+    },
+    {
+      "cls": "",
+      "font_size": "18px",
+      "font_weight": "400",
+      "placeholder": "",
+      "tag": "a",
+      "text": "Người thật"
+    },
+    {
+      "cls": "",
+      "font_size": "18px",
+      "font_weight": "400",
+      "placeholder": "",
+      "tag": "a",
+      "text": "Phổ biến"
+    },
+    {
+      "cls": "",
+      "font_size": "18px",
+      "font_weight": "400",
+      "placeholder": "",
+      "tag": "a",
+      "text": "Điện tử"
+    },
+    {
+      "cls": "mb-5 block h-[54px]",
+      "font_size": "20px",
+      "font_weight": "600",
+      "placeholder": "",
+      "tag": "button",
+      "text": "Bảo trì"
+    },
+    {
+      "cls": "mb-5 block h-[54px]",
+      "font_size": "20px",
+      "font_weight": "600",
+      "placeholder": "",
+      "tag": "button",
+      "text": "Bảo trì"
+    },
+    {
+      "cls": "block h-[54px] w-full",
+      "font_size": "20px",
+      "font_weight": "600",
+      "placeholder": "",
+      "tag": "button",
+      "text": "Đăng xuất"
+    },
+    {
+      "cls": "block h-[54px] w-full",
+      "font_size": "20px",
+      "font_weight": "600",
+      "placeholder": "",
+      "tag": "button",
+      "text": "Đăng xuất"
+    }
+  ],
+  "version": 1
+}

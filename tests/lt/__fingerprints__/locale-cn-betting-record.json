@@ -1,0 +1,126 @@
+{
+  "count": 15,
+  "items": [
+    {
+      "cls": "router-link-active router-link-exact-active relative",
+      "font_size": "16px",
+      "font_weight": "400",
+      "placeholder": "",
+      "tag": "a",
+      "text": ""
+    },
+    {
+      "cls": "bubble-bg relative z-[9]",
+      "font_size": "16px",
+      "font_weight": "400",
+      "placeholder": "",
+      "tag": "a",
+      "text": "客服"
+    },
+    {
+      "cls": "",
+      "font_size": "18px",
+      "font_weight": "400",
+      "placeholder": "",
+      "tag": "a",
+      "text": "捕鱼"
+    },
+    {
+      "cls": "",
+      "font_size": "18px",
+      "font_weight": "400",
+      "placeholder": "",
+      "tag": "a",
+      "text": "热门"
+    },
+    {
+      "cls": "",
+      "font_size": "18px",
+      "font_weight": "400",
+      "placeholder": "",
+      "tag": "a",
+      "text": "电子"
+    },
+    {
+      "cls": "",
+      "font_size": "18px",
+      "font_weight": "400",
+      "placeholder": "",
+      "tag": "a",
+      "text": "真人"
+    },
+    {
+      "cls": "dp--clear-btn",
+      "font_size": "16px",
+      "font_weight": "600",
+      "placeholder": "",
+      "tag": "button",
+      "text": ""
+    },
+    {
+      "cls": "dp--clear-btn",
+      "font_size": "16px",
+      "font_weight": "600",
+      "placeholder": "",
+      "tag": "button",
+      "text": ""
+    },
+    {
+      "cls": "main-button h-10 w-full",
+      "font_size": "16px",
+      "font_weight": "400",
+      "placeholder": "",
+      "tag": "button",
+      "text": "搜索"
+    },
+    {
+      "cls": "block h-[54px] w-full",
+      "font_size": "20px",
+      "font_weight": "600",
+      "placeholder": "",
+      "tag": "button",
+      "text": "登出"
+    },
+    {
+      "cls": "block h-[54px] w-full",
+      "font_size": "20px",
+      "font_weight": "600",
+      "placeholder": "",
+      "tag": "button",
+      "text": "登出"
+    },
+    {
+      "cls": "mb-5 block h-[54px]",
+      "font_size": "20px",
+      "font_weight": "600",
+      "placeholder": "",
+      "tag": "button",
+      "text": "维护时间"
+    },
+    {
+      "cls": "mb-5 block h-[54px]",
+      "font_size": "20px",
+      "font_weight": "600",
+      "placeholder": "",
+      "tag": "button",
+      "text": "维护时间"
+    },
+    {
+      "cls": "dp__pointer dp__input_readonly dp__input",
+      "font_size": "16px",
+      "font_weight": "600",
+      "placeholder": "选择起始日期\r",
+      "tag": "input",
+      "text": ""
+    },
+    {
+      "cls": "dp__pointer dp__input_readonly dp__input",
+      "font_size": "16px",
+      "font_weight": "600",
+      "placeholder": "选择结束日期",
+      "tag": "input",
+      "text": ""
+    }
+  ],
+  "version": 1
+}

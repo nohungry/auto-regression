@@ -1,0 +1,86 @@
+{
+  "count": 10,
+  "items": [
+    {
+      "cls": "router-link-active router-link-exact-active relative",
+      "font_size": "16px",
+      "font_weight": "400",
+      "placeholder": "",
+      "tag": "a",
+      "text": ""
+    },
+    {
+      "cls": "bubble-bg relative z-[9]",
+      "font_size": "16px",
+      "font_weight": "400",
+      "placeholder": "",
+      "tag": "a",
+      "text": "CS"
+    },
+    {
+      "cls": "",
+      "font_size": "18px",
+      "font_weight": "400",
+      "placeholder": "",
+      "tag": "a",
+      "text": "คนจริง"
+    },
+    {
+      "cls": "",
+      "font_size": "18px",
+      "font_weight": "400",
+      "placeholder": "",
+      "tag": "a",
+      "text": "ยอดฮิต"
+    },
+    {
+      "cls": "",
+      "font_size": "18px",
+      "font_weight": "400",
+      "placeholder": "",
+      "tag": "a",
+      "text": "ยิงปลา"
+    },
+    {
+      "cls": "",
+      "font_size": "18px",
+      "font_weight": "400",
+      "placeholder": "",
+      "tag": "a",
+      "text": "อิเล็กทรอนิกส์"
+    },
+    {
+      "cls": "mb-5 block h-[54px]",
+      "font_size": "20px",
+      "font_weight": "600",
+      "placeholder": "",
+      "tag": "button",
+      "text": "ช่วงเวลาบำรุงรักษา"
+    },
+    {
+      "cls": "mb-5 block h-[54px]",
+      "font_size": "20px",
+      "font_weight": "600",
+      "placeholder": "",
+      "tag": "button",
+      "text": "ช่วงเวลาบำรุงรักษา"
+    },
+    {
+      "cls": "block h-[54px] w-full",
+      "font_size": "20px",
+      "font_weight": "600",
+      "placeholder": "",
+      "tag": "button",
+      "text": "ออกจากระบบ"
+    },
+    {
+      "cls": "block h-[54px] w-full",
+      "font_size": "20px",
+      "font_weight": "600",
+      "placeholder": "",
+      "tag": "button",
+      "text": "ออกจากระบบ"
+    }
+  ],
+  "version": 1
+}
