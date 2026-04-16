@@ -1,0 +1,121 @@
+---
+name: ui-test-author
+description: 新增或修改 Python pytest-playwright 測試、Page Objects、與 multi-site UI 自動化案例。當使用者要新增測試案例、修改 page object、擴充新站點測試、處理 selector/interaction 問題、或討論 fixture 選用時，使用此 skill。
+---
+
+# Purpose
+用於此 repo 的 UI 測試開發工作，包含：
+- 新增 smoke / functional / visual regression 測試。
+- 修改 `pages/` 下的 page objects。
+- 在不破壞 multi-site 架構下擴充新舊站點測試。
+- 讓測試案例、page objects、fixtures 維持可讀、可維護、可擴展。
+
+# Repo context
+- 技術棧：Python + pytest-playwright。
+- 一律使用 `.venv/bin/pytest` 執行。
+- 多站台架構：`pages/factory.py` 會依 `site_id` 路由到對應站台 page object。
+- 各站 page objects 位於 `pages/<site_id>/`。
+- 各站 UI 測試位於 `tests/<site_id>/`，結構為 `test_p0_smoke.py`（smoke）+ `feature/<feature_name>/`（功能驗證）。
+- API 層測試位於 `tests/api/<site_id>/`，以 `requests` 直打，不啟動瀏覽器。
+- 各站測試目錄下有自己的 `conftest.py`，負責覆寫 `site_config` 與站台特定 fixture。
+- LT 站目前採 **reference screenshot** 策略：截圖輸出至 `screenshots/lt/vr_reference/` 供人工確認，不做 pixel 比對。`tests/lt/__snapshots__/` 為舊 baseline，無測試引用。
+
+# Scope rules
+1. 此 skill 負責 testcase authoring、page object 調整、與小幅測試重構。
+2. 此 skill 不負責直接批准 snapshot 更新。
+3. 此 skill 不負責直接 commit / push / merge。
+4. 若變更涉及 `conftest.py`、`pages/factory.py`、跨站共用 fixture、snapshot 結構，需主動說明影響範圍。
+5. 若需求已超出單一 testcase / page object 編修，應提醒改用 `pom-architect` 或 `test-review` 搭配處理。
+
+# Authoring rules
+1. 優先沿用既有 fixtures，例如 `page`、`logged_in_page`、`class_logged_in_page`、`go_home`。
+2. Smoke 測試放在 `tests/<site_id>/test_p0_smoke.py`（p0 marker）；功能驗證依功能拆分到 `tests/<site_id>/feature/<feature_name>/`（如 `wallet/`、`i18n/`、`member/`）。API 層測試（不啟動瀏覽器）放 `tests/api/<site_id>/`。
+3. 若是登入後功能測試，優先使用既有登入 fixture 與回首頁流程，避免每個 test 重複登入。
+4. 不要在 test 中堆大量 locator；可重用互動應移到 page object 或 component object。
+5. 不要隨意新增新的 fixture 名稱，除非現有 fixture 無法表達需求。
+6. 新增站點時，沿用既有 `tests/<site_id>/`、`pages/<site_id>/`、factory routing 結構，不另創平行架構。
+
+# Multi-site rules
+1. site-specific 差異應優先實作在 `pages/<site_id>/` 內，而不是污染共用層。
+2. 若多個站點共用同一 public 行為，可維持一致 method name，但允許各站內部分別實作。
+3. 若新站點只在 selector 或局部互動不同，不應直接複製整套測試邏輯。
+4. 若新站點具多語系、易變文案、特殊 layout 或 viewport 行為，應將其視為 site-specific constraint 並在實作中保留彈性。
+
+# Adding a new site — checklist
+新增站點時，依序完成以下步驟：
+
+1. **.env**：新增 `SITE_<ID>_URL`、`SITE_<ID>_USERNAME`、`SITE_<ID>_PASSWORD`。
+2. **`pages/<site_id>/`**：建立站點目錄，至少包含 `__init__.py`、`login_page.py`、`home_page.py`。
+   - `LoginPage` 必須實作 `goto_and_login(username, password)` 方法。
+   - `HomePage` 必須實作 `verify_login_success(username)`、`dismiss_any_popups()`、`is_logged_in()`、`logout()` 方法。
+3. **`pages/factory.py`**：在 `_LOGIN_PAGE_REGISTRY` 與 `_HOME_PAGE_REGISTRY` dict 中各加一行，註冊新站的 import path。不可使用 fallback/default，未註冊的 site_id 必須拋出 `ValueError`。
+4. **`tests/<site_id>/conftest.py`**：建立站台專用 conftest，至少覆寫 `site_config` fixture（hardcode 該站 site_id）。
+5. **評估是否需覆寫 `page` fixture**：全域 `conftest.py` 的 `_new_configured_page()` 會注入 `toast-confirm-btn` MutationObserver（rc 站特有的伺服器錯誤彈窗處理）。若新站不需要此行為，必須在 `tests/<site_id>/conftest.py` 覆寫 `page` fixture，移除注入邏輯。同理評估 `class_logged_in_page` 是否也需覆寫。
+6. **`pytest.ini`**：若有新 marker，在 `markers` 區塊中宣告。
+7. **`tests/<site_id>/`**：建立 `__init__.py`、`test_p0_smoke.py`。
+
+# Factory rules
+1. `pages/factory.py` 使用兩個 registry dict：`_LOGIN_PAGE_REGISTRY` 與 `_HOME_PAGE_REGISTRY`，各自映射 `site_id` → `(module_path, class_name)`。
+2. 禁止使用 if/else fallback 到預設站台；未註冊的 `site_id` 必須拋出明確 `ValueError`，訊息包含可用站台列表。
+3. 新增站點只需在兩個 registry 中各加一行，不需修改 function 邏輯。
+4. factory 只負責回傳 class，不負責 instantiate。
+5. 外部呼叫者一律使用 `get_login_page_class(site_id)` / `get_home_page_class(site_id)`，不直接存取 registry dict。
+
+# Site-specific conftest pattern
+每個站點的 `tests/<site_id>/conftest.py` 負責：
+- **必要**：覆寫 `site_config` fixture，hardcode 該站 site_id，讓 `pytest tests/<site_id>/` 不需帶 `--site` 參數。
+- **視需要**：覆寫 `page` fixture（例如移除 MutationObserver 注入）。
+- **視需要**：覆寫 `class_logged_in_page` fixture（若全域版本的行為不適合該站）。
+- **視需要**：新增站台專用 fixture（例如特殊的 locale 設定）。
+
+# POM rules
+1. test 檔只描述 scenario、assertion 與測試意圖，不直接堆疊 DOM 細節。
+2. 可重用互動封裝進 page object；跨頁重複區塊封裝成 component object。
+3. 若差異只存在於單一站台，實作應留在該站台目錄，不要過早抽象成共用 base class。
+4. Page object 方法名稱應描述使用者行為或頁面意圖，例如 `login_as()`、`open_wallet_tab()`、`close_server_error_dialog()`。
+5. 不要把整段商業流程硬塞在一個超長 page object method；複合流程應由 test 組合多個可讀性高的方法。
+6. test 檔應透過 `pages/factory.py` 取得 page class（或透過 fixture 間接取得），不應直接 `from pages.<site_id>.xxx import`，以維持跨站復用彈性。
+
+# Interaction rules
+1. 一般元素互動前，先呼叫 `scroll_into_view_if_needed()` 再 click/fill/type。
+2. 若元素屬於已知 viewport 例外（如 CSS hidden sidebar、drawer 內按鈕），應使用 `dispatch_event("click")`。
+3. 若 overlay 元素（如 fixed drawer backdrop）常駐 DOM 且在「關閉」狀態下仍攔截 pointer events，一般 `.click()` 會永遠 timeout，必須用 `dispatch_event("click")`。確認方式：DevTools 觀察點擊是否被 overlay 攔截。
+4. 若點擊後會引發 DOM re-render，不要對舊 locator 呼叫 scroll；改用 `page.evaluate("window.scrollBy(0, N)")` 等頁面層級處理方式。
+5. 禁止使用裸 `time.sleep()` 或不必要的 hard wait。
+6. 優先使用 Playwright expect 與可判定事件等待，不依賴脆弱 timing。
+
+# Selector rules
+1. 優先使用既有穩定 selector 模式，避免脆弱文字 selector。
+2. 多語系或文案易變站點，必須使用 locale-agnostic selector，不可綁死 placeholder / button text。
+3. 若 hidden node 與 visible node 可能同文案，應避開 hidden node，改用更精準 locator。
+4. Python Playwright 的 `.first` / `.last` 是 property，不可寫成 `.first()` / `.last()`。
+5. selector 優先順序：穩定屬性 > role / 結構化 locator > 穩定文案；避免 nth-child 與過深 CSS 鏈。
+
+# Screenshot system rules
+本 repo 使用 `ScreenshotHelper` 自動截圖系統，POM 方法與測試中應遵守：
+
+1. 透過 `from utils.screenshot_helper import get_screenshotter` 取得當前 page 的 helper。
+2. 使用前務必檢查 `sh = get_screenshotter(page); if sh:` — helper 可能不存在。
+3. 元素截圖：`sh.capture(locator, "label")` — 會在元素上畫紅色 highlight 框再截圖。
+4. 全頁截圖：`sh.full_page("label")` — 無元素 highlight。
+5. Label 命名規則：
+   - `click_XXX`：點擊動作前截圖
+   - `fill_XXX`：填入動作前截圖
+   - `verify_XXX`：驗證結果截圖
+   - `loading_XXX`：loading 狀態截圖
+6. 每個測試結束後，`auto_screenshot` fixture 自動呼叫 `sh.generate_report()` 產生 `screenshots/<site_id>/<timestamp>/<test_name>/README.md`。
+7. 在新增 page object method 時，應在關鍵操作點加入 `sh.capture()` / `sh.full_page()`，讓截圖報告能自動呈現完整操作流程。
+
+# Visual regression rules
+1. `visual_regression` 只用於適合 baseline 比對的穩定畫面。
+2. 動態內容頁面只存 reference screenshot，不做 snapshot assertion。
+3. 更新 snapshot 前，先確認是產品預期變更，不可為了讓測試通過而直接更新 baseline。
+4. 若新增或更新 snapshot，必須在輸出中明確說明原因與受影響檔案。
+
+# Output expectations
+完成任務時，應：
+- 說明修改了哪些 tests/pages/utils。
+- 說明選擇 fixture、page object 與檔案位置的原因。
+- 若有 multi-site 架構取捨，說明為何放在 site-specific 層或共用層。
+- 若涉及 conftest 覆寫或 factory 變更，明確說明影響範圍。
+- 列出建議執行的 pytest 指令。
