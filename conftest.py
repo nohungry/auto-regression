@@ -273,7 +273,7 @@ def auto_screenshot(request):
     attached_pages = []
     helpers = []
 
-    for fixture_name in ('page', 'class_logged_in_page'):
+    for fixture_name in ('page', 'class_logged_in_page', 'dashboard_page'):
         if fixture_name in request.fixturenames:
             pg = request.getfixturevalue(fixture_name)
             sh = ScreenshotHelper(pg, request.node.name, description, site_id=site_id, category=test_category)
