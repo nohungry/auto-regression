@@ -21,12 +21,12 @@ def _import_class(module_path: str, class_name: str):
 # -----------------------------------------------
 _DASHBOARD_LOGIN_REGISTRY = {
     'rc': ('pages.dashboard.rc.login_page', 'DashboardLoginPage'),
-    'lt': ('pages.dashboard.rc.login_page', 'DashboardLoginPage'),  # RC/LT 共用同一套 Vue 後台框架
+    'lt': ('pages.dashboard.lt.login_page', 'DashboardLoginPage'),
 }
 
 _DASHBOARD_MANAGEMENT_REGISTRY = {
     'rc': ('pages.dashboard.rc.management_page', 'ManagementPage'),
-    'lt': ('pages.dashboard.rc.management_page', 'ManagementPage'),  # RC/LT 共用同一套 Vue 後台框架
+    'lt': ('pages.dashboard.lt.management_page', 'ManagementPage'),
 }
 
 
