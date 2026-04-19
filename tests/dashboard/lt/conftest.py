@@ -57,8 +57,15 @@ def dashboard_page(browser, site_config):
 
 @pytest.fixture(autouse=True)
 def go_management(dashboard_page, site_config):
-    """每個 test 前回到管理頁面"""
+    """每個 test 前回到管理頁面。
+    Vue 後台 SPA 有 websocket 長連線，不能用 networkidle。
+    改用 domcontentloaded + 等主內容區 tab 出現。
+    """
     dashboard_page.goto(
-        f"{site_config.dashboard_url}#/management/all-management"
+        f"{site_config.dashboard_url}#/management/all-management",
+        wait_until="domcontentloaded",
     )
-    dashboard_page.wait_for_load_state("networkidle")
+    # 等任一 tab-btn 出現（代表 SPA hydration 完成），不依賴數量或順序
+    dashboard_page.locator('button.tab-btn').first.wait_for(
+        state="attached", timeout=15000
+    )
