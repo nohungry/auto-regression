@@ -25,9 +25,9 @@ class LoginPage:
         self.base_url = base_url
         self.login_url = base_url.rstrip("/") + "/login"
 
-        # Selectors — 使用 CSS class（locale 無關，對應 JS: input.input-style / button.first）
-        self.username_input    = page.locator("input.input-style").nth(0)
-        self.password_input    = page.locator("input.input-style").nth(1)
+        # Selectors — 使用 CSS class（locale 無關，對應 JS: input.login-input / button.first）
+        self.username_input    = page.locator("input.login-input").nth(0)
+        self.password_input    = page.locator("input.login-input").nth(1)
         self.login_btn         = page.locator("button").first  # locale 無關，對應 JS: locator('button').first()
         self.login_trigger_btn = page.get_by_role("button", name="登入")  # 首頁 CTA，固定繁中
 
