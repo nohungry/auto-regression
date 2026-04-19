@@ -2,14 +2,19 @@
 後台管理頁面 Page Object — RC 站點
 處理：Tab 切換（代理/會員/子帳號）、代理樹導航、會員存入/提取操作
 
-重要：頁面有兩組 tab-btn（sidebar + 主內容區），
-Tab 操作需指定第二組（主內容區）的按鈕，使用 .nth(1)。
+Tab 定位策略：
+  頁面有兩組同名 `button.tab-btn`：
+    - sidebar：在 `.tabs-search` 容器
+    - 主內容區：在 `.container-management` 容器
+  用 `.container-management` 正向 scope 取得主內容區 tab，
+  不依賴 DOM 順序的 `.nth()`。
 
 代理樹節點在 overflow 滾動容器中，DOM 存在但可能 hidden，
 需使用 JS click 或 dispatch_event 點擊。
 """
 
 import re
+from typing import Optional
 from playwright.sync_api import Page, Locator, expect, TimeoutError as PlaywrightTimeoutError
 from utils.screenshot_helper import get_screenshotter
 
@@ -19,11 +24,13 @@ class ManagementPage:
     def __init__(self, page: Page):
         self.page = page
 
-        # 主內容區的 Tab buttons（第二組，.nth(1)）
-        # 頁面有兩組 tab-btn：sidebar 一組 + 主內容區一組
-        self.agent_tab = page.locator('button.tab-btn', has_text='代理').nth(1)
-        self.member_tab = page.locator('button.tab-btn', has_text='會員').nth(1)
-        self.sub_account_tab = page.locator('button.tab-btn', has_text='子帳號').nth(1)
+        # 主內容區容器 — 用於 scope tab buttons，避免誤中 sidebar 同名按鈕
+        self._main_content = page.locator('.container-management')
+
+        # 主內容區的 Tab buttons（透過 container scope 限定，不依賴 .nth() 順序）
+        self.agent_tab = self._main_content.locator('button.tab-btn', has_text='代理')
+        self.member_tab = self._main_content.locator('button.tab-btn', has_text='會員')
+        self.sub_account_tab = self._main_content.locator('button.tab-btn', has_text='子帳號')
 
     def get_agent_remaining_balance(self) -> float:
         """
@@ -49,11 +56,16 @@ class ManagementPage:
         return balance
 
     def goto(self, dashboard_url: str):
-        """導航到管理頁面"""
+        """導航到管理頁面。
+        Vue 後台 SPA 有 websocket 長連線，不能用 networkidle。
+        用 domcontentloaded + 等 tab button 出現判斷載入完成。
+        """
         self.page.goto(
             f"{dashboard_url}#/management/all-management",
-            wait_until="networkidle"
+            wait_until="domcontentloaded",
         )
+        # 等主內容區 tab 出現（代表 SPA hydration 完成）
+        self.member_tab.wait_for(state="attached", timeout=15000)
 
     # -----------------------------------------------
     # 代理樹操作
@@ -82,8 +94,7 @@ class ManagementPage:
             agent_node.element_handle()
         )
 
-        # 等待頁面更新
-        self.page.wait_for_load_state("networkidle")
+        # 等待列表重新渲染（不用 networkidle，SPA 有長連線）
         self._wait_for_list_loaded()
 
         if sh:
@@ -204,10 +215,14 @@ class ManagementPage:
 
         return balance
 
-    def deposit(self, member_account: str, amount: int, operator_password: str):
+    def deposit(self, member_account: str, amount: int, operator_password: Optional[str]):
         """
         對指定會員執行存入操作。
         流程：找到會員行 → 點存入按鈕 → 填金額 → 填操作者密碼 → 送出
+
+        operator_password:
+          - str（非空）：RC 後台 dialog 需填操作者密碼
+          - None 或空字串：LT 後台 dialog 無此欄位，跳過密碼填寫
         """
         sh = get_screenshotter(self.page)
 
@@ -227,10 +242,14 @@ class ManagementPage:
         if sh:
             sh.full_page(f"verify_存入完成_{member_account}_{amount}")
 
-    def withdraw(self, member_account: str, amount: int, operator_password: str):
+    def withdraw(self, member_account: str, amount: int, operator_password: Optional[str]):
         """
         對指定會員執行提取操作。
         流程：找到會員行 → 點提取按鈕 → 填金額 → 填操作者密碼 → 送出
+
+        operator_password:
+          - str（非空）：RC 後台 dialog 需填操作者密碼
+          - None 或空字串：LT 後台 dialog 無此欄位，跳過密碼填寫
         """
         sh = get_screenshotter(self.page)
 
@@ -253,44 +272,54 @@ class ManagementPage:
     # -----------------------------------------------
     # 內部 helpers
     # -----------------------------------------------
-    def _fill_amount_dialog(self, amount: int, operator_password: str, operation: str):
+    def _fill_amount_dialog(
+        self,
+        amount: int,
+        operator_password: Optional[str],
+        operation: str,
+    ):
         """
         填寫存入/提取彈窗：金額 + (可選)操作者密碼 + 點送出。
-        RC 彈窗有操作者密碼欄位，LT 沒有。
-        若 operator_password 為空字串或 None 則跳過密碼填寫。
+
+        operator_password:
+          - 非空字串：填入（RC 後台 dialog 行為）
+          - None 或空字串：跳過密碼欄位（LT 後台 dialog 行為）
+
+        定位策略：
+          頁面可能同時有多個 .dialog-container（常駐容器 + 彈出的 dialog），
+          用剛開啟的 dialog 專屬的「送出」按鈕作為 anchor，
+          反推其 ancestor `.dialog-container` 作為 input 搜尋範圍，
+          避免誤抓頁面其他位置的 input。
         """
         sh = get_screenshotter(self.page)
 
-        # 等待送出按鈕出現（代表彈窗已開啟）
-        submit_btn = self.page.locator('button', has_text='送出').first
+        # 等「送出」按鈕出現（代表存入/提取 dialog 已開啟）
+        submit_btn = self.page.locator('button.primary-button', has_text='送出').first
         submit_btn.wait_for(state="visible", timeout=5000)
+
+        # 從送出按鈕反推所在的 dialog 容器，scope 後續 input 搜尋
+        dialog = submit_btn.locator('xpath=ancestor::*[contains(@class,"dialog-container")][1]')
 
         if sh:
             sh.full_page(f"dialog_{operation}_opened")
 
-        # 填入金額 — 排除 searchbox（class=multiselect__input）
-        amount_input = self.page.locator(
-            'input[type="text"]:not(.multiselect__input):visible'
+        # 填入金額 — dialog 範圍內的 text input（排除 multiselect searchbox）
+        amount_input = dialog.locator(
+            'input[type="text"]:not(.multiselect__input)'
         ).first
-        try:
-            amount_input.wait_for(state="visible", timeout=3000)
-        except PlaywrightTimeoutError:
-            amount_input = self.page.locator('input:visible').first
+        amount_input.wait_for(state="visible", timeout=3000)
 
         if sh:
             sh.capture(amount_input, f"fill_{operation}_金額_{amount}")
         amount_input.fill(str(amount))
 
-        # 填入操作者密碼（RC 需要，LT 不需要）
+        # 填入操作者密碼（RC 需要，LT 呼叫時傳 None/空字串跳過）
         if operator_password:
-            password_input = self.page.locator('input[type="password"]:visible').first
-            try:
-                password_input.wait_for(state="visible", timeout=2000)
-                if sh:
-                    sh.capture(password_input, f"fill_{operation}_操作者密碼")
-                password_input.fill(operator_password)
-            except PlaywrightTimeoutError:
-                pass  # LT 彈窗無密碼欄位，跳過
+            password_input = dialog.locator('input[type="password"]').first
+            password_input.wait_for(state="visible", timeout=3000)
+            if sh:
+                sh.capture(password_input, f"fill_{operation}_操作者密碼")
+            password_input.fill(operator_password)
 
         # 點擊送出
         if sh:

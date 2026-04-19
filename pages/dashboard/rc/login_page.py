@@ -19,14 +19,18 @@ class DashboardLoginPage:
         self.login_btn = page.locator('button', has_text='登入')
 
     def goto(self):
-        """前往後台登入頁"""
-        self.page.goto(self.base_url, wait_until="networkidle")
+        """前往後台登入頁。
+        Vue SPA 有長連線（websocket / heartbeat）永遠不會進 networkidle，
+        用 domcontentloaded + 表單元素 visible 作為載入完成判斷。
+        """
+        self.page.goto(self.base_url, wait_until="domcontentloaded")
+        self.username_input.wait_for(state="visible", timeout=15000)
 
     def login(self, username: str, password: str):
         """填入帳號密碼並送出登入"""
         sh = get_screenshotter(self.page)
 
-        self.username_input.wait_for(state="visible", timeout=10000)
+        # goto() 已等過 visible，這裡避免重複 wait
         self.username_input.scroll_into_view_if_needed()
         if sh:
             sh.capture(self.username_input, "fill_後台帳號")
