@@ -9,7 +9,8 @@ WIN-VR-001~003
 import pytest
 from playwright.sync_api import Page
 from pages.lt.login_page import LoginPage
-from tests.lt.feature.visual.helpers import BANNER_SELECTORS, save_screenshot, screenshot_with_mask
+from tests.lt.feature.visual.helpers import BANNER_SELECTORS
+from utils.visual_helpers import save_vr_screenshot, screenshot_with_mask
 
 
 @pytest.mark.p2
@@ -23,14 +24,14 @@ class TestVisualRegression:
         login = LoginPage(page, site_config.url)
         login.goto()
         page.wait_for_timeout(2000)
-        save_screenshot(screenshot_with_mask(page, BANNER_SELECTORS), "lt-home-shell.png")
+        save_vr_screenshot(screenshot_with_mask(page, BANNER_SELECTORS), "lt", "lt-home-shell.png")
 
     def test_login_page_screenshot(self, page: Page, site_config):
         """WIN-VR-002：登入頁表單截圖存檔"""
         login = LoginPage(page, site_config.url)
         login.goto_login()
         page.wait_for_timeout(1500)
-        save_screenshot(page.screenshot(animations="disabled"), "lt-login-panel.png")
+        save_vr_screenshot(page.screenshot(animations="disabled"), "lt", "lt-login-panel.png")
 
     def test_navbar_screenshot(self, page: Page, site_config):
         """WIN-VR-003：首頁上方導覽列截圖存檔"""
@@ -38,4 +39,4 @@ class TestVisualRegression:
         login.goto()
         page.wait_for_timeout(1500)
         navbar = page.locator('[class*="bg-navbar"]').first
-        save_screenshot(navbar.screenshot(animations="disabled"), "lt-top-nav.png")
+        save_vr_screenshot(navbar.screenshot(animations="disabled"), "lt", "lt-top-nav.png")

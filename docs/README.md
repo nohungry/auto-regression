@@ -46,6 +46,9 @@
 | 檔名 | 用途 |
 |------|------|
 | [`i18n_locale_text_reference.md`](./i18n_locale_text_reference.md) | 多語系文案對照表（LT 5 語系 + RC 6 語系），`tests/**/feature/i18n/` 測試斷言的 source of truth |
+| [`testing-strategy.md`](./testing-strategy.md) | 測試分層（L0~L3）、通過標準、flaky 處理、並行限制、marker 規範 |
+| [`lt-dashboard-sitemap.md`](./lt-dashboard-sitemap.md) | LT 後台完整功能地圖（25 頁 × 8 分類），後台測試撰寫的事實參考 |
+| [`dashboard-technical-notes.md`](./dashboard-technical-notes.md) | 後台測試技術注意事項（TOTP、browser context 分離、session 管理、fixture scope 策略） |
 
 ---
 

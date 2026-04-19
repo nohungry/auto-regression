@@ -9,6 +9,7 @@ from utils.screenshot_helper import get_screenshotter
 
 
 @pytest.mark.p1
+@pytest.mark.rc
 @pytest.mark.home
 class TestHomePageSections:
     """TC-016 ~ TC-019：首頁各區塊"""

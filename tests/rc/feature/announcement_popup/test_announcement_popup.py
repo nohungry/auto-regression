@@ -9,6 +9,7 @@ from utils.screenshot_helper import get_screenshotter
 
 
 @pytest.mark.p1
+@pytest.mark.rc
 class TestAnnouncementPopup:
     """
     TC-F01 ~ TC-F04：首頁公告大圖輪播彈窗行為

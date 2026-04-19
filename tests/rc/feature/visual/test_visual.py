@@ -10,6 +10,7 @@ from utils.screenshot_helper import get_screenshotter
 
 
 @pytest.mark.p1
+@pytest.mark.rc
 @pytest.mark.visual
 class TestVisual:
     """RC 視覺健康度驗證（版面、破圖、對齊）"""

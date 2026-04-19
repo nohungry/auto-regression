@@ -1,6 +1,11 @@
 """
-多語系文案驗證 — 登入 Modal 欄位標籤與按鈕
+RC 多語系文案驗證 — 登入 Modal 欄位標籤與按鈕（職責：6 語系切換後文案對應）
 RC-I18N-LOGIN-001~006
+
+本檔驗證各語系（繁中/簡中/日/泰/越/英）切換後，登入 modal 的 placeholder 與 CTA 文案。
+與 `tests/rc/feature/copy/test_copy.py` 職責互補：
+- copy：守門網站 title、廳館名稱等**不隨語系變動**的文案
+- 本檔：守門 i18n 翻譯對應是否完整、切換機制是否運作
 
 RC 登入為 Modal 形式（非獨立頁面）：
 - 點擊 button.primary-btn（首頁 nav 的登入按鈕）開啟 modal
@@ -41,6 +46,7 @@ def _switch_language(page: Page, url: str, lang_name: str):
 
 
 @pytest.mark.p1
+@pytest.mark.rc
 @pytest.mark.i18n
 @pytest.mark.language
 class TestI18NLoginModal:

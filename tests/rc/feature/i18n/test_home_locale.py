@@ -38,6 +38,7 @@ def _switch_language(page: Page, url: str, lang_name: str):
 
 
 @pytest.mark.p1
+@pytest.mark.rc
 @pytest.mark.i18n
 @pytest.mark.language
 class TestI18NHome:

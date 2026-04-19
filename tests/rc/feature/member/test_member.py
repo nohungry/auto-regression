@@ -29,6 +29,7 @@ def _close_dialog(page: Page):
 
 
 @pytest.mark.p1
+@pytest.mark.rc
 @pytest.mark.member
 class TestPersonalInfo:
     """TC-011 ~ TC-012：個人資訊彈窗"""
@@ -57,6 +58,7 @@ class TestPersonalInfo:
 
 
 @pytest.mark.p1
+@pytest.mark.rc
 @pytest.mark.member
 class TestInbox:
     """TC-013 ~ TC-014：站內信彈窗"""

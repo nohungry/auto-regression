@@ -18,6 +18,7 @@ from utils.screenshot_helper import get_screenshotter
 
 
 @pytest.mark.p0
+@pytest.mark.rc
 @pytest.mark.login
 class TestLogin:
     """TC-001 ~ TC-004：登入相關"""
@@ -76,6 +77,7 @@ class TestLogin:
 
 
 @pytest.mark.p0
+@pytest.mark.rc
 @pytest.mark.home
 class TestHomePage:
     """TC-005 ~ TC-007, TC-023：首頁核心元素"""

@@ -10,6 +10,7 @@ from utils.screenshot_helper import get_screenshotter
 
 
 @pytest.mark.p1
+@pytest.mark.rc
 class TestNavigation:
     """
     導覽列功能測試
