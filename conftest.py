@@ -54,6 +54,123 @@ def _is_cdp_ready(cdp_url: str) -> bool:
         return False
 
 
+def _patch_playwright_crbrowser_sw_assert() -> bool:
+    """
+    Patch Playwright driver：讓 pre-existing service_worker target（沒有 browserContextId）
+    不要觸發 assertion，改為靜默 detach。
+
+    背景：若 Chrome 曾造訪過註冊 Service Worker 的站（例：dev-rc.t9platform.com），SW target
+    在日後 CDP 重連時會被列出但 `browserContextId` 為空（default context，Chrome 不填該欄位）。
+    Playwright crBrowser.js line 147 的 `assert(targetInfo.browserContextId, ...)` 因此 throw，
+    整個 connect_over_cdp 掛掉，使用者被迫重啟 Chrome。
+
+    本函式 idempotent：只在未 patch 時寫一次；已 patch 的 driver 直接 skip。
+    若找不到目標行（例：Playwright 升版、檔案格式變動），安全跳過不阻擋測試。
+    """
+    import importlib.util
+
+    try:
+        spec = importlib.util.find_spec('playwright')
+        if not spec or not spec.submodule_search_locations:
+            return False
+        pw_root = spec.submodule_search_locations[0]
+    except Exception:
+        return False
+
+    cr_browser = os.path.join(
+        pw_root, 'driver', 'package', 'lib', 'server', 'chromium', 'crBrowser.js'
+    )
+    if not os.path.isfile(cr_browser):
+        return False
+
+    try:
+        with open(cr_browser, 'r', encoding='utf-8') as f:
+            content = f.read()
+    except Exception:
+        return False
+
+    marker = '__PW_SW_NO_CTX_PATCH__'
+    if marker in content:
+        return True  # 已 patch 過
+
+    target_line = '(0, import_assert.assert)(targetInfo.browserContextId, "targetInfo: " + JSON.stringify(targetInfo, null, 2));'
+    if target_line not in content:
+        return False  # Playwright 版本不同，不動它
+
+    replacement = (
+        f'// {marker} — 容忍 pre-existing service_worker target 缺 browserContextId\n'
+        '    if (!targetInfo.browserContextId) {\n'
+        '      if (targetInfo.type === "service_worker") { session.detach().catch(() => {}); return; }\n'
+        '      ' + target_line + '\n'
+        '    }'
+    )
+    new_content = content.replace(target_line, replacement, 1)
+    if new_content == content:
+        return False
+
+    try:
+        with open(cr_browser, 'w', encoding='utf-8') as f:
+            f.write(new_content)
+        print(f'[CDP] Playwright driver patched：容忍 stuck service worker（{cr_browser}）')
+        return True
+    except Exception as e:
+        print(f'[CDP] Playwright driver patch 失敗，略過：{type(e).__name__}: {e}')
+        return False
+
+
+def _detach_stuck_service_workers(cdp_url: str) -> int:
+    """
+    Pre-flight：偵測 CDP 上 attached 的 service_worker target，逐一關閉。
+
+    原因：若 Chrome 曾造訪過會註冊 Service Worker 的站（例：dev-rc.t9platform.com/sw.js），
+    該 SW target 會以 attached=true 存在於既有 CDP。Playwright 的
+    CRBrowser._onAttachedToTarget 對 service_worker 有「不應已 attached」的 assertion，
+    直接 connect_over_cdp 會打到 assert → "Connection closed while reading from the driver"。
+
+    實作：用 Chrome DevTools HTTP endpoint `/json` 列舉 targets，對 type=service_worker
+    的項目呼叫 `/json/close/<targetId>`（HTTP，不需 WebSocket、不受 Chrome 的
+    --remote-allow-origins 限制），關閉後 SW 就不再是 attached 狀態。
+
+    失敗一律 silent（例：CDP 未開、網路錯）。
+
+    Returns: 成功關閉的 SW 數量（0 代表沒 SW 或整段被跳過）。
+    """
+    try:
+        import json
+        import urllib.request
+    except Exception:
+        return 0
+
+    try:
+        list_url = cdp_url.rstrip('/') + '/json'
+        with urllib.request.urlopen(list_url, timeout=2) as resp:
+            targets = json.loads(resp.read())
+    except Exception as e:
+        print(f'[CDP] service worker 列舉失敗，略過：{type(e).__name__}: {e}')
+        return 0
+
+    sw_targets = [t for t in targets if t.get('type') == 'service_worker']
+    if not sw_targets:
+        return 0
+
+    closed = 0
+    for t in sw_targets:
+        target_id = t.get('id')
+        if not target_id:
+            continue
+        try:
+            close_url = cdp_url.rstrip('/') + f'/json/close/{target_id}'
+            with urllib.request.urlopen(close_url, timeout=2) as resp:
+                if resp.status == 200:
+                    closed += 1
+        except Exception:
+            pass  # 單一 SW 關不掉不影響整體流程
+
+    if closed:
+        print(f'[CDP] 已關閉 {closed} 個 stuck service worker target')
+    return closed
+
+
 def _start_chrome_from_wsl(cdp_url: str) -> None:
     """WSL 環境下自動啟動 Windows Chrome（帶 remote debugging）"""
     chrome_path = '/mnt/c/Program Files/Google/Chrome/Application/chrome.exe'
@@ -127,19 +244,32 @@ def browser(playwright: Playwright):
         if not _is_cdp_ready(cdp_url):
             print(f'\n[WSL] Chrome 尚未啟動，自動開啟中... ({cdp_url})')
             _start_chrome_from_wsl(cdp_url)
+        # Pre-flight：關閉 stuck SW target（patch 已於 pytest_configure 套好）
+        _detach_stuck_service_workers(cdp_url)
         browser = playwright.chromium.connect_over_cdp(cdp_url)
         yield browser
         # 不關閉 browser，避免把 Windows Chrome 一起關掉
     else:
         # 純 Linux：透過 CDP 連線（需自行確保 Chrome 已啟動）
         cdp_url = os.getenv("CDP_URL", "http://localhost:9222")
+        _detach_stuck_service_workers(cdp_url)
         browser = playwright.chromium.connect_over_cdp(cdp_url)
         yield browser
 
 
 # -----------------------------------------------
-# 新增 --site 命令列參數
+# pytest hooks
 # -----------------------------------------------
+def pytest_configure(config):
+    """
+    pytest 進入點：在任何 fixture／Playwright 初始化之前，
+    套用 Playwright driver patch（crBrowser.js 容忍 pre-existing SW target）。
+    必須在此時 patch，因為 Node driver 一啟動就會 require crBrowser.js 並快取，
+    改在 browser fixture 裡 patch 已經太晚。
+    """
+    _patch_playwright_crbrowser_sw_assert()
+
+
 def pytest_addoption(parser):
     parser.addoption(
         "--site",
