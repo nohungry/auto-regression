@@ -2,20 +2,17 @@
 LT 後台會員充值測試（存入/提取）
 LT-DASH-001
 
-使用自動化代理帳號 qadlttest1 登入後台，
-對其底下會員 dltauto02 進行存入與提取操作，
+使用 .env 的 SITE_LT_DASHBOARD_AGENT_USER（自動化代理帳號）登入後台，
+對其底下會員 SITE_LT_USERNAME 進行存入與提取操作，
 驗證會員餘額與代理剩餘額度正確增減。
 """
 
 import pytest
 from playwright.sync_api import Page
 from pages.dashboard.factory import get_dashboard_management_page_class
-from utils.screenshot_helper import get_screenshotter
 
 
-# 測試資料
-AGENT_NAME = "qadlttest1"
-MEMBER_ACCOUNT = "dltauto02"
+# 測試資料（帳號從 .env 讀取）
 DEPOSIT_AMOUNT = 10
 WITHDRAW_AMOUNT = 5
 
@@ -31,24 +28,26 @@ class TestMemberTopUp:
         """LT-DASH-001：存入 10 → 驗證餘額 +10 → 提取 5 → 驗證餘額 -5（含代理剩餘額度檢查）"""
         ManagementPage = get_dashboard_management_page_class(site_config.site_id)
         mgmt = ManagementPage(dashboard_page)
+        agent_name = site_config.dashboard_agent_user
+        member_account = site_config.username
 
-        # 1. 點擊側邊欄代理樹中的 qadlttest1，再切到會員 Tab
-        mgmt.click_agent_in_tree(AGENT_NAME)
+        # 1. 點擊側邊欄代理樹中的代理，再切到會員 Tab
+        mgmt.click_agent_in_tree(agent_name)
         mgmt.switch_to_member_tab()
 
         # 2. 記錄存入前：會員餘額 + 代理剩餘額度
-        balance_before = mgmt.get_member_balance(MEMBER_ACCOUNT)
+        balance_before = mgmt.get_member_balance(member_account)
         agent_balance_before = mgmt.get_agent_remaining_balance()
 
-        # 3. 存入 10（操作者密碼 = 代理帳號密碼）
+        # 3. 存入 10（LT 後台 dialog 無操作者密碼欄位）
         mgmt.deposit(
-            MEMBER_ACCOUNT,
+            member_account,
             DEPOSIT_AMOUNT,
-            operator_password=""
+            operator_password=None,
         )
 
         # 4. 驗證會員餘額增加
-        balance_after_deposit = mgmt.get_member_balance(MEMBER_ACCOUNT)
+        balance_after_deposit = mgmt.get_member_balance(member_account)
         assert balance_after_deposit == pytest.approx(balance_before + DEPOSIT_AMOUNT, abs=0.01), (
             f"存入 {DEPOSIT_AMOUNT} 後會員餘額應為 {balance_before + DEPOSIT_AMOUNT}，"
             f"實際為 {balance_after_deposit}"
@@ -63,13 +62,13 @@ class TestMemberTopUp:
 
         # 6. 提取 5（直接操作，不需重新找會員）
         mgmt.withdraw(
-            MEMBER_ACCOUNT,
+            member_account,
             WITHDRAW_AMOUNT,
-            operator_password=""
+            operator_password=None,
         )
 
         # 7. 驗證會員餘額減少
-        balance_after_withdraw = mgmt.get_member_balance(MEMBER_ACCOUNT)
+        balance_after_withdraw = mgmt.get_member_balance(member_account)
         assert balance_after_withdraw == pytest.approx(balance_after_deposit - WITHDRAW_AMOUNT, abs=0.01), (
             f"提取 {WITHDRAW_AMOUNT} 後會員餘額應為 {balance_after_deposit - WITHDRAW_AMOUNT}，"
             f"實際為 {balance_after_withdraw}"
