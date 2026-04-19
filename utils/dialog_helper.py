@@ -11,11 +11,16 @@ def dismiss_server_error_if_present(page: Page, timeout: int = 3000) -> bool:
     """
     檢查是否有「伺服器錯誤」彈窗，若有則點擊確定關閉。
 
+    先用 count() 短路：button 不存在於 DOM → 立即回傳 False，不耗 timeout。
+    僅在 button 已掛入 DOM 但尚未 visible 時才等待 timeout。
+
     Returns:
         True  - 有彈窗且已關閉
         False - 沒有彈窗
     """
     confirm_btn = page.locator("button.toast-confirm-btn")
+    if confirm_btn.count() == 0:
+        return False
 
     try:
         confirm_btn.wait_for(state="visible", timeout=timeout)
@@ -46,6 +51,8 @@ def dismiss_announcement_popup_if_present(page: Page, timeout: int = 3000) -> bo
         False - 沒有彈窗
     """
     mask = page.locator(".popup-announcement-mask")
+    if mask.count() == 0:
+        return False
     try:
         mask.wait_for(state="visible", timeout=timeout)
     except PlaywrightTimeoutError:

@@ -143,8 +143,8 @@ class TestHomePage:
         sh = get_screenshotter(page)
 
         # locale-agnostic：CSS selector 不依賴 placeholder 文案
-        username_input = page.locator("input.input-style").nth(0)
-        password_input = page.locator("input.input-style").nth(1)
+        username_input = page.locator("input.login-input").nth(0)
+        password_input = page.locator("input.login-input").nth(1)
         login_btn      = page.locator("button").first
 
         expect(username_input).to_be_visible()
@@ -166,7 +166,7 @@ class TestHomePage:
         login.open_login_form()
 
         # locale-agnostic：以 CSS selector 驗證帳號輸入框出現
-        expect(page.locator("input.input-style").nth(0)).to_be_visible()
+        expect(page.locator("input.login-input").nth(0)).to_be_visible()
         if sh: sh.full_page("verify_進入登入頁")
 
 
