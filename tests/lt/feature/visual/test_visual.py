@@ -97,7 +97,7 @@ class TestVisual:
                 const box = el.getBoundingClientRect();
                 return { x: box.x, width: box.width };
             };
-            const inputs  = document.querySelectorAll('input.input-style');
+            const inputs  = document.querySelectorAll('input.login-input');
             const buttons = [...document.querySelectorAll('button')];
             return {
                 username:    rect(inputs[0]),

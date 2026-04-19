@@ -21,19 +21,27 @@ class LoginPage:
         self.login_trigger_btn = page.locator("button", has_text="登入").first
 
     def goto(self):
-        """開啟首頁，並處理進站彈窗（伺服器錯誤 / 公告大圖輪播）"""
-        self.page.goto(self.base_url)
-        self.page.wait_for_load_state("networkidle")
+        """開啟首頁，並處理進站彈窗（伺服器錯誤 / 公告大圖輪播）
+
+        - goto 改 domcontentloaded：dev-rc 有背景 WebSocket/心跳，load event 常不觸發。
+        - helpers 會先用 count() 短路：元素不在 DOM → 立即回傳，不耗 timeout。
+        """
+        self.page.goto(self.base_url, wait_until="domcontentloaded")
         dismiss_server_error_if_present(self.page)
-        dismiss_announcement_popup_if_present(self.page, timeout=5000)
+        dismiss_announcement_popup_if_present(self.page)
 
     def open_login_form(self):
-        """點擊右上角「登入」按鈕開啟登入表單"""
+        """點擊右上角「登入」按鈕開啟登入表單
+
+        wait 拉長至 15s：dev 站 SPA hydration + 登入 modal 動畫可能需時。
+        trigger button 本身也要等：SPA 初始化完才會掛入 DOM。
+        """
         sh = get_screenshotter(self.page)
+        self.login_trigger_btn.wait_for(state="visible", timeout=15000)
         self.login_trigger_btn.scroll_into_view_if_needed()
         if sh: sh.capture(self.login_trigger_btn, "click_登入按鈕")
         self.login_trigger_btn.click()
-        self.username_input.wait_for(state="visible", timeout=5000)
+        self.username_input.wait_for(state="visible", timeout=15000)
 
     def login(self, username: str, password: str):
         """填入帳號密碼並登入"""
@@ -78,17 +86,22 @@ class LoginPage:
             pass  # loading 未出現或已快速消失，略過
 
     def _handle_user_agreement(self):
-        """處理用戶協議彈窗（若出現則點確定）"""
+        """處理用戶協議彈窗（若出現則點確定）
+
+        先用 count() 短路：非首次登入 DOM 不會有此按鈕，立即略過不耗 timeout。
+        """
+        # 排除 toast-confirm-btn，避免誤關錯誤提示彈窗
+        agreement_btn = self.page.locator("button:not(.toast-confirm-btn)", has_text="確定")
+        if agreement_btn.count() == 0:
+            return
         try:
-            # 排除 toast-confirm-btn，避免誤關錯誤提示彈窗
-            agreement_btn = self.page.locator("button:not(.toast-confirm-btn)", has_text="確定")
             agreement_btn.wait_for(state="visible", timeout=3000)
             sh = get_screenshotter(self.page)
             agreement_btn.scroll_into_view_if_needed()
             if sh: sh.capture(agreement_btn, "click_用戶協議確定")
             agreement_btn.click()
         except PlaywrightTimeoutError:
-            pass  # 非首次登入不會出現，略過
+            pass  # 在 DOM 但未 visible（罕見），略過
 
     def goto_and_login(self, username: str, password: str):
         """完整登入流程：開站 → 開登入表單 → 登入"""

@@ -89,7 +89,7 @@ POM 方法中應整合截圖系統：
 | 行為 | rc 站 | lt 站 |
 |------|--------|--------|
 | 登入入口 | Modal overlay，點擊按鈕開啟 | SPA `/login` 路由，直接導向 |
-| 帳號 selector | `input[placeholder="用戶名"]` | `input.input-style` nth(0)（locale-agnostic） |
+| 帳號 selector | `input[placeholder="用戶名"]` | `input.login-input` nth(0)（locale-agnostic） |
 | 登入後等待 | Loading 動畫 (`img[alt="Loading"]`) | URL 離開 `/login`（SPA pushState） |
 | 伺服器錯誤 | `toast-confirm-btn` 彈窗（MutationObserver 自動關閉） | 無此機制 |
 | 用戶協議 | 首次登入出現，需點確定 | 無此機制 |
