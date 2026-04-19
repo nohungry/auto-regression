@@ -2,7 +2,7 @@
 LT 前台遊戲進入與下注測試
 LT-GAME-001
 
-使用自動化會員帳號 dltauto02 登入前台，
+使用 .env 的 SITE_LT_USERNAME 登入前台，
 導覽至電子分類 → 選擇 T9電子 → 點擊關老爺 →
 遊戲在新分頁開啟 → 開始 → 確定機台 → 減注(8→4) → Spin →
 遊戲內查注單 → 關閉遊戲回主站查投注紀錄。
@@ -24,9 +24,7 @@ from pages.lt.home_page import HomePage
 from utils.screenshot_helper import get_screenshotter
 
 
-# 自動化會員帳號
-MEMBER_USER = "dltauto02"
-MEMBER_PASS = "Ab123456!"
+# 會員帳號從 .env 的 SITE_LT_USERNAME / SITE_LT_PASSWORD 讀取（透過 site_config）
 
 # 遊戲路徑
 CATEGORY_NAV = "電子"
@@ -61,10 +59,10 @@ class TestGameEntry:
         # ===== Phase 1: 前台導覽至遊戲 =====
 
         login = LoginPage(page, site_config.url)
-        login.goto_and_login(MEMBER_USER, MEMBER_PASS)
+        login.goto_and_login(site_config.username, site_config.password)
 
         home = HomePage(page)
-        home.verify_login_success(MEMBER_USER)
+        home.verify_login_success(site_config.username)
         page.wait_for_timeout(2000)
 
         # 電子分類
@@ -75,11 +73,11 @@ class TestGameEntry:
         provider = page.locator("div.group", has_text=PROVIDER_NAME).first
         provider.wait_for(state="visible", timeout=5000)
         provider.click(force=True)
-        page.wait_for_timeout(5000)
 
         # 點關老爺（用圖片 src 定位，LT 遊戲卡片無文字）
+        # 遊戲卡片由 API 拉回才渲染，wait_for 取代固定 5 秒
         game_img = page.locator('img[src*="GuanGong"], img[src*="SL2570"]').first
-        game_img.wait_for(state="visible", timeout=10000)
+        game_img.wait_for(state="visible", timeout=15000)
         game_card = game_img.locator("xpath=ancestor::div[contains(@class,'cursor-pointer')][1]")
 
         # 用 expect_page 捕捉新分頁
@@ -138,15 +136,11 @@ class TestGameEntry:
                 })
                 game_page.wait_for_timeout(300)
 
-            # 監聽 start_spin API
-            spin_api_called = []
-            game_page.on("request", lambda req: (
-                spin_api_called.append(req.url)
-                if "start_spin" in req.url else None
-            ))
-
-            # Spin 下注
-            game_click("spin", wait_after=10000)
+            # Spin 下注：用 expect_request 保證 listener 在 click 前啟動，
+            # 並把 start_spin API 呼叫作為硬性 assertion（未觸發會 timeout）
+            with game_page.expect_request("**/start_spin**", timeout=20000) as spin_req:
+                game_click("spin", wait_after=10000)
+            spin_request_url = spin_req.value.url
 
             # ===== Phase 3: 遊戲內查注單紀錄 =====
 
@@ -156,16 +150,17 @@ class TestGameEntry:
             # 點紀錄
             game_click("紀錄", wait_after=3000)
 
-            # 截圖記錄遊戲內注單
-            game_page.screenshot(path="screenshots/lt_game_注單紀錄.png")
+            # 截圖記錄遊戲內注單（game_page 是新分頁，用 sh 指定 page 參數即可
+            # 輸出到 screenshots/<site>/<ts>/.../，不要硬編碼路徑）
+            if sh:
+                sh.full_page("verify_遊戲內注單紀錄", page=game_page)
 
         finally:
             cdp.detach()
 
-        # 驗證 start_spin API 被呼叫
-        assert len(spin_api_called) > 0, (
-            "Spin API (start_spin) 未被呼叫，下注失敗"
-        )
+        # expect_request 已於 spin click 時硬性保證 start_spin 被觸發，
+        # 這裡做一個 trace 用的輸出即可
+        assert spin_request_url, "start_spin API URL 為空"
 
         # ===== Phase 4: 關閉遊戲，回主站查投注紀錄 =====
 

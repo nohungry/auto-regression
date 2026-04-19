@@ -2,7 +2,7 @@
 RC 前台遊戲進入與下注測試
 RC-GAME-001
 
-使用自動化會員帳號 drcauto01 登入前台，
+使用 .env 的 SITE_RC_USERNAME 登入前台，
 導覽至電子分類 → 選擇 T9電子 → 點擊關老爺 →
 點「開始」→ 機台確認 → 調整押注至 4 元 → Spin 下注。
 
@@ -22,9 +22,7 @@ from utils.dialog_helper import wait_loading_if_present
 from utils.screenshot_helper import get_screenshotter
 
 
-# 自動化會員帳號
-MEMBER_USER = "drcauto01"
-MEMBER_PASS = "Ab123456!"
+# 會員帳號從 .env 的 SITE_RC_USERNAME / SITE_RC_PASSWORD 讀取（透過 site_config）
 
 # 遊戲路徑
 CATEGORY_NAV = "電子"
@@ -72,17 +70,18 @@ class TestGameEntry:
         # ===== Phase 1: 前台導覽至遊戲 =====
 
         login = LoginPage(page, site_config.url)
-        login.goto_and_login(MEMBER_USER, MEMBER_PASS)
+        login.goto_and_login(site_config.username, site_config.password)
         home = HomePage(page)
-        home.verify_login_success(MEMBER_USER)
+        home.verify_login_success(site_config.username)
         home.dismiss_any_popups()
 
         home.click_nav_item(CATEGORY_NAV)
         expect(page).to_have_url(re.compile("Categories/slots"), timeout=8000)
 
         page.locator(".game-type").first.click()
-        page.wait_for_timeout(500)
-        page.locator(".platform-list-bg").locator(f"text={PROVIDER_NAME}").first.click()
+        platform_btn = page.locator(".platform-list-bg").locator(f"text={PROVIDER_NAME}").first
+        platform_btn.wait_for(state="visible", timeout=8000)
+        platform_btn.click()
         wait_loading_if_present(page)
 
         game_card = page.locator(f"text={GAME_NAME}").first
@@ -137,17 +136,13 @@ class TestGameEntry:
             # 減注（8→4）
             game_click("減注", wait_after=1000)
 
-            # 監聽 start_spin API
-            spin_api_called = []
-            page.on("request", lambda req: (
-                spin_api_called.append(req.url)
-                if "start_spin" in req.url else None
-            ))
-
-            # Spin 下注
+            # Spin 下注：用 expect_request 保證 listener 在 click 前啟動，
+            # 並把 start_spin API 呼叫作為硬性 assertion（未觸發會 timeout）
             if sh:
                 sh.full_page("verify_下注前")
-            game_click("spin", wait_after=6000)
+            with page.expect_request("**/start_spin**", timeout=15000) as spin_req:
+                game_click("spin", wait_after=6000)
+            spin_request_url = spin_req.value.url
 
             if sh:
                 sh.full_page("verify_Spin結果")
@@ -166,10 +161,9 @@ class TestGameEntry:
         finally:
             cdp.detach()
 
-        # 驗證 start_spin API 被呼叫
-        assert len(spin_api_called) > 0, (
-            "Spin API (start_spin) 未被呼叫，下注失敗"
-        )
+        # expect_request 已於 spin click 時硬性保證 start_spin 被觸發，
+        # 這裡做一個 trace 用的輸出即可
+        assert spin_request_url, "start_spin API URL 為空"
 
         # ===== Phase 4: 回到主站查遊戲明細 =====
 

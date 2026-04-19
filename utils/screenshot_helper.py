@@ -12,9 +12,14 @@ category 由 conftest auto_screenshot 自動判斷：feature/ 下為 feature，�
 import re
 from datetime import datetime
 from pathlib import Path
-from playwright.sync_api import Page, Locator
+from playwright.sync_api import Page, Locator, TimeoutError as PlaywrightTimeoutError
 
 SCREENSHOTS_DIR = Path("screenshots")
+
+# 截圖超時（毫秒）。Playwright 預設 30 秒且會等 document.fonts.ready，
+# 某些環境（字型第三方失敗但未 reject）會永遠 hang。縮短避免阻塞測試，
+# 截圖純觀察性質，失敗不應 fail 測試。
+_SCREENSHOT_TIMEOUT_MS = 10000
 
 # 整個 session 共用同一個 timestamp（第一次建立時設定）
 _SESSION_TIMESTAMP: str | None = None
@@ -99,12 +104,21 @@ class ScreenshotHelper:
         self._steps.append({"step": self._step, "label": label, "filename": filename})
         return filepath
 
-    def full_page(self, label: str = "full") -> Path:
-        """不標示元素，直接截全頁圖。"""
+    def full_page(self, label: str = "full", page: Page | None = None) -> Path:
+        """不標示元素，直接截全頁圖。截圖失敗（timeout / page closed）不拋出。
+
+        page 可指定替代 page（例如遊戲新分頁 popup），檔案仍輸出到同一 helper 資料夾，
+        讓遊戲 popup 截圖與主流程截圖共享同一份 README.md。
+        """
         self._step += 1
         filename = f"{self._step:03d}_{_sanitize(label)}.png"
         filepath = self.folder / filename
-        self.page.screenshot(path=str(filepath))
+        target = page if page is not None else self.page
+        try:
+            target.screenshot(path=str(filepath), timeout=_SCREENSHOT_TIMEOUT_MS)
+        except (PlaywrightTimeoutError, Exception):
+            # 截圖是觀察性用途，失敗不應阻塞測試主流程
+            pass
         self._steps.append({"step": self._step, "label": label, "filename": filename})
         return filepath
 
@@ -218,10 +232,17 @@ def _highlight_and_screenshot(
         )
 
     try:
-        page.screenshot(path=str(filepath))
+        try:
+            page.screenshot(path=str(filepath), timeout=_SCREENSHOT_TIMEOUT_MS)
+        except (PlaywrightTimeoutError, Exception):
+            # 截圖是觀察性用途，失敗不應阻塞測試主流程
+            pass
     finally:
         if box:
-            page.evaluate("""() => {
-                const el = document.getElementById('__pw_highlight__');
-                if (el) el.remove();
-            }""")
+            try:
+                page.evaluate("""() => {
+                    const el = document.getElementById('__pw_highlight__');
+                    if (el) el.remove();
+                }""")
+            except Exception:
+                pass
