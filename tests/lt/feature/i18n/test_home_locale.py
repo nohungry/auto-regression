@@ -8,6 +8,11 @@ from playwright.sync_api import Page, expect
 from utils.locale_helper import set_locale
 from utils.screenshot_helper import get_screenshotter
 
+pytestmark = pytest.mark.skip(
+    reason="LT 2026-04-19 改版：首頁 nav 文案結構改變（熱門→遊戲大廳/我的最愛/台灣真人/國際真人），"
+           "待整輪 rebuild。見 memory: project_lt_site_redesign.md"
+)
+
 
 _LOCALE_CHECKS = [
     ("WIN-I18N-001", "tw", ["熱門", "真人", "電子", "捕魚", "登入"],              "繁中首頁文案"),

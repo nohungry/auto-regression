@@ -46,13 +46,14 @@ def dismiss_announcement_popup_if_present(page: Page, timeout: int = 3000) -> bo
     彈窗為多張輪播，每次點擊 close-circle-btn 僅推進一張，
     需持續點擊直到所有張數翻完後 popup 自動消失。
 
+    彈窗由伺服器 async 渲染，可能在 domcontentloaded 之後才插入 DOM，
+    不能用 count() 短路，必須等 timeout。
+
     Returns:
         True  - 有彈窗且已關閉
         False - 沒有彈窗
     """
     mask = page.locator(".popup-announcement-mask")
-    if mask.count() == 0:
-        return False
     try:
         mask.wait_for(state="visible", timeout=timeout)
     except PlaywrightTimeoutError:

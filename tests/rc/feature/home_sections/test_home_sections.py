@@ -54,7 +54,10 @@ class TestHomePageSections:
     def test_balance_visible(self, class_logged_in_page: Page, go_home):
         """TC-019：登入後右上角餘額數字顯示（非空白）"""
         page = class_logged_in_page
-        balance = page.locator(".coin-wrap-bg span")
+        # 用容器而非 span：餘額為小數時會被拆成「整數」+「.小數」兩個 span
+        balance = page.locator(".coin-wrap-bg")
         expect(balance).to_be_visible()
+        balance_text = (balance.text_content() or "").strip()
+        assert balance_text != "", "餘額欄位不應為空字串"
         sh = get_screenshotter(page)
         if sh: sh.capture(balance, "verify_餘額數字顯示")

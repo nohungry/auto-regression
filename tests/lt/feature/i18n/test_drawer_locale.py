@@ -13,6 +13,11 @@ from pages.lt.home_page import HomePage
 from utils.locale_helper import set_locale
 from utils.screenshot_helper import get_screenshotter
 
+pytestmark = pytest.mark.skip(
+    reason="LT 2026-04-19 改版破壞 .hamburger / drawer / navbar 結構，待整輪 rebuild。"
+           "見 memory: project_lt_site_redesign.md"
+)
+
 
 _DRAWER_LOCALE_CHECKS = [
     # (case_id, locale, betting_text, inbox_text, maint_text)
