@@ -12,6 +12,8 @@ import requests
 MEMBER_INFO_PATH = "/api/Member/getMemberInfoV3"
 
 
+@pytest.mark.p1
+@pytest.mark.lt
 @pytest.mark.api
 class TestMemberAPI:
 

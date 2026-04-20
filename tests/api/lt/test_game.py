@@ -12,6 +12,8 @@ import requests
 GAME_CATEGORY_PATH = "/api/Game/getGamePlatformCategoryList"
 
 
+@pytest.mark.p1
+@pytest.mark.lt
 @pytest.mark.api
 class TestGameCategoryAPI:
 

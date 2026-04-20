@@ -26,6 +26,8 @@ def _today_range() -> dict:
     }
 
 
+@pytest.mark.p1
+@pytest.mark.lt
 @pytest.mark.api
 class TestBetRecordAPI:
 

@@ -19,6 +19,8 @@ import requests
 LOGIN_PATH = "/api/Member/memberLogin"
 
 
+@pytest.mark.p1
+@pytest.mark.rc
 @pytest.mark.api
 class TestAuthAPI:
 

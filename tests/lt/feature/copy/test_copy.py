@@ -26,7 +26,7 @@ pytestmark = pytest.mark.skip(
 )
 
 
-@pytest.mark.p1
+@pytest.mark.p2
 @pytest.mark.lt
 @pytest.mark.copy
 class TestCopy:

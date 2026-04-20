@@ -29,7 +29,7 @@ _DRAWER_LOCALE_CHECKS = [
 ]
 
 
-@pytest.mark.p1
+@pytest.mark.p2
 @pytest.mark.lt
 @pytest.mark.i18n
 class TestI18NMemberDrawer:

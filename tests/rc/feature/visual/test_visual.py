@@ -9,7 +9,7 @@ from pages.rc.login_page import LoginPage
 from utils.screenshot_helper import get_screenshotter
 
 
-@pytest.mark.p1
+@pytest.mark.p2
 @pytest.mark.rc
 @pytest.mark.visual
 class TestVisual:

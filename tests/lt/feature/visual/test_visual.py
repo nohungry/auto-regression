@@ -10,7 +10,7 @@ from utils.screenshot_helper import get_screenshotter
 from tests.lt.feature.visual.helpers import BANNER_SELECTORS
 
 
-@pytest.mark.p1
+@pytest.mark.p2
 @pytest.mark.lt
 @pytest.mark.visual
 class TestVisual:
