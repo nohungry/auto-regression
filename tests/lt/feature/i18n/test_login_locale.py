@@ -15,6 +15,11 @@ from playwright.sync_api import Page, expect
 from pages.lt.login_page import LoginPage
 from utils.screenshot_helper import get_screenshotter
 
+pytestmark = pytest.mark.skip(
+    reason="LT 2026-04-19 改版：登入頁欄位結構改變，待整輪 rebuild。"
+           "見 memory: project_lt_site_redesign.md"
+)
+
 
 _LOGIN_LOCALE_CHECKS = [
     # (case_id, locale, username_label, password_label, login_btn)

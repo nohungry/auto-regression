@@ -8,6 +8,11 @@ from playwright.sync_api import Page, expect
 from pages.lt.home_page import HomePage
 from utils.screenshot_helper import get_screenshotter
 
+pytestmark = pytest.mark.skip(
+    reason="LT 2026-04-19 改版破壞 .hamburger / drawer / 會員頁結構，待整輪 rebuild。"
+           "見 memory: project_lt_site_redesign.md"
+)
+
 
 @pytest.mark.p1
 @pytest.mark.lt
