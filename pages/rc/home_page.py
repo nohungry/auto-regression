@@ -25,8 +25,18 @@ class HomePage:
         except Exception:
             return False
 
+    def verify_logged_in(self):
+        """輕量驗證：已登入（avatar 可見即代表）。無副作用。~1s
+        對齊 LT 版 API；適合 fixture 與單純確認登入狀態時使用。
+        """
+        sh = get_screenshotter(self.page)
+        expect(self.avatar).to_be_visible(timeout=10000)
+        if sh: sh.capture(self.avatar, "verify_已登入_頭像")
+
     def verify_login_success(self, username: str):
-        """驗證登入成功：右上角應顯示帳號名稱"""
+        """驗證登入成功：右上角應顯示帳號名稱。
+        E2E 登入 TC 使用；若只需確認已登入狀態，改用 verify_logged_in() 更輕量。
+        """
         sh = get_screenshotter(self.page)
         username_el = self.page.locator(f"text={username}")
         expect(username_el).to_be_visible(timeout=10000)
