@@ -28,6 +28,7 @@ def get_site_config(site_id: str = None) -> SiteConfig:
     """
     根據 site_id 取得站點設定
     若未指定 site_id，使用 .env 的 DEFAULT_SITE
+    注意：env key 使用大寫 site_id（例如 SITE_RC_URL），回傳的 SiteConfig.site_id 則轉為小寫
     """
     if not site_id:
         site_id = os.getenv("DEFAULT_SITE", "wlj")

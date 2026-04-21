@@ -23,8 +23,8 @@ from playwright.sync_api import Page, TimeoutError as PlaywrightTimeoutError
 from pages.dashboard.factory import get_dashboard_management_page_class
 
 
-# 測試資料（帳號從 .env 讀取）
-AMOUNT = 10
+# 測試資料（代理帳號=SITE_LT_DASHBOARD_AGENT_USER、會員帳號=SITE_LT_USERNAME）
+AMOUNT = 10  # 存入/提取對稱金額，測試結束餘額應回到初始值
 
 
 @pytest.mark.p1
