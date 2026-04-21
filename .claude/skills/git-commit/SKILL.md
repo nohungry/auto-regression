@@ -20,9 +20,27 @@ description: 針對 auto-regression repo 的測試變更，執行提交前檢查
 - 截圖系統 `utils/screenshot_helper.py` 自動產出 `screenshots/<site_id>/<timestamp>/<test_name>/README.md`，為 auto-generated 不需 commit。
 - pytest 執行路徑一律使用 `.venv/bin/pytest`。
 - **任何 commit / push 動作需先經使用者確認**，不可自行執行。
+- **禁止在 `main` 分支上直接開發 / commit / push**。`main` 只接受 PR merge，所有修改必須開 feature branch（例如 `feat/xxx`、`fix/xxx`、`refactor/xxx`），push 後開 PR 審核合併。
 - Git commit 禁止包含 `Co-Authored-By: Claude` 行。
 
 # Pre-commit workflow
+
+## Step -1 — 分支檢查（最先做，在 Step 0 之前）
+
+**硬規**：不得在 `main` 上 commit / push。流程：
+
+1. `git branch --show-current` 確認目前分支。
+2. 若目前在 `main`：
+   - 若尚未 commit（只有 working tree 變動）：請使用者/自動 `git switch -c <feature-branch>` 建立新分支再走 Step 0+。分支命名：`feat/xxx`、`fix/xxx`、`refactor/xxx`、`chore/xxx`。
+   - 若已誤 commit 在 main：停止 push，提議 rescue 流程：
+     ```
+     git switch -c <feature-branch>       # 把 commits 帶到新分支
+     git switch main
+     git reset --hard origin/main         # main 回到乾淨狀態（destructive，需使用者確認）
+     git switch <feature-branch>
+     ```
+     `git reset --hard` 為破壞性操作，**必須先取得使用者確認**再執行。
+3. 確認在非 main 分支後，才進入 Step 0。
 
 ## Step 0 — Credential / Secret scan（最高優先，必做）
 
@@ -242,6 +260,7 @@ review diff 時注意以下紅旗：
 10. commit message 含 `Co-Authored-By: Claude` 行。
 11. 腳本類變更（見 Step 2.1）卻無 CDP 本地實跑紀錄 — 違反硬性規則。
 12. diff 含腳本 API / fixture / marker / 站點結構變動，但 `CLAUDE.md` / `docs/` / `.env.example` 等對應文件未同步更新。
+13. 目前分支是 `main` — 禁止在 main 上 commit / push（見 Step -1）。
 
 # Commit message rules
 1. 使用動詞開頭，說明意圖，而不是只列檔名。
