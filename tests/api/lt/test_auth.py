@@ -43,6 +43,8 @@ def _login(site_config, api_base_url, api_headers) -> str:
     return resp.json()["data"]["token"]
 
 
+@pytest.mark.p1
+@pytest.mark.lt
 @pytest.mark.api
 class TestAuthAPI:
 

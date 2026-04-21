@@ -12,6 +12,8 @@ import requests
 BALANCE_PATH = "/api/MemberWallet/getBalance"
 
 
+@pytest.mark.p1
+@pytest.mark.lt
 @pytest.mark.api
 @pytest.mark.wallet
 class TestWalletAPI:

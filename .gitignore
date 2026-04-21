@@ -17,6 +17,9 @@ reports/*.xml
 # Screenshots (test run artifacts)
 screenshots/
 
+# Layout fingerprint diff output (written on comparison failure; transient)
+**/__fingerprints__/*.actual.json
+
 # VS Code (machine-specific settings)
 .vscode/
 

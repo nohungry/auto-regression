@@ -40,7 +40,7 @@ def _switch_language(page: Page, url: str, lang_name: str):
     dismiss_server_error_if_present(page)
 
 
-@pytest.mark.p1
+@pytest.mark.p2
 @pytest.mark.rc
 @pytest.mark.i18n
 @pytest.mark.language

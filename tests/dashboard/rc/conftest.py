@@ -31,7 +31,7 @@ def dashboard_page(browser, site_config):
     context = browser.new_context(no_viewport=True)
     page = context.new_page()
 
-    # 視窗最大化
+    # 視窗最大化（CDP 指令，WSL 連 Windows Chrome 時才會成功；失敗不影響測試）
     try:
         cdp = context.new_cdp_session(page)
         window_id = cdp.send("Browser.getWindowForTarget")["windowId"]
