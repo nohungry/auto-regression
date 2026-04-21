@@ -1,8 +1,11 @@
 """
-lt 站點 P0 Smoke Test
-每次 Release 必跑，驗證核心功能正常
+lt 站點 P0 Smoke Test（WAP 版，2026-04-21 rewrite）
 
-對應 Node.js 版：
+每次 Release 必跑，驗證核心功能正常。WAP 設計要點：
+- 無 hamburger / drawer — 會員入口為底部 tabbar「個人」→ /member-center
+- Navbar 直接顯示 username pill + 餘額，不需開 drawer
+- 首頁分類 `.cat-btn`（遊戲大廳 / 我的最愛 / 台灣真人 / 國際真人 / 更多）切換同頁內容，不改 URL
+- 錯誤 dialog：`.dialog-wrapper` + `button.confirm-btn`（警告 + 錯誤文案 + 確定）
 
 執行方式：
     .venv/bin/pytest tests/lt/test_p0_smoke.py -v
@@ -47,11 +50,12 @@ class TestLogin:
         login.login_btn.scroll_into_view_if_needed()
         login.login_btn.click()
 
-        # 錯誤彈窗以 shadow-dialog 樣式呈現，locale-agnostic
-        error_dialog = page.locator('[class*="shadow-dialog"]')
-        error_dialog.wait_for(state="attached", timeout=5000)
+        # WAP 錯誤 dialog：.dialog-wrapper 含警告文案 + 確定按鈕
+        error_dialog = page.locator('.dialog-wrapper').first
+        error_dialog.wait_for(state="visible", timeout=8000)
         sh = get_screenshotter(page)
         if sh: sh.capture(error_dialog, "verify_錯誤提示彈窗")
+        expect(error_dialog).to_contain_text("警告")
         expect(login.username_input).to_be_visible(timeout=5000)
 
     def test_login_wrong_username(self, page: Page, site_config):
@@ -65,11 +69,11 @@ class TestLogin:
         login.login_btn.scroll_into_view_if_needed()
         login.login_btn.click()
 
-        # 錯誤彈窗以 shadow-dialog 樣式呈現，locale-agnostic
-        error_dialog = page.locator('[class*="shadow-dialog"]')
-        error_dialog.wait_for(state="attached", timeout=5000)
+        error_dialog = page.locator('.dialog-wrapper').first
+        error_dialog.wait_for(state="visible", timeout=8000)
         sh = get_screenshotter(page)
         if sh: sh.capture(error_dialog, "verify_錯誤提示彈窗")
+        expect(error_dialog).to_contain_text("警告")
         expect(login.username_input).to_be_visible(timeout=5000)
 
     def test_login_empty_fields(self, page: Page, site_config):
@@ -92,17 +96,13 @@ class TestLogin:
         login.goto_and_login(site_config.username, site_config.password)
 
         home = HomePage(page)
-        expect(home.hamburger).to_be_visible(timeout=10000)
+        home.verify_logged_in()
         home.logout()
 
         # 驗證 LaiTsai cookie 已消失
         cookies = page.context.cookies()
         cookie_names = [c["name"] for c in cookies]
-        assert "LaiTsai" not in cookie_names, \
-            "登出後 LaiTsai cookie 仍存在"
-
-        # 驗證登入按鈕重新出現
-        expect(page.get_by_role("button", name="登入")).to_be_visible()
+        assert "LaiTsai" not in cookie_names, "登出後 LaiTsai cookie 仍存在"
 
 
 # ─────────────────────────────────────────────────────────────
@@ -126,26 +126,24 @@ class TestHomePage:
         if sh: sh.full_page("verify_首頁正常開啟")
 
     def test_navigation_visible(self, page: Page, site_config):
-        """TC-007：首頁主要分類顯示（熱門/真人/電子/捕魚）"""
+        """TC-007：首頁主要分類 `.cat-btn` 顯示（遊戲大廳/我的最愛/台灣真人/國際真人/更多）"""
         login = LoginPage(page, site_config.url)
         login.goto()
         sh = get_screenshotter(page)
-        for label in ["熱門", "真人", "電子", "捕魚"]:
-            el = page.get_by_text(label, exact=True).first
+        for label in ["遊戲大廳", "我的最愛", "台灣真人", "國際真人", "更多"]:
+            el = page.locator('.cat-btn', has_text=label).first
             expect(el).to_be_visible()
             if sh: sh.capture(el, f"verify_分類_{label}")
 
     def test_login_page_elements_exist(self, page: Page, site_config):
         """TC-008：登入頁元素存在（帳號/密碼/送出按鈕）"""
         set_locale(page, site_config.url)
-        # lt 站 React 表單需等 networkidle，過早操作會導致 SPA 不跳轉
         page.goto(site_config.url.rstrip("/") + "/login", wait_until="networkidle")
         sh = get_screenshotter(page)
 
-        # locale-agnostic：CSS selector 不依賴 placeholder 文案
         username_input = page.locator("input.login-input").nth(0)
         password_input = page.locator("input.login-input").nth(1)
-        login_btn      = page.locator("button").first
+        login_btn      = page.locator("button.btn-login")
 
         expect(username_input).to_be_visible()
         expect(password_input).to_be_visible()
@@ -155,73 +153,54 @@ class TestHomePage:
         if sh: sh.capture(login_btn,      "verify_登入按鈕")
 
     def test_login_cta_navigates_to_login_page(self, page: Page, site_config):
-        """TC-009：首頁登入 CTA 可進入登入頁（登入表單出現）"""
+        """TC-009：首頁 tap「個人」tab 可進入登入頁（未登入狀態）"""
         login = LoginPage(page, site_config.url)
         login.goto()
         sh = get_screenshotter(page)
 
-        # 複用 POM 的 login_trigger_btn，避免在 test 層重複定義相同 locator
-        if sh: sh.capture(login.login_trigger_btn, "click_登入CTA")
-        # SPA pushState 不觸發 load event，改用 open_login_form 等輸入框出現
         login.open_login_form()
 
-        # locale-agnostic：以 CSS selector 驗證帳號輸入框出現
+        expect(page).to_have_url(re.compile(r"/login"), timeout=8000)
         expect(page.locator("input.login-input").nth(0)).to_be_visible()
         if sh: sh.full_page("verify_進入登入頁")
 
-
     def test_balance_visible(self, page: Page, site_config):
-        """TC-010：登入後開啟漢堡選單，從 drawer 驗證帳號與餘額顯示"""
+        """TC-010：登入後 navbar 直接顯示帳號 pill 與餘額（無需開 drawer）"""
         login = LoginPage(page, site_config.url)
         login.goto_and_login(site_config.username, site_config.password)
 
         home = HomePage(page)
         sh = get_screenshotter(page)
 
-        # 漢堡選單出現（代表已登入）
-        expect(home.hamburger).to_be_visible(timeout=10000)
-        if sh: sh.capture(home.hamburger, "verify_漢堡選單出現")
+        # navbar 帳號 pill
+        expect(home.navbar_login_pill).to_have_text(site_config.username, timeout=10000)
+        if sh: sh.capture(home.navbar_login_pill, f"verify_navbar_帳號顯示_{site_config.username}")
 
-        # 點擊漢堡選單開啟 drawer
-        home.open_member_drawer()
+        # navbar 餘額（非空）
+        expect(home.navbar_balance).to_be_visible(timeout=5000)
+        balance_text = (home.navbar_balance.text_content() or "").strip()
+        assert balance_text != "", "navbar 餘額欄位不應為空"
+        if sh: sh.capture(home.navbar_balance, "verify_navbar_餘額顯示")
 
-        # 從 drawer 驗證帳號顯示
-        username_el = page.locator('p[class*="text-xl"]', has_text=site_config.username).first
-        expect(username_el).to_be_visible(timeout=5000)
-        if sh: sh.capture(username_el, f"verify_drawer帳號顯示_{site_config.username}")
-
-        # 從 drawer 驗證餘額顯示（非空白）
-        balance = page.locator("p.font-bold.text-amount")
-        expect(balance).to_be_visible(timeout=5000)
-        balance_text = balance.text_content() or ""
-        assert balance_text.strip() != "", "drawer 餘額欄位不應為空"
-        if sh: sh.capture(balance, "verify_drawer餘額顯示")
-
+    @pytest.mark.skip(reason="WAP 版首頁已無公告跑馬燈（原 img[alt='Annt'] 不存在）；如日後 WAP 新增公告區需重寫")
     def test_announcement_marquee(self, page: Page, site_config):
-        """TC-011：首頁公告跑馬燈有內容顯示"""
-        login = LoginPage(page, site_config.url)
-        login.goto_and_login(site_config.username, site_config.password)
-
-        sh = get_screenshotter(page)
-        announcement = page.locator('img[alt="Annt"]')
-        expect(announcement).to_be_visible(timeout=5000)
-        # 公告文字內容用 img[alt="Annt"] 的父容器確認有文字，locale-agnostic
-        marquee_container = announcement.locator('..').locator('..')
-        expect(marquee_container).not_to_be_empty()
-        if sh: sh.capture(announcement, "verify_公告跑馬燈")
+        """TC-011：首頁公告跑馬燈有內容顯示（WAP 不適用）"""
 
     def test_hot_games_section(self, page: Page, site_config):
-        """TC-012：首頁顯示「熱門」區塊且有遊戲卡片"""
+        """TC-012：首頁顯示遊戲區塊標題與遊戲卡片"""
         login = LoginPage(page, site_config.url)
         login.goto_and_login(site_config.username, site_config.password)
 
         sh = get_screenshotter(page)
-        hot_label = page.get_by_text("熱門", exact=True).first
-        expect(hot_label).to_be_visible(timeout=5000)
-        if sh: sh.capture(hot_label, "verify_熱門區塊標題")
-        game_cards = page.locator('img[alt="Hot"]')
-        expect(game_cards.first).to_be_visible()
-        if sh: sh.full_page("verify_熱門遊戲區塊")
+        # WAP section 標題（可見至少一個）
+        section_title = page.locator('.section-title').first
+        expect(section_title).to_be_visible(timeout=5000)
+        if sh: sh.capture(section_title, "verify_遊戲區塊標題")
+
+        # 遊戲卡片（至少一張可見）
+        game_card = page.locator('.game-slot').first
+        expect(game_card).to_be_visible()
+        if sh: sh.full_page("verify_遊戲卡片區塊")
 
     def test_casino_halls_visible(self, page: Page, site_config):
         """TC-013：首頁顯示所有真人廳館（T9真人、RC真人、DG真人、MT真人、歐博）"""
@@ -229,50 +208,62 @@ class TestHomePage:
         login.goto_and_login(site_config.username, site_config.password)
 
         sh = get_screenshotter(page)
+        # WAP 廳館以 img alt 呈現，locale-agnostic
         for hall in ["T9真人", "RC真人", "DG真人", "MT真人", "歐博"]:
-            el = page.get_by_text(hall, exact=True).first
+            el = page.locator(f'img[alt="{hall}"]').first
+            el.scroll_into_view_if_needed()
             expect(el).to_be_visible()
             if sh: sh.capture(el, f"verify_廳館_{hall}")
 
-    def test_member_drawer_opens(self, page: Page, site_config):
-        """TC-014：會員 drawer 可正常開啟並顯示帳號名稱"""
+    def test_member_center_opens(self, page: Page, site_config):
+        """TC-014：tap 底部「個人」tab 進入 /member-center 並顯示帳號資訊"""
         login = LoginPage(page, site_config.url)
         login.goto_and_login(site_config.username, site_config.password)
 
         home = HomePage(page)
         sh = get_screenshotter(page)
-        expect(home.hamburger).to_be_visible(timeout=10000)
-        if sh: sh.capture(home.hamburger, "verify_漢堡選單出現")
-        home.open_member_drawer()
-        # drawer 內帳號 p 有 text-xl class，navbar 帳號 p 沒有，以此區分 drawer 與 navbar
-        username_el = page.locator('p[class*="text-xl"]', has_text=site_config.username).first
-        expect(username_el).to_be_visible(timeout=5000)
-        if sh: sh.capture(username_el, f"verify_drawer_帳號顯示_{site_config.username}")
+
+        home.open_member_center()
+        expect(page).to_have_url(re.compile(r"/member-center"), timeout=8000)
+        if sh: sh.full_page("verify_member_center_開啟")
+
+        # 登出按鈕可見代表 member-center 已載入
+        expect(home.logout_btn).to_be_visible(timeout=5000)
+        if sh: sh.capture(home.logout_btn, "verify_登出按鈕可見")
+
+        # 頁面有帳號文字
+        username_hit = page.get_by_text(site_config.username, exact=False).first
+        expect(username_hit).to_be_visible(timeout=5000)
+        if sh: sh.capture(username_hit, f"verify_帳號顯示_{site_config.username}")
 
 
 # ─────────────────────────────────────────────────────────────
-# 導覽列分類頁跳轉
+# 導覽列分類切換（WAP 同頁 tab 切換，不改 URL）
 # ─────────────────────────────────────────────────────────────
 
 @pytest.mark.p0
 @pytest.mark.lt
 class TestNavigation:
-    """TC-015：分類頁導向"""
+    """TC-015：`.cat-btn` tap 可切換 `.cat-btn--selected`（需登入；我的最愛等分頁未登入無法切換）"""
 
-    @pytest.mark.parametrize("nav_item,expected_path", [
-        ("熱門", "/Categories/hot"),
-        ("真人", "/Categories/casino"),
-        ("電子", "/Categories/slots"),
-        ("捕魚", "/Categories/fishing"),
+    @pytest.mark.parametrize("nav_item", [
+        "我的最愛",
+        "台灣真人",
+        "國際真人",
+        "更多",
     ])
-    def test_nav_to_category(self, page: Page, site_config, nav_item, expected_path):
-        """TC-015：首頁分類可導向對應頁面"""
+    def test_nav_cat_btn_switches_selected(self, page: Page, site_config, nav_item):
+        """TC-015：tap `.cat-btn` 後該項目有 `.cat-btn--selected` class。
+        用 dispatch_event("click") 規避「24小時客服」浮動按鈕對 pointer events 的攔截。
+        """
         login = LoginPage(page, site_config.url)
-        login.goto()
+        login.goto_and_login(site_config.username, site_config.password)
         sh = get_screenshotter(page)
-        nav = page.get_by_text(nav_item, exact=True).first
+
+        nav = page.locator('.cat-btn', has_text=nav_item).first
         nav.scroll_into_view_if_needed()
         if sh: sh.capture(nav, f"click_分類_{nav_item}")
-        nav.click()
-        expect(page).to_have_url(re.compile(re.escape(expected_path)), timeout=8000)
-        if sh: sh.full_page(f"verify_跳轉至_{nav_item}頁")
+        nav.dispatch_event("click")
+
+        expect(nav).to_have_class(re.compile(r"cat-btn--selected"), timeout=5000)
+        if sh: sh.capture(nav, f"verify_分類已選中_{nav_item}")

@@ -1,25 +1,25 @@
 """
-首頁 Page Object — lt 站點
-Selector 來源：probe_lt_selectors.py 實機驗證（見 .env SITE_LT_URL）
+首頁 Page Object — lt 站點（WAP 版，2026-04-21 rewrite）
 
-與 rc 站主要差異：
-- 帳號顯示：[class*="font-medium"] has_text=username（非 text=username，後者不可見）
-- 無 img[alt="avatar"]；改用 .hamburger 開啟會員 drawer
-- 登出：.hamburger → drawer 內 button:has-text("登出")
-- .hamburger 必須用 dispatch_event("click")：drawer overlay（fixed right-0）常駐 DOM，
-  即使 drawer 關閉也持續攔截 pointer events，導致一般 click() 永遠 timeout
-- drawer 關閉：無法用 Escape 或點擊外側可靠關閉（CSS transform 滑動，非 display:none），
-  verify_username_in_drawer 於開啟 drawer 驗證 username 後改用 page.reload() 重置狀態
-- verify_logged_in（輕量、無副作用）只驗 hamburger 可見；verify_username_in_drawer 才會開 drawer；
-  verify_login_success 為兩者組合（僅 E2E 登入 TC 使用）
-- 無 .coin-wrap-bg（lt 站餘額位置不同）
-- 會員功能以 drawer 為入口，再展開 .dialog-container / .close-wrap 對話框
-- 無 .sidebar-item.* CSS 隱藏側邊欄
-- 無伺服器錯誤彈窗（toast-confirm-btn）
+WAP 改版後沿用的設計：
+- 無 hamburger / 桌機 drawer — 會員入口改為底部 tabbar「個人」→ `/member-center` 頁面
+- Navbar：`.bg-navbar` 65px sticky，內含 logo、餘額（`p.text-amount`）、登入狀態 pill
+- 登入狀態 pill：`p.text-text-light-main`
+  - 未登入：顯示 `Not Login` (英) / `尚未登入` (繁) — 隨 locale
+  - 已登入：顯示 username
+- 底部 tabbar：`.shadow-menubar` fixed bottom，5 個 `div.cursor-pointer` tab
+  (維護 / 公告 / [中間 CTA] / 排行榜 / 個人)
+- 登出：在 `/member-center` 內的 `button.bg-secondary:has-text("登出")`
 """
 
-from playwright.sync_api import Page, expect
+import re
+
+from playwright.sync_api import Page, TimeoutError as PlaywrightTimeoutError, expect
 from utils.screenshot_helper import get_screenshotter
+
+
+# 未登入狀態下登入 pill 可能出現的文字（各語系）— 用於 is_logged_in() 判斷
+_NOT_LOGGED_IN_TEXTS = {"Not Login", "尚未登入", "未登录", "未登入"}
 
 
 class HomePage:
@@ -27,163 +27,81 @@ class HomePage:
     def __init__(self, page: Page):
         self.page = page
 
-        # Selectors（實機驗證確認）
-        self.hamburger  = page.locator(".hamburger").first
-        self.logout_btn = page.get_by_role("button", name="登出")
-        self.login_btn  = page.get_by_role("button", name="登入")
-        # Locale-agnostic drawer 開啟信號（img src 不隨語系變動）
-        self.drawer_ready_indicator = page.locator('img[src*="betting-details"]')
-        # 桌機版 navbar 餘額（mobile 版同 class 但位於 .lg:hidden 容器，w=0）
-        # 用 `[class*="lg:flex"]` 屬性包含選到桌機版容器，可避開 drawer 內的 text-amount
-        self.navbar_balance = page.locator('div[class*="lg:flex"] p.text-amount').first
+        # Navbar selectors
+        self.navbar          = page.locator('.bg-navbar').first
+        self.navbar_balance  = page.locator('.bg-navbar p.text-amount').first
+        # 登入狀態指示 pill（未登入 "Not Login" / 已登入 username）
+        self.navbar_login_pill = page.locator('.bg-navbar p.text-text-light-main').first
+
+        # Bottom tabbar：以含 `w-[84px]` 的 cursor-pointer div 為準，避開中間的特殊 CTA
+        self.bottom_tab_member = page.locator('.shadow-menubar .cursor-pointer', has_text="個人").first
+
+        # Member center page (/member-center) — 登出按鈕
+        self.logout_btn = page.locator('button.bg-secondary', has_text="登出").first
+        # Member center 關閉按鈕（右上 X，回首頁）
+        self.member_close_btn = page.locator('.absolute.right-2\\.5.top-2\\.5.cursor-pointer').first
+
+        # 未登入時首頁顯示的登入 CTA（從 probe 實測，未登入首頁可能會有此按鈕；保留相容）
+        self.login_btn = page.locator('button.btn-login').first
 
     def is_logged_in(self) -> bool:
-        """判斷目前是否已登入（login_btn 不可見 = 已登入）"""
+        """navbar login pill 文字不屬於「未登入」清單即為已登入。~3s"""
         try:
-            return not self.login_btn.is_visible(timeout=3000)
-        except Exception:
+            self.navbar_login_pill.wait_for(state="visible", timeout=3000)
+        except PlaywrightTimeoutError:
             return False
+        text = (self.navbar_login_pill.inner_text() or "").strip()
+        return text not in _NOT_LOGGED_IN_TEXTS and text != ""
 
     def verify_logged_in(self):
-        """輕量驗證：已登入（hamburger 出現即代表）。無副作用。~1s
-        適合 fixture 與單純要確認登入狀態的測試使用，不會開 drawer 也不 reload。
-        """
+        """輕量驗證：已登入（navbar pill 不顯示「未登入」類文字）。~3s，無副作用。"""
         sh = get_screenshotter(self.page)
-        expect(self.hamburger).to_be_visible(timeout=10000)
-        if sh: sh.capture(self.hamburger, "verify_已登入_漢堡選單")
-
-    def verify_username_in_drawer(self, username: str):
-        """重量驗證：開 drawer 驗帳號文字後以 reload 關閉 drawer。~8-12s
-        有 drawer 開關 + page reload 副作用，會清掉頁面既有狀態。
-        只在明確需要驗 username 文字（例如登入成功 E2E）時呼叫。
-        """
-        sh = get_screenshotter(self.page)
-        # 開啟 drawer 驗證帳號名稱（dispatch_event 繞過 overlay 攔截）
-        self.hamburger.dispatch_event("click")
-        self.drawer_ready_indicator.wait_for(state="visible", timeout=5000)
-        # 必須 scope 到 drawer 容器：`[class*="font-medium"]` 在 navbar 與 drawer 內都會命中，
-        # .first 會抓到 navbar 那條（w=200 的小元素），截圖紅框落點不明顯。
-        drawer = self.page.locator('.fixed.bottom-0.right-0')
-        username_el = drawer.locator('[class*="font-medium"]', has_text=username).first
-        expect(username_el).to_be_visible(timeout=5000)
-        if sh: sh.capture(username_el, f"verify_帳號顯示_{username}")
-        # 關閉 drawer：重新載入頁面（drawer 用 CSS transform，無法透過點擊可靠關閉）
-        self.page.reload()
-        self.page.wait_for_load_state("networkidle")
+        self.navbar_login_pill.wait_for(state="visible", timeout=10000)
+        text = (self.navbar_login_pill.inner_text() or "").strip()
+        assert text not in _NOT_LOGGED_IN_TEXTS and text != "", (
+            f"expected logged-in state, got pill text: {text!r}"
+        )
+        if sh: sh.capture(self.navbar_login_pill, "verify_已登入_navbar_pill")
 
     def verify_login_success(self, username: str):
-        """Backward-compat wrapper：輕量驗證 + 重量驗證。
-        新程式碼建議直接呼叫 verify_logged_in()；只有 E2E 登入成功 TC 需要完整驗 username 時才用此方法。
-        """
-        self.verify_logged_in()
-        self.verify_username_in_drawer(username)
+        """驗證登入成功：navbar pill 顯示 username。"""
+        sh = get_screenshotter(self.page)
+        expect(self.navbar_login_pill).to_have_text(username, timeout=10000)
+        if sh: sh.capture(self.navbar_login_pill, f"verify_帳號顯示_{username}")
 
     def dismiss_any_popups(self):
-        """lt 站點無伺服器錯誤彈窗，不需處理"""
+        """lt WAP 站點無伺服器錯誤彈窗。登入流程中的 UA / 成功 dialog 由 LoginPage.login() 處理。"""
         pass
 
-    def open_member_drawer(self):
-        """點擊漢堡選單，開啟會員 drawer（冪等：drawer 已開啟則跳過點擊）
-        drawer overlay 常駐 DOM（closed 狀態仍攔截 pointer events），改用 dispatch_event。
-        等待信號改用 img[src*="betting-details"]（locale-agnostic），避免綁死「登出」繁中文案。
-        hamburger 是 toggle：若 drawer 已開再次點擊會關閉，故需先判斷狀態。
-        開啟判斷：drawer 容器不含 translate-x-full class 即為開啟（is_visible 對 transform 隱藏失效）。
+    def open_member_center(self):
+        """tap 底部「個人」tab → 導向 `/member-center`。冪等：已在 member-center 則跳過。
+        用 dispatch_event("click") 規避右下角「24小時客服」浮動圖示對 pointer events 的攔截。
         """
         sh = get_screenshotter(self.page)
-        is_open = self.page.evaluate(
-            "() => { const c = document.querySelector('.fixed.bottom-0.right-0'); "
-            "return c ? !c.className.includes('translate-x-full') : false; }"
-        )
-        if is_open:
+        if "/member-center" in self.page.url:
             return
-        if sh: sh.capture(self.hamburger, "click_漢堡選單")
-        self.hamburger.dispatch_event("click")
-        self.drawer_ready_indicator.wait_for(state="visible", timeout=5000)
-
-    def click_nav_item(self, name: str):
-        """點擊主導覽列項目（真人 / 電子 / 捕魚 等）"""
-        sh = get_screenshotter(self.page)
-        nav = self.page.get_by_text(name, exact=True).first
-        nav.scroll_into_view_if_needed()
-        if sh: sh.capture(nav, f"click_導覽_{name}")
-        nav.click()
-        if sh: sh.full_page(f"loading_完成_分類_{name}")
-
-    def open_betting_history_dialog(self):
-        """開啟會員 drawer → 點選投注紀錄，展開投注紀錄面板"""
-        sh = get_screenshotter(self.page)
-        self.open_member_drawer()
-        betting_icon = self.page.locator('img[alt="投注紀錄"]')
-        if sh: sh.capture(betting_icon, "click_投注紀錄入口")
-        betting_icon.dispatch_event("click")
-        self.page.locator('.dialog-container').wait_for(state="visible", timeout=5000)
-        if sh: sh.full_page("verify_投注紀錄面板")
-
-    def open_personal_info_dialog(self):
-        """開啟會員 drawer → 點選 Edit 圖示，展開個人資料（會員帳號）面板"""
-        sh = get_screenshotter(self.page)
-        self.open_member_drawer()
-        edit_icon = self.page.locator('img[alt="Edit"]').first
-        if sh: sh.capture(edit_icon, "click_個人資料入口")
-        edit_icon.dispatch_event("click")
-        self.page.locator('.dialog-container').wait_for(state="visible", timeout=5000)
-        if sh: sh.full_page("verify_個人資料面板")
-
-    def open_inbox_dialog(self):
-        """開啟會員 drawer → 點選會員訊息，展開收件匣面板"""
-        sh = get_screenshotter(self.page)
-        self.open_member_drawer()
-        inbox_icon = self.page.locator('img[alt="會員訊息"]')
-        if sh: sh.capture(inbox_icon, "click_收件匣入口")
-        inbox_icon.dispatch_event("click")
-        self.page.locator('.dialog-container').wait_for(state="visible", timeout=5000)
-        if sh: sh.full_page("verify_收件匣面板")
-
-    def open_maintenance_time_dialog(self):
-        """開啟會員 drawer → 點選「維護時間」按鈕，展開維護時間對話框
-        此按鈕在存款功能開放時顯示「存款」，維護期間顯示「維護時間」。
-        dev 站點目前顯示為「維護時間」；以 button[class*='mb-5'] 定位
-        （位於登出按鈕上方，具唯一 mb-5 margin），locale-agnostic。
-        """
-        sh = get_screenshotter(self.page)
-        self.open_member_drawer()
-        btn = self.page.locator("button[class*='mb-5']").first
-        if sh: sh.capture(btn, "click_維護時間入口")
-        btn.dispatch_event("click")
-        self.page.locator('.dialog-mask').wait_for(state="visible", timeout=5000)
-        if sh: sh.full_page("verify_維護時間對話框")
-
-    def close_dialog(self):
-        """關閉 dialog-container（點選 close-wrap 關閉圖示）"""
-        self.page.locator('.close-wrap img').first.click()
-
-    def close_drawer_if_open(self):
-        """若 drawer 處於開啟狀態就點擊 hamburger 關閉（toggle）
-        drawer 狀態持久化在 cookie（appLaiTsai.sidebar），reload **不會**關閉——
-        唯一可靠關閉方式是再次觸發 hamburger toggle。
-        偵測：drawer 容器（.fixed.bottom-0.right-0）不含 translate-x-full 即為開啟。
-        （is_visible() 對 transform 隱藏失效——drawer 雖在 viewport 外仍為 visible。）
-        """
-        is_open = self.page.evaluate(
-            "() => { const c = document.querySelector('.fixed.bottom-0.right-0'); "
-            "return c ? !c.className.includes('translate-x-full') : false; }"
-        )
-        if is_open:
-            self.hamburger.dispatch_event("click")
-            # 等 drawer 容器再度出現 translate-x-full class（動畫可能需要時間）
-            self.page.wait_for_function(
-                "() => { const c = document.querySelector('.fixed.bottom-0.right-0'); "
-                "return c && c.className.includes('translate-x-full'); }",
-                timeout=3000,
-            )
+        self.bottom_tab_member.scroll_into_view_if_needed()
+        if sh: sh.capture(self.bottom_tab_member, "click_個人tab")
+        self.bottom_tab_member.dispatch_event("click")
+        self.page.wait_for_url(lambda url: "/member-center" in url, timeout=8000)
+        self.logout_btn.wait_for(state="visible", timeout=5000)
 
     def logout(self):
-        """開啟漢堡選單 → 點登出 → 驗證登出成功"""
+        """tap 個人 → tap 登出 → 驗證回到未登入狀態"""
         sh = get_screenshotter(self.page)
-        self.open_member_drawer()
-        # drawer 內的登出按鈕在 viewport 外，不能用 click()，改用 dispatch_event
-        self.logout_btn.wait_for(state="visible", timeout=5000)
+        self.open_member_center()
+        self.logout_btn.scroll_into_view_if_needed()
         if sh: sh.capture(self.logout_btn, "click_登出")
-        self.logout_btn.dispatch_event("click")
-        expect(self.login_btn).to_be_visible(timeout=5000)
-        if sh: sh.capture(self.login_btn, "verify_登出成功")
+        self.logout_btn.click()
+        # 登出後 SPA pushState 回首頁，navbar pill 回到「未登入」文字（locale 可能為 Not Login / 尚未登入 等）
+        not_logged_in_re = re.compile("|".join(re.escape(t) for t in _NOT_LOGGED_IN_TEXTS))
+        expect(self.navbar_login_pill).to_have_text(not_logged_in_re, timeout=10000)
+        if sh: sh.capture(self.navbar_login_pill, "verify_登出成功")
+
+    def click_nav_item(self, name: str):
+        """點擊主導覽列項目（WAP：遊戲大廳 / 我的最愛 / 台灣真人 / 國際真人 / 更多）"""
+        sh = get_screenshotter(self.page)
+        nav = self.page.locator('.cat-btn', has_text=name).first
+        nav.scroll_into_view_if_needed()
+        if sh: sh.capture(nav, f"click_分類_{name}")
+        nav.click()
