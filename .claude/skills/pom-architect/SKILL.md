@@ -39,12 +39,16 @@ pages/
 
 **HomePage 必要方法：**
 - `__init__(self, page)` — 接收 Playwright page
-- `verify_login_success(username)` — 驗證登入成功
+- `verify_logged_in()` — **輕量**驗證：已登入狀態（例如 hamburger / avatar 可見），**無副作用**。fixture 與多數測試優先用此方法。
+- `verify_login_success(username)` — **完整 E2E** 驗證：登入成功且 username 文字可見，可含站點副作用（如 LT 會開 drawer + reload）。僅 `test_login_success` 這類 E2E 登入 TC 使用。
 - `dismiss_any_popups()` — 清除進站彈窗（不適用的站點可實作為空方法）
 - `is_logged_in()` → `bool` — 判斷目前是否已登入
 - `logout()` — 完整登出流程
 
-這些方法被 `conftest.py` 的 `logged_in_page`、`class_logged_in_page`、`auto_logout_after_test` 等 fixture 直接呼叫，變更簽名會破壞所有站點的測試基礎設施。
+**HomePage 選配方法**（站點副作用重時使用）：
+- `verify_username_in_drawer(username)` — LT 站專用：開 drawer 驗 username 文字後以 reload 關閉 drawer。`verify_login_success` 在 LT 等同於 `verify_logged_in` + `verify_username_in_drawer` 的 wrapper。
+
+這些方法被 `conftest.py` 的 `logged_in_page`、`class_logged_in_page`、`auto_logout_after_test` 等 fixture 直接呼叫，變更簽名會破壞所有站點的測試基礎設施。`conftest` fixture 使用 `verify_logged_in()`（輕量）確保可跨站共用而不被站點副作用汙染。
 
 # Design goals
 1. 讓 test 保持 scenario 導向、可讀性高。

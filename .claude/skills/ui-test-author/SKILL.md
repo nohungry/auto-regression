@@ -47,7 +47,7 @@ description: 新增或修改 Python pytest-playwright 測試、Page Objects、�
 1. **.env**：新增 `SITE_<ID>_URL`、`SITE_<ID>_USERNAME`、`SITE_<ID>_PASSWORD`。
 2. **`pages/<site_id>/`**：建立站點目錄，至少包含 `__init__.py`、`login_page.py`、`home_page.py`。
    - `LoginPage` 必須實作 `goto_and_login(username, password)` 方法。
-   - `HomePage` 必須實作 `verify_login_success(username)`、`dismiss_any_popups()`、`is_logged_in()`、`logout()` 方法。
+   - `HomePage` 必須實作 `verify_logged_in()`（輕量、無副作用）、`verify_login_success(username)`（完整 E2E，可含副作用）、`dismiss_any_popups()`、`is_logged_in()`、`logout()` 方法。LT 站另有 `verify_username_in_drawer(username)`（開 drawer + reload，副作用大，只在需要驗 username 文字時用）。
 3. **`pages/factory.py`**：在 `_LOGIN_PAGE_REGISTRY` 與 `_HOME_PAGE_REGISTRY` dict 中各加一行，註冊新站的 import path。不可使用 fallback/default，未註冊的 site_id 必須拋出 `ValueError`。
 4. **`tests/<site_id>/conftest.py`**：建立站台專用 conftest，至少覆寫 `site_config` fixture（hardcode 該站 site_id）。
 5. **評估是否需覆寫 `page` fixture**：全域 `conftest.py` 的 `_new_configured_page()` 會注入 `toast-confirm-btn` MutationObserver（rc 站特有的伺服器錯誤彈窗處理）。若新站不需要此行為，必須在 `tests/<site_id>/conftest.py` 覆寫 `page` fixture，移除注入邏輯。同理評估 `class_logged_in_page` 是否也需覆寫。

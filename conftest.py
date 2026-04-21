@@ -320,8 +320,9 @@ def logged_in_page(page: Page, site_config):
     login.goto_and_login(site_config.username, site_config.password)
 
     home = HomePage(page)
-    home.verify_login_success(site_config.username)
+    # 先清彈窗（RC 公告 popup 為 server async 渲染，可能在 verify 過程中跳出遮住 avatar）
     home.dismiss_any_popups()
+    home.verify_logged_in()
 
     return page
 
@@ -344,8 +345,9 @@ def class_logged_in_page(browser, site_config):
     login.goto_and_login(site_config.username, site_config.password)
 
     home = HomePage(pg)
-    home.verify_login_success(site_config.username)
+    # 先清彈窗（RC 公告 popup 為 server async 渲染，可能在 verify 過程中跳出遮住 avatar）
     home.dismiss_any_popups()
+    home.verify_logged_in()
 
     yield pg
     context.close()

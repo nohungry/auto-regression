@@ -57,7 +57,8 @@ description: 審查 auto-regression repo 中的 pytest-playwright 測試、page 
 - [ ] test 檔是否直接 `from pages.<site_id>.xxx import` 而不走 factory？
 - [ ] 新增站點是否已在 `factory.py` 的 registry dict 中註冊？
 - [ ] 新增 page type 是否有對應的 registry 與 getter function？
-- [ ] page object 的 public API 是否維持一致？(`goto_and_login`、`verify_login_success`、`dismiss_any_popups`、`is_logged_in`、`logout`)
+- [ ] page object 的 public API 是否維持一致？(`goto_and_login`、`verify_logged_in`、`verify_login_success`、`dismiss_any_popups`、`is_logged_in`、`logout`)
+- [ ] fixture 層與「只需確認已登入狀態」的測試是否用 `verify_logged_in()`（輕量無副作用），而非 `verify_login_success()`（可能含 drawer/reload 副作用）？
 
 ## Screenshot 問題
 - [ ] 新增的 POM 方法是否有 `get_screenshotter()` 截圖呼叫？

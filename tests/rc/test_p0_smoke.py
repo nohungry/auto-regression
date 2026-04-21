@@ -85,7 +85,7 @@ class TestHomePage:
     def test_home_page_loads(self, logged_in_page: Page, site_config):
         """TC-005：登入後首頁正常載入"""
         home = HomePage(logged_in_page)
-        home.verify_login_success(site_config.username)
+        home.verify_logged_in()
 
     def test_navigation_visible(self, logged_in_page: Page):
         """TC-006：主要導覽列應顯示（真人/電子/捕魚）"""

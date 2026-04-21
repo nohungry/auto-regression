@@ -9,7 +9,9 @@ Selector 來源：probe_lt_selectors.py 實機驗證（見 .env SITE_LT_URL）
 - .hamburger 必須用 dispatch_event("click")：drawer overlay（fixed right-0）常駐 DOM，
   即使 drawer 關閉也持續攔截 pointer events，導致一般 click() 永遠 timeout
 - drawer 關閉：無法用 Escape 或點擊外側可靠關閉（CSS transform 滑動，非 display:none），
-  verify_login_success 改用 page.reload() 重置狀態
+  verify_username_in_drawer 於開啟 drawer 驗證 username 後改用 page.reload() 重置狀態
+- verify_logged_in（輕量、無副作用）只驗 hamburger 可見；verify_username_in_drawer 才會開 drawer；
+  verify_login_success 為兩者組合（僅 E2E 登入 TC 使用）
 - 無 .coin-wrap-bg（lt 站餘額位置不同）
 - 會員功能以 drawer 為入口，再展開 .dialog-container / .close-wrap 對話框
 - 無 .sidebar-item.* CSS 隱藏側邊欄
@@ -42,14 +44,20 @@ class HomePage:
         except Exception:
             return False
 
-    def verify_login_success(self, username: str):
-        """驗證登入成功：漢堡選單出現且 drawer 內顯示帳號名稱
-        lt 站帳號名稱只顯示在會員 drawer 內，非首頁 navbar。
+    def verify_logged_in(self):
+        """輕量驗證：已登入（hamburger 出現即代表）。無副作用。~1s
+        適合 fixture 與單純要確認登入狀態的測試使用，不會開 drawer 也不 reload。
         """
         sh = get_screenshotter(self.page)
-        # 等待漢堡選單出現（login_btn 消失 = 已登入）
         expect(self.hamburger).to_be_visible(timeout=10000)
-        if sh: sh.capture(self.hamburger, "verify_漢堡選單出現")
+        if sh: sh.capture(self.hamburger, "verify_已登入_漢堡選單")
+
+    def verify_username_in_drawer(self, username: str):
+        """重量驗證：開 drawer 驗帳號文字後以 reload 關閉 drawer。~8-12s
+        有 drawer 開關 + page reload 副作用，會清掉頁面既有狀態。
+        只在明確需要驗 username 文字（例如登入成功 E2E）時呼叫。
+        """
+        sh = get_screenshotter(self.page)
         # 開啟 drawer 驗證帳號名稱（dispatch_event 繞過 overlay 攔截）
         self.hamburger.dispatch_event("click")
         self.drawer_ready_indicator.wait_for(state="visible", timeout=5000)
@@ -62,6 +70,13 @@ class HomePage:
         # 關閉 drawer：重新載入頁面（drawer 用 CSS transform，無法透過點擊可靠關閉）
         self.page.reload()
         self.page.wait_for_load_state("networkidle")
+
+    def verify_login_success(self, username: str):
+        """Backward-compat wrapper：輕量驗證 + 重量驗證。
+        新程式碼建議直接呼叫 verify_logged_in()；只有 E2E 登入成功 TC 需要完整驗 username 時才用此方法。
+        """
+        self.verify_logged_in()
+        self.verify_username_in_drawer(username)
 
     def dismiss_any_popups(self):
         """lt 站點無伺服器錯誤彈窗，不需處理"""
