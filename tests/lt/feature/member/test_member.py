@@ -40,8 +40,8 @@ class TestMemberCenter:
         balance = page.locator("p.font-bold.text-amount").first
         maint_btn = page.locator('button.bg-secondary.mb-5').first
         logout_btn = page.locator('button.bg-secondary', has_text="登出").first
-        betting_heading = page.locator("div,span,p", has_text="投注紀錄").first
-        msg_heading = page.locator("div,span,p", has_text="會員訊息").first
+        betting_heading = page.locator("p.font-bold", has_text="投注紀錄").first
+        msg_heading = page.locator("p.font-bold", has_text="會員訊息").first
 
         balance.scroll_into_view_if_needed()
         expect(balance).to_be_visible()
