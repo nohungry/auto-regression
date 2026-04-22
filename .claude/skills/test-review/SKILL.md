@@ -64,6 +64,9 @@ description: 審查 auto-regression repo 中的 pytest-playwright 測試、page 
 - [ ] 新增的 POM 方法是否有 `get_screenshotter()` 截圖呼叫？
 - [ ] label 是否遵守命名規則（`click_`/`fill_`/`verify_`/`loading_`）？
 - [ ] 是否使用 `if sh:` guard 避免 helper 不存在時報錯？
+- [ ] **動態值欄位**（balance / username / 訂單號 / 時間戳等會隨時間或帳號變動的值）若只驗「非空」或「格式正確」而非「等於特定值」：
+  - test docstring 是否寫明斷言策略（例如「只驗非空，不寫死數值」）？
+  - screenshot label 是否帶「**非空**」「**格式**」等關鍵字（如 `verify_XXX非空_{value}`）？若 label 只帶值沒帶策略，reviewer 看 README.md 會誤以為是寫死比對。
 
 ## Visual regression 問題
 - [ ] 是否誤對動態內容頁做 pixel-level snapshot assertion？LT 應只存 reference screenshot 供人工確認。
