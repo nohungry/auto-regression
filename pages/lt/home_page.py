@@ -38,8 +38,6 @@ class HomePage:
 
         # Member center page (/member-center) — 登出按鈕
         self.logout_btn = page.locator('button.bg-secondary', has_text="登出").first
-        # Member center 關閉按鈕（右上 X，回首頁）
-        self.member_close_btn = page.locator('.absolute.right-2\\.5.top-2\\.5.cursor-pointer').first
 
         # 未登入時首頁顯示的登入 CTA（從 probe 實測，未登入首頁可能會有此按鈕；保留相容）
         self.login_btn = page.locator('button.btn-login').first
@@ -76,6 +74,11 @@ class HomePage:
     def open_member_center(self):
         """tap 底部「個人」tab → 導向 `/member-center`。冪等：已在 member-center 則跳過。
         用 dispatch_event("click") 規避右下角「24小時客服」浮動圖示對 pointer events 的攔截。
+
+        Readiness signal 使用 locale-agnostic selector：
+        - URL 變為 /member-center
+        - 頁面內至少有兩顆 `button.bg-secondary`（維護時間 / 登出）
+        不用 has_text="登出" 等待，避免 en/th/vn 下按鈕文案不同造成 timeout。
         """
         sh = get_screenshotter(self.page)
         if "/member-center" in self.page.url:
@@ -84,7 +87,7 @@ class HomePage:
         if sh: sh.capture(self.bottom_tab_member, "click_個人tab")
         self.bottom_tab_member.dispatch_event("click")
         self.page.wait_for_url(lambda url: "/member-center" in url, timeout=8000)
-        self.logout_btn.wait_for(state="visible", timeout=5000)
+        self.page.locator('button.bg-secondary').nth(1).wait_for(state="visible", timeout=5000)
 
     def logout(self):
         """tap 個人 → tap 登出 → 驗證回到未登入狀態"""

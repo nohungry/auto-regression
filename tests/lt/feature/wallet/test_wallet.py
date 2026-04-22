@@ -1,6 +1,17 @@
 """
-錢包功能測試（餘額 / 存款入口）
-WIN-WALLET-001~003
+餘額（信用額度）顯示測試 — LT WAP 版（2026-04-22 rewrite）
+WIN-WALLET-001~002
+
+LT 為**信用板**站點（credit-based），前台**沒有存款流程**：
+- 玩家使用代理商給予的信用額度直接下注，週期結算。
+- navbar / /member-center 顯示的是**信用額度**，不是「可提領錢包餘額」。
+- 舊 test_wallet.py 中的 drawer 餘額 / 存款入口測試已無對應產品行為（drawer 消失、存款流程不存在）。
+
+本檔只守門「餘額/信用額度在兩個位置顯示非空文字」：
+- WIN-WALLET-001：navbar 的 `.bg-navbar p.text-amount` 顯示非空數字
+- WIN-WALLET-002：/member-center 的 `p.font-bold.text-amount` 顯示非空數字
+
+檔名保留 `test_wallet.py` 以減少 diff 噪音；內容改以「balance visibility」切入。
 """
 
 import pytest
@@ -8,57 +19,35 @@ from playwright.sync_api import Page, expect
 from pages.lt.home_page import HomePage
 from utils.screenshot_helper import get_screenshotter
 
-pytestmark = pytest.mark.skip(
-    reason="LT 2026-04-19 改版破壞 .hamburger / drawer / navbar 結構，待整輪 rebuild。"
-           "見 memory: project_lt_site_redesign.md"
-)
-
 
 @pytest.mark.p1
 @pytest.mark.lt
 @pytest.mark.wallet
-class TestWallet:
-    """WIN-WALLET-001~003：餘額顯示與存款入口驗證"""
+class TestBalanceVisibility:
+    """WIN-WALLET-001~002：信用額度（navbar / member-center）顯示驗證"""
 
     def test_balance_visible_in_navbar(self, class_logged_in_page: Page, go_home):
-        """WIN-WALLET-001：登入後導覽列（桌機版）顯示餘額數字（非空字串）
-
-        navbar 餘額位於右上角，x 座標與 drawer 滑入區重疊；若 drawer 開啟截圖會被遮擋，
-        故先確保 drawer 關閉。Selector 以 `div[class*="lg:flex"] p.text-amount` 鎖定桌機版容器，
-        避免與 drawer 內 `p.font-bold.text-amount` 混淆。
-        """
+        """WIN-WALLET-001：首頁 navbar 顯示非空信用額度"""
         page = class_logged_in_page
         home = HomePage(page)
         sh = get_screenshotter(page)
-        home.close_drawer_if_open()
+
         expect(home.navbar_balance).to_be_in_viewport()
-        balance_text = (home.navbar_balance.text_content() or "").strip()
-        assert balance_text != "", "導覽列餘額欄位不應為空"
-        if sh: sh.capture(home.navbar_balance, "verify_導覽列餘額")
+        balance_text = (home.navbar_balance.inner_text() or "").strip()
+        assert balance_text != "", "navbar 信用額度欄位不應為空"
+        if sh: sh.capture(home.navbar_balance, f"verify_navbar信用額度_{balance_text}")
 
-    def test_balance_visible_in_drawer(self, class_logged_in_page: Page, go_home):
-        """WIN-WALLET-002：開啟會員 drawer 後 drawer 餘額進入 viewport 且有非空文字
-
-        drawer 容器（.fixed.bottom-0.right-0）用 CSS translate-x-full 滑出視窗，
-        DOM 永遠存在 → `to_be_visible()` 永遠為真，無法偵測 drawer 有無真的滑入。
-        改用 `to_be_in_viewport()` 確認 drawer 滑入後餘額才真的可見。
-        """
+    def test_balance_visible_in_member_center(self, class_logged_in_page: Page, go_home):
+        """WIN-WALLET-002：/member-center 顯示非空信用額度"""
         page = class_logged_in_page
         home = HomePage(page)
         sh = get_screenshotter(page)
-        home.open_member_drawer()
-        balance = page.locator("p.font-bold.text-amount")
-        expect(balance).to_be_in_viewport()
-        balance_text = (balance.text_content() or "").strip()
-        assert balance_text != "", "drawer 餘額欄位不應為空"
-        if sh: sh.capture(balance, "verify_drawer餘額")
 
-    def test_maintenance_time_entry_opens_dialog(self, class_logged_in_page: Page, go_home):
-        """WIN-WALLET-003：維護時間入口可點擊，點擊後開啟對話框
-        dev 站點目前存款功能關閉，該按鈕顯示為「維護時間」；存款功能開放時按鈕文案會改為「存款」。
-        """
-        page = class_logged_in_page
-        home = HomePage(page)
-        home.open_maintenance_time_dialog()
-        expect(page.locator(".dialog-mask")).to_be_visible()
-        home.close_dialog()
+        home.open_member_center()
+
+        balance = page.locator("p.font-bold.text-amount").first
+        balance.scroll_into_view_if_needed()
+        expect(balance).to_be_visible()
+        balance_text = (balance.inner_text() or "").strip()
+        assert balance_text != "", "member-center 信用額度欄位不應為空"
+        if sh: sh.capture(balance, f"verify_member_center信用額度_{balance_text}")
