@@ -30,7 +30,12 @@ class TestMemberCenter:
     """WIN-MEMBER-001~003：/member-center 頁面核心驗證"""
 
     def test_member_center_core_structure(self, class_logged_in_page: Page, go_home):
-        """WIN-MEMBER-001：/member-center 核心元素（balance / 維護時間 / 登出 / 投注紀錄 / 會員訊息）皆可見"""
+        """WIN-MEMBER-001：/member-center 核心元素（balance / 維護時間 / 登出 / 投注紀錄 / 會員訊息）皆可見
+
+        注意：`balance` 為信用額度，會隨投注結算變動，本測試**只驗非空**（`!= ""`），
+        不寫死特定數值；截圖 label 帶當前值（`verify_member_center信用額度非空_XXX`）僅供人工 review，
+        不構成斷言比對。
+        """
         page = class_logged_in_page
         home = HomePage(page)
         sh = get_screenshotter(page)
@@ -47,7 +52,7 @@ class TestMemberCenter:
         expect(balance).to_be_visible()
         balance_text = (balance.inner_text() or "").strip()
         assert balance_text != "", "member-center 餘額欄位不應為空"
-        if sh: sh.capture(balance, f"verify_member_center餘額_{balance_text}")
+        if sh: sh.capture(balance, f"verify_member_center信用額度非空_{balance_text}")
 
         maint_btn.scroll_into_view_if_needed()
         expect(maint_btn).to_be_visible()

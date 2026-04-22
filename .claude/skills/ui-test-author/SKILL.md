@@ -110,6 +110,9 @@ description: 新增或修改 Python pytest-playwright 測試、Page Objects、�
    - 純數值驗證（overflow / broken images / text clipping）：assertion 通過後 `sh.full_page("verify_XXX_數值")`，label 帶上關鍵數值方便 review。
    - 元素座標/對齊驗證（form alignment / viewport bounds）：對每個被量測的元素呼叫 `sh.capture()`（需 scroll_into_view），最後再補一張 `sh.full_page()` 呈現整體版面。
    - 互動型驗證：每個 click / fill 前後都各一張（遵循 rule 6 的 label 命名）。
+10. **動態值欄位（balance / username / 訂單號 / 時間戳等會隨時間或帳號變動的值）若只驗「非空」或「格式正確」而非「等於某值」，必須在下列兩處明確說明斷言策略，避免 reviewer 誤以為是寫死比對**：
+    - **test docstring**：明確寫出「只驗非空 / 不寫死特定數值 / 截圖 label 帶值僅供 review」的斷言策略。
+    - **screenshot label**：label 帶「**非空**」「**格式**」等關鍵字（例如 `verify_navbar信用額度非空_{balance_text}`），而不是 `verify_navbar餘額_{balance_text}`。原因：README.md 由 label 組出步驟文字，若 label 只帶值沒帶策略，review 時會誤認為值本身是斷言比對的 expected，檢查起來會懷疑測試是否太脆弱。此規則同樣適用於任何其他動態欄位（帳號切換、多站變動的 user profile、日期時間等）。
 
 # Visual regression rules
 1. `visual_regression` 只用於適合 baseline 比對的穩定畫面。

@@ -27,7 +27,11 @@ class TestBalanceVisibility:
     """WIN-WALLET-001~002：信用額度（navbar / member-center）顯示驗證"""
 
     def test_balance_visible_in_navbar(self, class_logged_in_page: Page, go_home):
-        """WIN-WALLET-001：首頁 navbar 顯示非空信用額度"""
+        """WIN-WALLET-001：首頁 navbar 顯示非空信用額度
+
+        斷言策略：信用額度會隨投注結算變動，**只驗非空**（`!= ""`），不寫死特定數值；
+        截圖 label 帶當前值（`verify_navbar信用額度非空_XXX`）僅供人工 review，不構成斷言比對。
+        """
         page = class_logged_in_page
         home = HomePage(page)
         sh = get_screenshotter(page)
@@ -35,10 +39,13 @@ class TestBalanceVisibility:
         expect(home.navbar_balance).to_be_in_viewport()
         balance_text = (home.navbar_balance.inner_text() or "").strip()
         assert balance_text != "", "navbar 信用額度欄位不應為空"
-        if sh: sh.capture(home.navbar_balance, f"verify_navbar信用額度_{balance_text}")
+        if sh: sh.capture(home.navbar_balance, f"verify_navbar信用額度非空_{balance_text}")
 
     def test_balance_visible_in_member_center(self, class_logged_in_page: Page, go_home):
-        """WIN-WALLET-002：/member-center 顯示非空信用額度"""
+        """WIN-WALLET-002：/member-center 顯示非空信用額度
+
+        斷言策略：同 WIN-WALLET-001，只驗非空，不寫死值；label 帶值僅供 review。
+        """
         page = class_logged_in_page
         home = HomePage(page)
         sh = get_screenshotter(page)
@@ -50,4 +57,4 @@ class TestBalanceVisibility:
         expect(balance).to_be_visible()
         balance_text = (balance.inner_text() or "").strip()
         assert balance_text != "", "member-center 信用額度欄位不應為空"
-        if sh: sh.capture(balance, f"verify_member_center信用額度_{balance_text}")
+        if sh: sh.capture(balance, f"verify_member_center信用額度非空_{balance_text}")
