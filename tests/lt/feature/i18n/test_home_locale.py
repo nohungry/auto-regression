@@ -1,6 +1,14 @@
 """
-多語系文案驗證 — 首頁 nav
+多語系文案驗證 — 首頁 nav（WAP 版，2026-04-22 rewrite）
 WIN-I18N-001~005
+
+WAP 現況（2026-04-22 probe，5 語系皆驗證）：
+- `.cat-btn`（遊戲大廳/我的最愛/台灣真人/國際真人/更多）所有語系都固定繁中顯示。
+- 底部 tabbar（排行榜/公告/維護/個人）所有語系都固定繁中顯示。
+- 首頁 nav 層尚未套 i18n 機制，`i18n_redirected_lt` cookie 只作用在登入頁 placeholder。
+
+因此本檔在產品端補完首頁 nav i18n 前全部 skip（語系文案斷言無法通過且無意義）。
+改測 `test_login_locale.py`（placeholder i18n 現況可驗）。
 """
 
 import pytest
@@ -9,8 +17,8 @@ from utils.locale_helper import set_locale
 from utils.screenshot_helper import get_screenshotter
 
 pytestmark = pytest.mark.skip(
-    reason="LT 2026-04-19 改版：首頁 nav 文案結構改變（熱門→遊戲大廳/我的最愛/台灣真人/國際真人），"
-           "待整輪 rebuild。見 memory: project_lt_site_redesign.md"
+    reason="WAP 首頁 nav（.cat-btn + 底部 tabbar）尚未套 i18n，所有語系都固定繁中。"
+           "待產品端實作首頁 nav 多語系後再 un-skip。現況見檔頭 docstring。"
 )
 
 

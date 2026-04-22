@@ -3,9 +3,18 @@ LT 多語系測試共用 helpers
 移植自 tests/lt/test_locale_visual_matrix.py（已停用）
 
 此模組提供：
-- LOCALES / LOCALE_LABELS 語系清單與各語系 drawer 文案對照
-- collect_overflow_issues / assert_no_overflow 環境無關的 DOM 超框偵測
-- login_with_locale / open_member_menu / open_member_screen 操作輔助
+- LOCALES / LOCALE_IDS：語系清單（所有 i18n 測試皆會 import）
+- LOCALE_LABELS：舊桌機版 drawer 各語系文案對照（WAP 改版後 drawer → member-center，待 PR3 更新）
+- collect_overflow_issues / assert_no_overflow：環境無關的 DOM 超框偵測（PR5 locale_layout 使用）
+- login_with_locale：5 語系登入流程（PR4/PR5 使用）
+- open_member_menu / open_member_screen：舊桌機 drawer 操作（WAP 改為底部 tabbar「個人」→ /member-center；
+  目前仍保留 export 以維持 test_locale_reference / test_locale_layout 的 import 不破損，實際 WAP 動作待 PR3 改寫）
+
+WAP 多語系實測現況（2026-04-22 probe）：
+- 首頁 nav 文案（.cat-btn、底部 tabbar）所有語系都固定顯示繁中，未套 i18n。
+- 登入頁 input placeholder 有正確 5 語系翻譯；
+  `button.btn-login` 固定「立即登入」、`button.btn-browse` 固定「先去逛逛」、
+  `span.lang-text` 固定「繁中」，均為產品現況已知固定文案（非測試 bug）。
 """
 
 from __future__ import annotations
