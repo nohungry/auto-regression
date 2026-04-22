@@ -97,14 +97,19 @@ description: 新增或修改 Python pytest-playwright 測試、Page Objects、�
 1. 透過 `from utils.screenshot_helper import get_screenshotter` 取得當前 page 的 helper。
 2. 使用前務必檢查 `sh = get_screenshotter(page); if sh:` — helper 可能不存在。
 3. 元素截圖：`sh.capture(locator, "label")` — 會在元素上畫紅色 highlight 框再截圖。
-4. 全頁截圖：`sh.full_page("label")` — 無元素 highlight。
-5. Label 命名規則：
+4. **`sh.capture()` 前必須先 `locator.scroll_into_view_if_needed()`**，除非 locator 明確屬於 fixed / sticky 元素（如 navbar、右下浮動按鈕、bottom tabbar）。原因：`ScreenshotHelper` 用 `bounding_box()` 取元素座標畫紅框，若元素在 viewport 外，紅框會畫在 viewport 之外而頁面只截 viewport 範圍，結果是「斷言有過但截圖上看不到紅圈」，review 時會誤以為測試沒真正驗到。此規則同樣適用於 POM 方法內的 `sh.capture()`。
+5. 全頁截圖：`sh.full_page("label")` — 無元素 highlight。
+6. Label 命名規則：
    - `click_XXX`：點擊動作前截圖
    - `fill_XXX`：填入動作前截圖
    - `verify_XXX`：驗證結果截圖
    - `loading_XXX`：loading 狀態截圖
-6. 每個測試結束後，`auto_screenshot` fixture 自動呼叫 `sh.generate_report()` 產生 `screenshots/<site_id>/<timestamp>/<test_name>/README.md`。
-7. 在新增 page object method 時，應在關鍵操作點加入 `sh.capture()` / `sh.full_page()`，讓截圖報告能自動呈現完整操作流程。
+7. 每個測試結束後，`auto_screenshot` fixture 自動呼叫 `sh.generate_report()` 產生 `screenshots/<site_id>/<timestamp>/<test_name>/README.md`。
+8. 在新增 page object method 時，應在關鍵操作點加入 `sh.capture()` / `sh.full_page()`，讓截圖報告能自動呈現完整操作流程。
+9. **每個 test 的每個可判定步驟（interaction / navigation / assertion）都必須輸出截圖**，無截圖的測試視為不合格。即使是純 DOM metric 驗證（如 `page.evaluate()` 取得 scrollWidth / getBoundingClientRect），也必須在 assertion 前後呼叫 `sh.full_page()` 或針對關鍵元素 `sh.capture()`，否則 reviewer 看不到 README.md 只能靠 code 猜測測試做了什麼。建議：
+   - 純數值驗證（overflow / broken images / text clipping）：assertion 通過後 `sh.full_page("verify_XXX_數值")`，label 帶上關鍵數值方便 review。
+   - 元素座標/對齊驗證（form alignment / viewport bounds）：對每個被量測的元素呼叫 `sh.capture()`（需 scroll_into_view），最後再補一張 `sh.full_page()` 呈現整體版面。
+   - 互動型驗證：每個 click / fill 前後都各一張（遵循 rule 6 的 label 命名）。
 
 # Visual regression rules
 1. `visual_regression` 只用於適合 baseline 比對的穩定畫面。
