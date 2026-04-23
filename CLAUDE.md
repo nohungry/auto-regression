@@ -57,7 +57,6 @@ tests/rc/                   — rc site tests (test_p0_smoke.py p0, feature/<nam
 tests/rc/conftest.py        — rc-specific overrides: site_config=rc, go_home (+ dismiss announcement popup)
 tests/lt/                   — lt site tests (test_p0_smoke.py p0, test_locale_visual_matrix.py p2 [skipped], feature/<name>/ p1: auth, copy, i18n, member, public, visual, wallet)
 tests/lt/conftest.py        — lt-specific overrides: site_config=lt, page fixture without MutationObserver
-tests/lt/__snapshots__/     — Visual Regression baseline PNGs (legacy, currently unused)
 utils/locale_helper.py       — set_locale(): injects i18n_redirected_lt cookie for lt site
 utils/dialog_helper.py       — helpers: dismiss server error popups, wait for loading animation
 utils/screenshot_helper.py   — element-highlight screenshot system, auto README.md generation
@@ -166,7 +165,7 @@ LT 與 RC 皆採用 **reference screenshot** 策略：存檔供人工確認，�
 
 **swiper 相容性**：部分站點 `.swiper-wrapper` / `.swiper-slide` 也命中 `.swiper` selector 但沒掛 swiper instance；`screenshot_with_mask` 用 optional chaining（`autoplay?.stop?.()`、`slideTo?.(0, 0)`）保護，不可回退成直呼 method。
 
-> `tests/lt/test_locale_visual_matrix.py`（WIN-LVIS）目前全部 `skip`；`tests/lt/__snapshots__/` 為舊版 baseline 暫留，目前無測試引用。
+> `tests/lt/test_locale_visual_matrix.py`（WIN-LVIS）目前全部 `skip`。
 
 ## Screenshot System
 
