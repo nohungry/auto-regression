@@ -31,6 +31,11 @@ class TestVisual:
             f"橫向超框：scrollWidth={metrics['scrollWidth']}, innerWidth={metrics['innerWidth']}"
         if sh: sh.full_page(f"verify_首頁無橫向超框_sw{metrics['scrollWidth']}_iw{metrics['innerWidth']}")
 
+    @pytest.mark.xfail(
+        strict=True,
+        reason="dev-lt 2026-04-23 regression: 遊戲 icon <img src=\"\" > 空字串導致 naturalWidth=0 被判破圖。"
+               "同 root cause 於 test_i18n_hydration.py WIN-I18N-HYDR-003。產品端修復後觸發 XPASS → 移除 xfail。",
+    )
     def test_home_no_broken_images(self, page: Page, site_config):
         """WIN-VIS-002：首頁圖片資源沒有明顯破圖"""
         login = LoginPage(page, site_config.url)
@@ -44,8 +49,9 @@ class TestVisual:
                 .filter(img => img.complete && img.naturalWidth === 0)
         """)
         total_imgs = page.locator("img").count()
+        # 截圖先於 assert：xfail / 任何 AssertionError 路徑都需留存證據
+        if sh: sh.full_page(f"verify_首頁破圖檢測_total{total_imgs}_broken{len(broken)}")
         assert broken == [], f"發現破圖：{broken}"
-        if sh: sh.full_page(f"verify_首頁圖片無破圖_total{total_imgs}")
 
     def test_home_banner_visible(self, page: Page, site_config):
         """WIN-VIS-003：首頁主視覺輪播 banner 可見（WAP `.slider-box` 在 viewport 內）
@@ -62,6 +68,11 @@ class TestVisual:
         sh = get_screenshotter(page)
         if sh: sh.capture(banner, "verify_banner區塊可見")
 
+    @pytest.mark.xfail(
+        strict=True,
+        reason="dev-lt 2026-04-23 regression: .cat-btn 出現 front.classification.* raw i18n key 導致文字過長溢出。"
+               "同 root cause 於 test_i18n_hydration.py WIN-I18N-HYDR-001。產品端修復後觸發 XPASS → 移除 xfail。",
+    )
     def test_home_text_not_clipped(self, page: Page, site_config):
         """WIN-VIS-004：首頁主要文案區塊未明顯被裁切（允許 ellipsis 設計，排除 overflow:hidden 節點）"""
         login = LoginPage(page, site_config.url)
@@ -88,8 +99,9 @@ class TestVisual:
                 .filter(item => item.overflowX !== 'hidden' && item.textOverflow !== 'ellipsis')
                 .slice(0, 10);
         }""")
+        # 截圖先於 assert：xfail / 任何 AssertionError 路徑都需留存證據
+        if sh: sh.full_page(f"verify_首頁文案超框檢測_overflow{len(overflow_nodes)}")
         assert overflow_nodes == [], f"發現未設裁切控制卻溢出的文案節點：{overflow_nodes}"
-        if sh: sh.full_page("verify_首頁文案無超框")
 
     def test_login_page_no_horizontal_overflow(self, page: Page, site_config):
         """WIN-VIS-005：登入頁沒有明顯橫向超框"""
@@ -161,6 +173,12 @@ class TestVisual:
         assert 0 <= padding <= 30, f"inputs/buttons 左邊界差距超過合理 padding：{padding}px"
         if sh: sh.full_page(f"verify_login表單整體對齊_padding{padding}px")
 
+    @pytest.mark.xfail(
+        strict=True,
+        reason="dev-lt 2026-04-23 regression: 底部 tabbar 顯示 front.Footer.Tab.* raw key，"
+               "has_text=\"個人\"/\"維護\"/\"公告\"/\"排行榜\" 無法匹配。"
+               "同 root cause 於 test_i18n_hydration.py WIN-I18N-HYDR-002。產品端修復後觸發 XPASS → 移除 xfail。",
+    )
     def test_home_navbar_and_login_in_viewport(self, page: Page, site_config):
         """WIN-VIS-007：首頁分類 `.cat-btn` 與底部 tabbar 四個 tab（排行榜/公告/維護/個人）都在視窗內。
         WAP 無桌機版 `/Categories/` 連結；未登入首頁亦無登入 CTA，登入入口為底部「個人」tab。
@@ -203,6 +221,10 @@ class TestVisual:
             return { innerWidth: window.innerWidth, catBtns, bottomTabs };
         }""", EXPECTED_BOTTOM_TABS)
 
+        # 截圖先於 assert：xfail / 任何 AssertionError 路徑都需留存 viewport 整體證據
+        missing_tabs_preview = [t["label"] for t in metrics["bottomTabs"] if t.get("missing")]
+        if sh: sh.full_page(f"verify_首頁分類與底部tab檢測_missing{len(missing_tabs_preview)}")
+
         assert len(metrics["catBtns"]) >= 5, f"首頁 .cat-btn 不足 5 個：{metrics['catBtns']}"
         for item in metrics["catBtns"]:
             assert item["left"]  >= CAT_LEFT_TOLERANCE,        f"cat-btn 超出左邊界容忍（{CAT_LEFT_TOLERANCE}px）：{item}"
@@ -215,4 +237,3 @@ class TestVisual:
             assert tab["left"]  >= 0,                         f"底部 {tab['label']} tab 超出左邊界：{tab}"
             assert tab["right"] <= metrics["innerWidth"] + 1, f"底部 {tab['label']} tab 超出右邊界：{tab}"
             assert tab["top"]   >= 0,                         f"底部 {tab['label']} tab 超出上邊界：{tab}"
-        if sh: sh.full_page("verify_首頁分類與底部4tab皆在viewport內")

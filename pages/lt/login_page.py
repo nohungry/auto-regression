@@ -33,10 +33,13 @@ class LoginPage:
         self.browse_btn     = page.locator("button.btn-browse")
 
         # Bottom tabbar「個人」— 從首頁進入 /login 的入口（tap 後 router-push 到 /login）
-        self.member_tab = page.locator('.shadow-menubar .cursor-pointer', has_text="個人").first
+        # 結構化 locale-agnostic：排除中間 CTA（`.flex-1`），剩 4 個側邊 tab 中最後一個即「個人」。
+        # 2026-04-23 dev-lt regression 證明 `has_text="個人"` 並非真的 locale-agnostic。
+        self.member_tab = page.locator('.shadow-menubar .cursor-pointer:not(.flex-1)').last
 
         # UA dialog 接受按鈕（首次登入要同意使用者協議）
-        self.ua_confirm_btn = page.locator('.ua-btn-text', has_text="確認").first
+        # WAP 實際按鈕文字為「確定」（與 success_dialog_ok_btn 對稱），繁中 hardcoded 不走 i18n
+        self.ua_confirm_btn = page.locator('.ua-btn-text', has_text="確定").first
         # 成功提示 dialog 的「確定」按鈕（位於 .dialog-mask 內）
         self.success_dialog_ok_btn = page.locator('.dialog-mask').get_by_text("確定", exact=True).first
 

@@ -33,8 +33,10 @@ class HomePage:
         # 登入狀態指示 pill（未登入 "Not Login" / 已登入 username）
         self.navbar_login_pill = page.locator('.bg-navbar p.text-text-light-main').first
 
-        # Bottom tabbar：以含 `w-[84px]` 的 cursor-pointer div 為準，避開中間的特殊 CTA
-        self.bottom_tab_member = page.locator('.shadow-menubar .cursor-pointer', has_text="個人").first
+        # Bottom tabbar「個人」(最右側 tab)：結構化 locale-agnostic selector。
+        # 排除中間 CTA（`.flex-1`），剩 4 個側邊 tab 中最後一個即「個人」。
+        # 2026-04-23 dev-lt regression 證明 `has_text="個人"` 並非真的 locale-agnostic（i18n 壞會變 raw key）。
+        self.bottom_tab_member = page.locator('.shadow-menubar .cursor-pointer:not(.flex-1)').last
 
         # Member center page (/member-center) — 登出按鈕
         self.logout_btn = page.locator('button.bg-secondary', has_text="登出").first
