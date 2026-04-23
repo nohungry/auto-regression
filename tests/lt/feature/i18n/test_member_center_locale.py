@@ -52,7 +52,7 @@ class TestI18NMemberCenter:
         set_locale(page, site_config.url, locale)
         page.goto(site_config.url, wait_until="networkidle")
 
-        # 進 /member-center（底部個人 tab 在所有語系下固定繁中「個人」，has_text="個人" 皆可命中）
+        # 進 /member-center（POM 使用結構化 `:not(.flex-1)').last` locale-agnostic selector）
         HomePage(page).open_member_center()
 
         maint_btn = page.locator('button.bg-secondary.mb-5').first

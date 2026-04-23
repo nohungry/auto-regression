@@ -4,11 +4,11 @@ LT 多語系測試共用 helpers
 
 此模組提供：
 - LOCALES / LOCALE_IDS：語系清單（所有 i18n 測試皆會 import）
-- LOCALE_LABELS：舊桌機版 drawer 各語系文案對照（WAP 改版後 drawer → member-center，待 PR3 更新）
+- LOCALE_LABELS：會員 `/member-center` 各語系文案對照（bettingRecord / memberInfo / maintenance）
 - collect_overflow_issues / assert_no_overflow：環境無關的 DOM 超框偵測（PR5 locale_layout 使用）
 - login_with_locale：5 語系登入流程（PR4/PR5 使用）
-- open_member_menu / open_member_screen：舊桌機 drawer 操作（WAP 改為底部 tabbar「個人」→ /member-center；
-  目前仍保留 export 以維持 test_locale_reference / test_locale_layout 的 import 不破損，實際 WAP 動作待 PR3 改寫）
+- open_member_menu：進入 `/member-center`（WAP 底部「個人」tab，命名保留以維持既有 test import 相容）
+- open_member_screen：進 `/member-center` 後 scroll 至指定 section（bettingRecord/memberInfo heading 或 maintenance 按鈕）
 
 WAP 多語系實測現況（2026-04-22 probe）：
 - 首頁 nav 文案（.cat-btn、底部 tabbar）所有語系都固定顯示繁中，未套 i18n。
@@ -19,9 +19,10 @@ WAP 多語系實測現況（2026-04-22 probe）：
 
 from __future__ import annotations
 
-from playwright.sync_api import Page
+from playwright.sync_api import Page, TimeoutError as PlaywrightTimeoutError
 
 from pages.lt.login_page import LoginPage
+from pages.lt.home_page import HomePage
 
 
 # 語系清單（id, 中文描述）
@@ -34,7 +35,7 @@ LOCALES = [
 ]
 LOCALE_IDS = [loc for loc, _ in LOCALES]
 
-# 各語系 drawer 選單項目文案
+# 各語系 `/member-center` 文案對照
 LOCALE_LABELS = {
     "tw": {"bettingRecord": "投注紀錄", "memberInfo": "會員訊息", "maintenance": "維護時間"},
     "cn": {"bettingRecord": "投注记录", "memberInfo": "会员讯息", "maintenance": "维护时间"},
@@ -42,9 +43,6 @@ LOCALE_LABELS = {
     "th": {"bettingRecord": "ประวัติการเดิมพัน", "memberInfo": "ข้อมูลสมาชิก", "maintenance": "ช่วงเวลาบำรุงรักษา"},
     "vn": {"bettingRecord": "Lịch sử cược", "memberInfo": "Tài khoản", "maintenance": "Bảo trì"},
 }
-
-# 會員 drawer 結構 selector（語系無關）
-DRAWER_XPATH = 'xpath=//*[.//img[@alt="Exit"] and .//img[@alt="Avatar"]]'
 
 # 銀幕尺寸變動時仍合理出現的跑馬燈/固定文案，overflow 檢查時忽略
 IGNORED_KEYWORDS = [
@@ -130,21 +128,35 @@ def login_with_locale(page: Page, site_config, locale: str) -> None:
 
 
 def open_member_menu(page: Page) -> None:
-    hamburger = page.locator(".hamburger").first
-    hamburger.scroll_into_view_if_needed()
-    hamburger.click()
-    page.locator(DRAWER_XPATH).last.wait_for(state="visible", timeout=5000)
-    page.wait_for_timeout(1000)
+    """WAP：等 networkidle + 底部 tabbar render 後，tap「個人」進入 `/member-center`。命名保留以相容既有 test import。
+
+    與 `test_member_center_locale.py` 不同，本 helper 的 caller（如 `test_locale_reference.py`）不一定有明確 goto 首頁的步驟；
+    登入完成後 SPA 可能停在過渡 state 而底部 tabbar 尚未 render，需在此補等待。
+    """
+    try:
+        page.wait_for_load_state("networkidle", timeout=5000)
+    except PlaywrightTimeoutError:
+        pass
+    page.locator('.shadow-menubar').first.wait_for(state="visible", timeout=10000)
+    HomePage(page).open_member_center()
+    page.wait_for_timeout(500)
 
 
 def open_member_screen(page: Page, locale: str, key: str) -> None:
-    """開啟會員 drawer 並切換至指定分頁。drawer 按鈕在 viewport 外，使用 dispatch_event。"""
+    """WAP：進 `/member-center` 並 scroll 至指定 section。
+
+    key：
+    - `bettingRecord` / `memberInfo` → `p.font-bold` heading，locale 文案從 `LOCALE_LABELS` 取
+    - `maintenance` → `button.bg-secondary.mb-5`（唯一 mb-5 class，locale-agnostic）
+    """
     open_member_menu(page)
-    target_text = LOCALE_LABELS[locale][key]
-    menu_item = page.get_by_text(target_text, exact=True).last
-    menu_item.wait_for(state="visible", timeout=5000)
-    menu_item.dispatch_event("click")
-    page.wait_for_timeout(2000)
-    drawer_text = page.locator(DRAWER_XPATH).last.inner_text()
-    assert target_text in drawer_text, \
-        f"Drawer 未顯示 {target_text} 內容，實際：{drawer_text[:200]}"
+    if key == "maintenance":
+        target = page.locator("button.bg-secondary.mb-5").first
+    elif key in ("bettingRecord", "memberInfo"):
+        target_text = LOCALE_LABELS[locale][key]
+        target = page.locator("p.font-bold", has_text=target_text).first
+    else:
+        raise ValueError(f"不支援的 key：{key}（可用：bettingRecord / memberInfo / maintenance）")
+    target.wait_for(state="visible", timeout=5000)
+    target.scroll_into_view_if_needed()
+    page.wait_for_timeout(500)

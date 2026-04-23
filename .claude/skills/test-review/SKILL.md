@@ -64,7 +64,10 @@ description: 審查 auto-regression repo 中的 pytest-playwright 測試、page 
 - [ ] 新增的 POM 方法是否有 `get_screenshotter()` 截圖呼叫？
 - [ ] label 是否遵守命名規則（`click_`/`fill_`/`verify_`/`loading_`）？
 - [ ] 是否使用 `if sh:` guard 避免 helper 不存在時報錯？
-- [ ] **動態值欄位**（balance / username / 訂單號 / 時間戳等會隨時間或帳號變動的值）若只驗「非空」或「格式正確」而非「等於特定值」：
+- [ ] **截圖位置是否在 `assert` / `expect(...)` / 可能拋例外的 helper 呼叫「之前」？** 反模式：`assert ...; if sh: sh.full_page(...)` — 失敗路徑拋 AssertionError 後，後面那行 sh 永遠不會執行，per-test 資料夾會是空的，無法佐證失敗現場。對 `xfail(strict=True)` 的守門 test 尤其嚴重（每次跑都 fail，永遠沒證據）。正確模式：先 `if sh: sh.full_page(...)`，再 `assert ...`。
+- [ ] 若是 xfail / 守門 test，label 是否採中性命名（不承諾 pass/fail，例如 `verify_首頁破圖檢測_total{n}_broken{k}`，而非 `verify_首頁無破圖` 或 `verify_登入成功`）？label 帶 pass 語意會讓 README.md 讀者以為這是 pass 現場。
+- [ ] 若 test 只用 `_save(...)` / `save_vr_screenshot(...)` 寫到 `vr_reference/`，per-test 資料夾會是空的。是否在 test body 另外呼叫 `sh.full_page(...)` 在 per-test 資料夾留一份？（導航類 test 建議 pre/post navigation 各留一張，確保 helper fail 仍有證據）
+- [ ] **動態值欄位**（balance / username / 訂單號 / 時間戳等會隨時間或帳號變動的值）若只驗「非空」或「格式正確」而非「等於特定值」:
   - test docstring 是否寫明斷言策略（例如「只驗非空，不寫死數值」）？
   - screenshot label 是否帶「**非空**」「**格式**」等關鍵字（如 `verify_XXX非空_{value}`）？若 label 只帶值沒帶策略，reviewer 看 README.md 會誤以為是寫死比對。
 

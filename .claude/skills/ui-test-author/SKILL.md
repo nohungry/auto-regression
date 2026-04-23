@@ -106,10 +106,28 @@ description: 新增或修改 Python pytest-playwright 測試、Page Objects、�
    - `loading_XXX`：loading 狀態截圖
 7. 每個測試結束後，`auto_screenshot` fixture 自動呼叫 `sh.generate_report()` 產生 `screenshots/<site_id>/<timestamp>/<test_name>/README.md`。
 8. 在新增 page object method 時，應在關鍵操作點加入 `sh.capture()` / `sh.full_page()`，讓截圖報告能自動呈現完整操作流程。
-9. **每個 test 的每個可判定步驟（interaction / navigation / assertion）都必須輸出截圖**，無截圖的測試視為不合格。即使是純 DOM metric 驗證（如 `page.evaluate()` 取得 scrollWidth / getBoundingClientRect），也必須在 assertion 前後呼叫 `sh.full_page()` 或針對關鍵元素 `sh.capture()`，否則 reviewer 看不到 README.md 只能靠 code 猜測測試做了什麼。建議：
-   - 純數值驗證（overflow / broken images / text clipping）：assertion 通過後 `sh.full_page("verify_XXX_數值")`，label 帶上關鍵數值方便 review。
-   - 元素座標/對齊驗證（form alignment / viewport bounds）：對每個被量測的元素呼叫 `sh.capture()`（需 scroll_into_view），最後再補一張 `sh.full_page()` 呈現整體版面。
+9. **每個 test 的每個可判定步驟（interaction / navigation / assertion）都必須輸出截圖**，無截圖的測試視為不合格。即使是純 DOM metric 驗證（如 `page.evaluate()` 取得 scrollWidth / getBoundingClientRect），也必須在關鍵檢查點呼叫 `sh.full_page()` 或針對關鍵元素 `sh.capture()`，否則 reviewer 看不到 README.md 只能靠 code 猜測測試做了什麼。建議：
+   - 純數值驗證（overflow / broken images / text clipping）：assertion **之前**呼叫 `sh.full_page("verify_XXX檢測_{metric}")`，label 中性（不承諾 pass/fail）。
+   - 元素座標/對齊驗證（form alignment / viewport bounds）：對每個被量測的元素呼叫 `sh.capture()`（需 scroll_into_view），最後再補一張 `sh.full_page()` 呈現整體版面 — **全都要在 assertion 之前**。
    - 互動型驗證：每個 click / fill 前後都各一張（遵循 rule 6 的 label 命名）。
+
+9a. **截圖必須在 `assert` / `expect(...)` / 可能拋例外的 helper 呼叫「之前」** — 否則失敗路徑（AssertionError / PlaywrightError / xfail）會讓後面那行截圖永遠跳過，資料夾空白，reviewer 沒有任何證據判斷失敗原因。這是常見反模式且**違反 rule 9 的「不合格」定義**。
+   - ❌ **錯誤**：
+     ```python
+     assert broken == [], f"發現破圖：{broken}"
+     if sh: sh.full_page(f"verify_首頁圖片無破圖_total{total}")   # fail 時永遠不會跑
+     ```
+   - ✅ **正確**：
+     ```python
+     if sh: sh.full_page(f"verify_首頁破圖檢測_total{total}_broken{len(broken)}")  # 先截圖
+     assert broken == [], f"發現破圖：{broken}"
+     ```
+   - 對於 xfail(strict=True) 的守門 test 這條**尤其關鍵**：xfail 本質上每次都會 fail，截圖寫在 assert 後 = 永遠拿不到證據。
+   - 對於呼叫可能失敗的 helper（`open_member_menu()`、`expect(...).to_be_visible()` 等），在**呼叫前**先存一張 `verify_XXX_pre_action` 作 snapshot 證據；helper 成功後再補一張 post-action。
+   - Label 採**中性描述**（帶數值/狀態），不要承諾結果：
+     - ❌ `verify_首頁無破圖` / `verify_登入成功` → 預設 pass 才寫出
+     - ✅ `verify_首頁破圖檢測_found{n}` / `verify_登入完成_pre_navigation` → pass/fail 都合理
+   - 規則源頭：`memory/feedback_screenshots_required_every_step.md`；歷史發現與範圍見 `dev-notes/screenshot-convention-followup.md`。
 10. **動態值欄位（balance / username / 訂單號 / 時間戳等會隨時間或帳號變動的值）若只驗「非空」或「格式正確」而非「等於某值」，必須在下列兩處明確說明斷言策略，避免 reviewer 誤以為是寫死比對**：
     - **test docstring**：明確寫出「只驗非空 / 不寫死特定數值 / 截圖 label 帶值僅供 review」的斷言策略。
     - **screenshot label**：label 帶「**非空**」「**格式**」等關鍵字（例如 `verify_navbar信用額度非空_{balance_text}`），而不是 `verify_navbar餘額_{balance_text}`。原因：README.md 由 label 組出步驟文字，若 label 只帶值沒帶策略，review 時會誤認為值本身是斷言比對的 expected，檢查起來會懷疑測試是否太脆弱。此規則同樣適用於任何其他動態欄位（帳號切換、多站變動的 user profile、日期時間等）。
