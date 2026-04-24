@@ -19,13 +19,13 @@ class TestHomePageSections:
         page = class_logged_in_page
         sh = get_screenshotter(page)
         title = page.locator("text=熱門遊戲").first
-        expect(title).to_be_visible()
         if sh: sh.capture(title, "verify_熱門遊戲標題")
+        expect(title).to_be_visible()
         grid = page.locator(".mt-d-20.grid").first
-        expect(grid).to_be_visible()
         grid.scroll_into_view_if_needed()
         if sh: sh.capture(grid, "verify_遊戲卡片區塊")
         if sh: sh.full_page("verify_遊戲卡片區塊_全頁")
+        expect(grid).to_be_visible()
 
     def test_new_games_section(self, class_logged_in_page: Page, go_home):
         """TC-017：首頁顯示「最新遊戲」區塊且有遊戲卡片"""
@@ -36,20 +36,20 @@ class TestHomePageSections:
         if sh: sh.capture(tab, "click_最新遊戲Tab")
         tab.click()
         grid = page.locator(".mt-d-20.grid").first
-        expect(grid).to_be_visible()
         # tab 切換後 grid 重繪，用 evaluate 捲動視窗避免操作 detached element
         page.evaluate("window.scrollBy(0, 400)")
         if sh: sh.capture(grid, "verify_最新遊戲卡片區塊")
         if sh: sh.full_page("verify_最新遊戲卡片區塊_全頁")
+        expect(grid).to_be_visible()
 
     def test_announcement_marquee(self, class_logged_in_page: Page, go_home):
         """TC-018：首頁公告跑馬燈有內容顯示"""
         page = class_logged_in_page
         marquee = page.locator("p.h-full").first
-        expect(marquee).to_be_visible()
-        expect(marquee).to_contain_text("公告")
         sh = get_screenshotter(page)
         if sh: sh.capture(marquee, "verify_公告跑馬燈有內容")
+        expect(marquee).to_be_visible()
+        expect(marquee).to_contain_text("公告")
 
     def test_balance_visible(self, class_logged_in_page: Page, go_home):
         """TC-019：登入後右上角餘額數字顯示（非空白）"""
@@ -58,6 +58,6 @@ class TestHomePageSections:
         balance = page.locator(".coin-wrap-bg")
         expect(balance).to_be_visible()
         balance_text = (balance.text_content() or "").strip()
-        assert balance_text != "", "餘額欄位不應為空字串"
         sh = get_screenshotter(page)
-        if sh: sh.capture(balance, "verify_餘額數字顯示")
+        if sh: sh.capture(balance, f"verify_餘額非空_{balance_text}")
+        assert balance_text != "", "餘額欄位不應為空字串"

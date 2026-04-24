@@ -51,7 +51,7 @@ class TestI18NHome:
         _switch_language(page, site_config.url, lang_name)
 
         sh = get_screenshotter(page)
+        if sh: sh.full_page(f"verify_{lang_name}_首頁文案")
         body = page.locator("body")
         for text in texts:
             expect(body).to_contain_text(text)
-        if sh: sh.full_page(f"verify_{lang_name}_首頁文案")

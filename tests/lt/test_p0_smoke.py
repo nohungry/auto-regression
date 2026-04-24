@@ -87,8 +87,8 @@ class TestLogin:
         login.login_btn.click()
 
         # 不應跳轉，仍在登入頁
-        expect(login.username_input).to_be_visible(timeout=3000)
         if sh: sh.capture(login.username_input, "verify_仍在登入頁")
+        expect(login.username_input).to_be_visible(timeout=3000)
 
     def test_logout(self, page: Page, site_config):
         """TC-005：可登出並回到未登入狀態"""
@@ -121,9 +121,9 @@ class TestHomePage:
         login.goto()
         # 驗證 URL 包含 site_config 中設定的域名
         domain = site_config.url.split("//")[-1].rstrip("/")
-        expect(page).to_have_url(re.compile(re.escape(domain)))
         sh = get_screenshotter(page)
-        if sh: sh.full_page("verify_首頁正常開啟")
+        if sh: sh.full_page("verify_首頁載入檢測")
+        expect(page).to_have_url(re.compile(re.escape(domain)))
 
     def test_navigation_visible(self, page: Page, site_config):
         """TC-007：首頁主要分類 `.cat-btn` 顯示（遊戲大廳/我的最愛/台灣真人/國際真人/更多）"""
@@ -160,9 +160,9 @@ class TestHomePage:
 
         login.open_login_form()
 
+        if sh: sh.full_page("verify_進入登入頁")
         expect(page).to_have_url(re.compile(r"/login"), timeout=8000)
         expect(page.locator("input.login-input").nth(0)).to_be_visible()
-        if sh: sh.full_page("verify_進入登入頁")
 
     def test_balance_visible(self, page: Page, site_config):
         """TC-010：登入後 navbar 直接顯示帳號 pill 與餘額（無需開 drawer）"""
@@ -179,8 +179,8 @@ class TestHomePage:
         # navbar 餘額（非空）
         expect(home.navbar_balance).to_be_visible(timeout=5000)
         balance_text = (home.navbar_balance.text_content() or "").strip()
+        if sh: sh.capture(home.navbar_balance, f"verify_navbar_餘額非空_{balance_text}")
         assert balance_text != "", "navbar 餘額欄位不應為空"
-        if sh: sh.capture(home.navbar_balance, "verify_navbar_餘額顯示")
 
     @pytest.mark.skip(reason="WAP 版首頁已無公告跑馬燈（原 img[alt='Annt'] 不存在）；如日後 WAP 新增公告區需重寫")
     def test_announcement_marquee(self, page: Page, site_config):
@@ -199,8 +199,8 @@ class TestHomePage:
 
         # 遊戲卡片（至少一張可見）
         game_card = page.locator('.game-slot').first
-        expect(game_card).to_be_visible()
         if sh: sh.full_page("verify_遊戲卡片區塊")
+        expect(game_card).to_be_visible()
 
     def test_casino_halls_visible(self, page: Page, site_config):
         """TC-013：首頁顯示所有真人廳館（T9真人、RC真人、DG真人、MT真人、歐博）"""
@@ -212,8 +212,8 @@ class TestHomePage:
         for hall in ["T9真人", "RC真人", "DG真人", "MT真人", "歐博"]:
             el = page.locator(f'img[alt="{hall}"]').first
             el.scroll_into_view_if_needed()
-            expect(el).to_be_visible()
             if sh: sh.capture(el, f"verify_廳館_{hall}")
+            expect(el).to_be_visible()
 
     def test_member_center_opens(self, page: Page, site_config):
         """TC-014：tap 底部「個人」tab 進入 /member-center 並顯示帳號資訊"""
@@ -224,17 +224,17 @@ class TestHomePage:
         sh = get_screenshotter(page)
 
         home.open_member_center()
-        expect(page).to_have_url(re.compile(r"/member-center"), timeout=8000)
         if sh: sh.full_page("verify_member_center_開啟")
+        expect(page).to_have_url(re.compile(r"/member-center"), timeout=8000)
 
         # 登出按鈕可見代表 member-center 已載入
-        expect(home.logout_btn).to_be_visible(timeout=5000)
         if sh: sh.capture(home.logout_btn, "verify_登出按鈕可見")
+        expect(home.logout_btn).to_be_visible(timeout=5000)
 
         # 頁面有帳號文字
         username_hit = page.get_by_text(site_config.username, exact=False).first
-        expect(username_hit).to_be_visible(timeout=5000)
         if sh: sh.capture(username_hit, f"verify_帳號顯示_{site_config.username}")
+        expect(username_hit).to_be_visible(timeout=5000)
 
 
 # ─────────────────────────────────────────────────────────────
@@ -265,5 +265,5 @@ class TestNavigation:
         if sh: sh.capture(nav, f"click_分類_{nav_item}")
         nav.dispatch_event("click")
 
-        expect(nav).to_have_class(re.compile(r"cat-btn--selected"), timeout=5000)
         if sh: sh.capture(nav, f"verify_分類已選中_{nav_item}")
+        expect(nav).to_have_class(re.compile(r"cat-btn--selected"), timeout=5000)

@@ -55,25 +55,25 @@ class TestI18NMemberCenter:
         # 進 /member-center（POM 使用結構化 `:not(.flex-1)').last` locale-agnostic selector）
         HomePage(page).open_member_center()
 
+        if sh: sh.full_page(f"verify_{locale}_member_center_整體")
+
         maint_btn = page.locator('button.bg-secondary.mb-5').first
         logout_btn = page.locator('button.bg-secondary').nth(1)
         betting_heading = page.locator("p.font-bold", has_text=betting_text).first
         msg_heading = page.locator("p.font-bold", has_text=msg_text).first
 
         maint_btn.scroll_into_view_if_needed()
-        expect(maint_btn).to_have_text(maint_text)
         if sh: sh.capture(maint_btn, f"verify_{locale}_維護時間_{maint_text[:15]}")
+        expect(maint_btn).to_have_text(maint_text)
 
         logout_btn.scroll_into_view_if_needed()
-        expect(logout_btn).to_have_text(logout_text)
         if sh: sh.capture(logout_btn, f"verify_{locale}_登出_{logout_text[:15]}")
+        expect(logout_btn).to_have_text(logout_text)
 
         betting_heading.scroll_into_view_if_needed()
-        expect(betting_heading).to_have_text(betting_text)
         if sh: sh.capture(betting_heading, f"verify_{locale}_投注紀錄_{betting_text[:15]}")
+        expect(betting_heading).to_have_text(betting_text)
 
         msg_heading.scroll_into_view_if_needed()
-        expect(msg_heading).to_have_text(msg_text)
         if sh: sh.capture(msg_heading, f"verify_{locale}_會員訊息_{msg_text[:15]}")
-
-        if sh: sh.full_page(f"verify_{locale}_member_center_整體")
+        expect(msg_heading).to_have_text(msg_text)

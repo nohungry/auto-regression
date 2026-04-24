@@ -39,13 +39,13 @@ class TestPersonalInfo:
         page = class_logged_in_page
         _open_sidebar(page, "user")
         dialog = page.locator(".dialog-container")
-        expect(dialog).to_be_visible(timeout=5000)
         sh = get_screenshotter(page)
         if sh: sh.capture(dialog, "verify_個人資訊彈窗開啟")
+        expect(dialog).to_be_visible(timeout=5000)
 
         username_field = page.locator(".dialog-container input[disabled]").first
+        if sh: sh.capture(username_field, f"verify_帳號欄位顯示_{site_config.username}")
         expect(username_field).to_have_value(site_config.username)
-        if sh: sh.capture(username_field, "verify_帳號欄位顯示正確")
 
     def test_personal_info_closes(self, class_logged_in_page: Page, go_home):
         """TC-012：個人資訊彈窗可正常關閉"""
@@ -68,10 +68,10 @@ class TestInbox:
         page = class_logged_in_page
         _open_sidebar(page, "mail")
         dialog = page.locator(".dialog-container")
-        expect(dialog).to_be_visible(timeout=5000)
-        expect(dialog).to_contain_text("站內信")
         sh = get_screenshotter(page)
         if sh: sh.capture(dialog, "verify_站內信彈窗開啟")
+        expect(dialog).to_be_visible(timeout=5000)
+        expect(dialog).to_contain_text("站內信")
 
     def test_inbox_closes(self, class_logged_in_page: Page, go_home):
         """TC-014：站內信彈窗可正常關閉"""

@@ -47,13 +47,13 @@ class TestLanguageDropdown:
         lang_items = page.locator("img[src*='global']").locator("..").locator("p.whitespace-nowrap")
         lang_items.first.wait_for(state="visible", timeout=5000)
 
+        if sh: sh.full_page("verify_語系選單_6個語系")
+
         # 數量驗證
         expect(lang_items).to_have_count(len(EXPECTED_LANGUAGES))
 
         # 逐一驗證每個語系名稱可見
         for lang_name in EXPECTED_LANGUAGES:
             option = lang_items.filter(has_text=lang_name)
-            expect(option).to_be_visible()
             if sh: sh.capture(option, f"verify_語系_{lang_name}")
-
-        if sh: sh.full_page("verify_語系選單_6個語系")
+            expect(option).to_be_visible()

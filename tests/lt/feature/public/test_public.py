@@ -41,9 +41,9 @@ class TestPublicFeatures:
         login = LoginPage(page, site_config.url)
         login.goto()
         link = page.locator('a#drag_1_container').first
-        expect(link).to_have_attribute("href", re.compile(r"lin\.ee"))
         sh = get_screenshotter(page)
         if sh: sh.capture(link, "verify_客服連結lin.ee")
+        expect(link).to_have_attribute("href", re.compile(r"lin\.ee"))
 
     def test_browse_without_login_returns_home(self, page: Page, site_config):
         """WIN-PUB-011：登入頁「先去逛逛」可回首頁（驗首頁 .cat-btn 出現）"""
@@ -56,10 +56,10 @@ class TestPublicFeatures:
         if sh: sh.capture(browse_btn, "click_先去逛逛")
         browse_btn.click()
 
+        if sh: sh.full_page("verify_回到首頁")
         expect(page).to_have_url(
             re.compile(r"^" + re.escape(site_config.url.rstrip("/")) + r"/?$"),
             timeout=8000,
         )
         # WAP 首頁以 .cat-btn 「遊戲大廳」為錨點（locale 敏感但與 P0 smoke 一致）
         expect(page.locator('.cat-btn', has_text="遊戲大廳").first).to_be_visible()
-        if sh: sh.full_page("verify_回到首頁")
