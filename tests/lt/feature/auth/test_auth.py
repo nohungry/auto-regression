@@ -45,8 +45,8 @@ class TestAuthFeatures:
         for text in expected_labels:
             el = logged_in_page.get_by_text(text, exact=False).first
             el.scroll_into_view_if_needed()
-            expect(el).to_be_visible()
             if sh: sh.capture(el, f"verify_會員功能_{text}")
+            expect(el).to_be_visible()
 
     def test_category_navigation_after_login(self, logged_in_page: Page, site_config):
         """WIN-AUTH-004：登入後可切換多個 `.cat-btn` 分類，帳號 pill 仍顯示"""
@@ -63,5 +63,5 @@ class TestAuthFeatures:
             expect(nav).to_have_class(re.compile(r"cat-btn--selected"), timeout=5000)
 
             # 切換後帳號仍顯示
-            expect(home.navbar_login_pill).to_have_text(site_config.username, timeout=5000)
             if sh: sh.capture(home.navbar_login_pill, f"verify_帳號顯示_{label}分類")
+            expect(home.navbar_login_pill).to_have_text(site_config.username, timeout=5000)

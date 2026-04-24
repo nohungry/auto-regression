@@ -25,9 +25,9 @@ class TestAnnouncementPopup:
         page.goto(site_config.url)
         page.wait_for_load_state("networkidle")
         mask = page.locator(".popup-announcement-mask")
-        expect(mask).to_be_visible(timeout=5000)
         sh = get_screenshotter(page)
         if sh: sh.capture(mask, "verify_公告彈窗出現")
+        expect(mask).to_be_visible(timeout=5000)
 
     def test_popup_close_btn_advances_slide(self, page: Page, site_config):
         """TC-F02：點擊 ✕ 後輪播推進下一張（彈窗仍存在，未直接關閉）"""
@@ -45,8 +45,8 @@ class TestAnnouncementPopup:
 
         # 點擊後 popup 仍在，代表推進至下一張而非直接關閉
         # 若只有一張投影片則此測試 fail — 屬預期行為，反映測試環境 popup 為單張
-        expect(mask).to_be_visible(timeout=3000)
         if sh: sh.capture(mask, "verify_輪播推進後彈窗仍存在")
+        expect(mask).to_be_visible(timeout=3000)
 
     def test_popup_closes_after_all_slides(self, page: Page, site_config):
         """TC-F03：持續點擊 ✕ 後公告彈窗最終完全消失"""
@@ -67,8 +67,8 @@ class TestAnnouncementPopup:
             except PlaywrightTimeoutError:
                 break
 
-        expect(mask).not_to_be_visible(timeout=3000)
         if sh: sh.full_page("verify_公告彈窗已完全關閉")
+        expect(mask).not_to_be_visible(timeout=3000)
 
     @pytest.mark.skip(reason="「今天不再顯示」行為待確認，暫不自動化")
     def test_popup_dont_show_today(self, page: Page, site_config):

@@ -47,7 +47,7 @@ class TestI18NHome:
         page.wait_for_timeout(1500)
 
         sh = get_screenshotter(page)
+        if sh: sh.full_page(f"verify_{locale}_首頁文案")
         body = page.locator("body")
         for text in texts:
             expect(body).to_contain_text(text)
-        if sh: sh.full_page(f"verify_{locale}_首頁文案")

@@ -27,13 +27,13 @@ class TestWallet:
         balance = page.locator(".coin-wrap-bg")
         expect(balance).to_be_visible()
         balance_text = (balance.text_content() or "").strip()
+        if sh: sh.capture(balance, f"verify_navbar餘額非空_{balance_text}")
         assert balance_text != "", "餘額欄位不應為空字串"
-        if sh: sh.capture(balance, "verify_navbar餘額數字")
 
     def test_balance_refresh_button_visible(self, class_logged_in_page: Page, go_home):
         """RC-WALLET-002：navbar 餘額區的重新整理按鈕可見"""
         page = class_logged_in_page
         sh = get_screenshotter(page)
         refresh_btn = page.locator(".coin-wrap-bg img[alt='refresh']")
-        expect(refresh_btn).to_be_visible()
         if sh: sh.capture(refresh_btn, "verify_餘額重新整理按鈕")
+        expect(refresh_btn).to_be_visible()

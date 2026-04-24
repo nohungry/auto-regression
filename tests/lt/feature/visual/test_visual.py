@@ -27,9 +27,9 @@ class TestVisual:
             innerWidth: window.innerWidth,
             scrollWidth: document.documentElement.scrollWidth
         })""")
+        if sh: sh.full_page(f"verify_首頁橫向超框檢測_sw{metrics['scrollWidth']}_iw{metrics['innerWidth']}")
         assert metrics["scrollWidth"] <= metrics["innerWidth"] + 4, \
             f"橫向超框：scrollWidth={metrics['scrollWidth']}, innerWidth={metrics['innerWidth']}"
-        if sh: sh.full_page(f"verify_首頁無橫向超框_sw{metrics['scrollWidth']}_iw{metrics['innerWidth']}")
 
     @pytest.mark.xfail(
         strict=True,
@@ -63,10 +63,10 @@ class TestVisual:
         login = LoginPage(page, site_config.url)
         login.goto()
         banner = page.locator('.slider-box').first
-        expect(banner).to_be_visible(timeout=8000)
         banner.scroll_into_view_if_needed()
         sh = get_screenshotter(page)
-        if sh: sh.capture(banner, "verify_banner區塊可見")
+        if sh: sh.capture(banner, "verify_banner區塊可見檢測")
+        expect(banner).to_be_visible(timeout=8000)
 
     @pytest.mark.xfail(
         strict=True,
@@ -113,9 +113,9 @@ class TestVisual:
             innerWidth: window.innerWidth,
             scrollWidth: document.documentElement.scrollWidth
         })""")
+        if sh: sh.full_page(f"verify_登入頁橫向超框檢測_sw{metrics['scrollWidth']}_iw{metrics['innerWidth']}")
         assert metrics["scrollWidth"] <= metrics["innerWidth"] + 4, \
             f"登入頁橫向超框：scrollWidth={metrics['scrollWidth']}, innerWidth={metrics['innerWidth']}"
-        if sh: sh.full_page(f"verify_登入頁無橫向超框_sw{metrics['scrollWidth']}_iw{metrics['innerWidth']}")
 
     def test_login_form_alignment(self, page: Page, site_config):
         """WIN-VIS-006：登入表單對齊 — WAP 設計 inputs (有 padding) 與 buttons (填滿容器) 分群對齊。
@@ -156,22 +156,25 @@ class TestVisual:
                 browseBtn: rect(browseBtn),
             };
         }""")
-        # inputs 之間對齊：左邊界嚴格對齊；寬度允許 ≤ 30px 差異（password 右側 toggle 眼睛 icon 擠壓視覺寬度）
+        # 先算出所有量測值，再統一截圖、最後 assert — 確保 fail 路徑也留下證據
         input_xs     = [metrics["username"]["x"],     metrics["password"]["x"]]
         input_widths = [metrics["username"]["width"], metrics["password"]["width"]]
+        btn_xs       = [metrics["loginBtn"]["x"],     metrics["browseBtn"]["x"]]
+        btn_widths   = [metrics["loginBtn"]["width"], metrics["browseBtn"]["width"]]
+        padding      = metrics["username"]["x"] - metrics["loginBtn"]["x"]
+
+        if sh: sh.full_page(f"verify_login表單整體對齊檢測_padding{padding}px")
+
+        # inputs 之間對齊：左邊界嚴格對齊；寬度允許 ≤ 30px 差異（password 右側 toggle 眼睛 icon 擠壓視覺寬度）
         assert max(input_xs)     - min(input_xs)     <= 2,  f"inputs 左邊界未對齊：{metrics}"
         assert max(input_widths) - min(input_widths) <= 30, f"inputs 寬度差異超過 icon 擠壓容忍（30px）：{metrics}"
 
         # buttons 之間嚴格對齊
-        btn_xs     = [metrics["loginBtn"]["x"],     metrics["browseBtn"]["x"]]
-        btn_widths = [metrics["loginBtn"]["width"], metrics["browseBtn"]["width"]]
         assert max(btn_xs)     - min(btn_xs)     <= 2, f"buttons 左邊界未對齊：{metrics}"
         assert max(btn_widths) - min(btn_widths) <= 2, f"buttons 寬度未一致：{metrics}"
 
         # inputs 左邊界相對 buttons 的 padding 落在合理範圍（WAP 實測 ≈ 19px）
-        padding = metrics["username"]["x"] - metrics["loginBtn"]["x"]
         assert 0 <= padding <= 30, f"inputs/buttons 左邊界差距超過合理 padding：{padding}px"
-        if sh: sh.full_page(f"verify_login表單整體對齊_padding{padding}px")
 
     @pytest.mark.xfail(
         strict=True,

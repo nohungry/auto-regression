@@ -39,12 +39,12 @@ class TestLogin:
         login.login(site_config.username, "wrong_password_123")
 
         toast_btn = page.locator("button.toast-confirm-btn")
-        expect(toast_btn).to_be_visible(timeout=5000)
         error_msg = page.locator("p", has_text="密碼錯誤")
-        expect(error_msg).to_be_visible()
         sh = get_screenshotter(page)
-        if sh: sh.capture(error_msg, "verify_密碼錯誤訊息")
         if sh: sh.capture(toast_btn, "verify_確定按鈕")
+        if sh: sh.capture(error_msg, "verify_密碼錯誤訊息")
+        expect(toast_btn).to_be_visible(timeout=5000)
+        expect(error_msg).to_be_visible()
 
     def test_login_wrong_username(self, page: Page, site_config):
         """TC-003：不存在帳號應失敗，並出現「帳號不存在」警告彈窗"""
@@ -54,12 +54,12 @@ class TestLogin:
         login.login("nonexistent_user_xyz", site_config.password)
 
         toast_btn = page.locator("button.toast-confirm-btn")
-        expect(toast_btn).to_be_visible(timeout=5000)
         error_msg = page.locator("p", has_text="帳號不存在")
-        expect(error_msg).to_be_visible()
         sh = get_screenshotter(page)
-        if sh: sh.capture(error_msg, "verify_帳號不存在訊息")
         if sh: sh.capture(toast_btn, "verify_確定按鈕")
+        if sh: sh.capture(error_msg, "verify_帳號不存在訊息")
+        expect(toast_btn).to_be_visible(timeout=5000)
+        expect(error_msg).to_be_visible()
 
     def test_login_empty_fields(self, page: Page, site_config):
         """TC-004：空白帳號密碼不應登入成功"""
@@ -72,8 +72,8 @@ class TestLogin:
         if sh: sh.capture(login.login_btn, "click_送出登入_空白欄位")
         login.login_btn.click()
 
-        expect(login.username_input).to_be_visible(timeout=3000)
         if sh: sh.capture(login.username_input, "verify_仍在登入頁")
+        expect(login.username_input).to_be_visible(timeout=3000)
 
 
 @pytest.mark.p0
@@ -92,8 +92,8 @@ class TestHomePage:
         sh = get_screenshotter(logged_in_page)
         for nav_item in ["真人", "電子", "捕魚"]:
             el = logged_in_page.locator(f"text={nav_item}").first
-            expect(el).to_be_visible()
             if sh: sh.capture(el, f"verify_導覽列_{nav_item}")
+            expect(el).to_be_visible()
 
     def test_logout(self, logged_in_page: Page):
         """TC-007：登入後可正常登出，右上角應出現「登入」按鈕"""
@@ -108,9 +108,9 @@ class TestHomePage:
         login.open_login_form()
         sh = get_screenshotter(page)
 
-        expect(login.username_input).to_be_visible()
-        expect(login.password_input).to_be_visible()
-        expect(login.login_btn).to_be_visible()
         if sh: sh.capture(login.username_input, "verify_帳號欄位")
         if sh: sh.capture(login.password_input, "verify_密碼欄位")
         if sh: sh.capture(login.login_btn,      "verify_登入按鈕")
+        expect(login.username_input).to_be_visible()
+        expect(login.password_input).to_be_visible()
+        expect(login.login_btn).to_be_visible()

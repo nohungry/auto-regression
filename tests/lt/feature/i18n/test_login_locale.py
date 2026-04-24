@@ -60,13 +60,13 @@ class TestI18NLoginPage:
         password_placeholder = password_input.get_attribute("placeholder") or ""
         if sh: sh.capture(password_input, f"verify_{locale}_密碼placeholder_{password_placeholder[:20]}")
 
+        # 補一張 full_page 呈現整體登入頁語系切換效果
+        if sh: sh.full_page(f"verify_{locale}_登入頁_整體")
+
         assert username_kw in username_placeholder, \
             f"{locale} 帳號 placeholder 未包含 '{username_kw}'：{username_placeholder}"
         assert password_kw in password_placeholder, \
             f"{locale} 密碼 placeholder 未包含 '{password_kw}'：{password_placeholder}"
-
-        # 補一張 full_page 呈現整體登入頁語系切換效果
-        if sh: sh.full_page(f"verify_{locale}_登入頁_整體")
 
 
 @pytest.mark.p2
@@ -100,6 +100,8 @@ class TestI18NLangSwitcher:
             lang_texts[locale] = text
             if sh: sh.capture(lang_el, f"verify_{locale}_lang_text_{text[:10]}")
 
+        if sh: sh.full_page(f"verify_lang_text_全語系彙整_{lang_texts}")
+
         # tw 必須為繁中（baseline）
         assert lang_texts["tw"] in ("繁中", "繁體中文"), \
             f"tw lang-text 預期「繁中/繁體中文」，實際：{lang_texts['tw']}"
@@ -108,5 +110,3 @@ class TestI18NLangSwitcher:
         for loc in ["cn", "en", "th", "vn"]:
             assert lang_texts[loc] != lang_texts["tw"], \
                 f"{loc} 語系 lang-text 不應仍顯示 '{lang_texts['tw']}'，實際：{lang_texts[loc]}（全部：{lang_texts}）"
-
-        if sh: sh.full_page(f"verify_lang_text_全語系彙整_{lang_texts}")

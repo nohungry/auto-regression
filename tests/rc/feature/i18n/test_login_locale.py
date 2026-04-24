@@ -64,10 +64,11 @@ class TestI18NLoginModal:
 
         # 驗證 nav 登入按鈕文案（modal 開啟前）
         login_trigger = page.locator("button.primary-btn")
+        login_trigger.scroll_into_view_if_needed()
+        if sh: sh.capture(login_trigger, f"verify_{lang_name}_登入觸發文案")
         expect(login_trigger).to_have_text(login_btn_text)
 
         # 開啟登入 modal
-        login_trigger.scroll_into_view_if_needed()
         if sh: sh.capture(login_trigger, f"click_登入觸發_{lang_name}")
         login_trigger.click()
 
@@ -77,6 +78,6 @@ class TestI18NLoginModal:
         password_input = page.locator("input.input-style[type='password']")
 
         # 驗證 placeholder
+        if sh: sh.full_page(f"verify_{lang_name}_登入Modal文案")
         expect(username_input).to_have_attribute("placeholder", username_ph)
         expect(password_input).to_have_attribute("placeholder", password_ph)
-        if sh: sh.full_page(f"verify_{lang_name}_登入Modal文案")

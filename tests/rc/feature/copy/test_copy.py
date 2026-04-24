@@ -67,7 +67,7 @@ class TestCopy:
             if not deduped or deduped[-1] != t:
                 deduped.append(t)
 
+        sh = get_screenshotter(page)
+        if sh: sh.full_page(f"verify_廳館順序檢測_{deduped[:5]}")
         assert deduped[:5] == ["T9真人", "RC真人", "DG真人", "MT真人", "歐博"], \
             f"廳館順序不符，實際：{deduped}"
-        sh = get_screenshotter(page)
-        if sh: sh.full_page("verify_廳館順序")

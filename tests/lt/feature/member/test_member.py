@@ -48,29 +48,29 @@ class TestMemberCenter:
         betting_heading = page.locator("p.font-bold", has_text="投注紀錄").first
         msg_heading = page.locator("p.font-bold", has_text="會員訊息").first
 
+        if sh: sh.full_page("verify_member_center_整體")
+
         balance.scroll_into_view_if_needed()
-        expect(balance).to_be_visible()
         balance_text = (balance.inner_text() or "").strip()
-        assert balance_text != "", "member-center 餘額欄位不應為空"
         if sh: sh.capture(balance, f"verify_member_center信用額度非空_{balance_text}")
+        expect(balance).to_be_visible()
+        assert balance_text != "", "member-center 餘額欄位不應為空"
 
         maint_btn.scroll_into_view_if_needed()
-        expect(maint_btn).to_be_visible()
         if sh: sh.capture(maint_btn, "verify_維護時間按鈕")
+        expect(maint_btn).to_be_visible()
 
         logout_btn.scroll_into_view_if_needed()
-        expect(logout_btn).to_be_visible()
         if sh: sh.capture(logout_btn, "verify_登出按鈕")
+        expect(logout_btn).to_be_visible()
 
         betting_heading.scroll_into_view_if_needed()
-        expect(betting_heading).to_be_visible()
         if sh: sh.capture(betting_heading, "verify_投注紀錄標題")
+        expect(betting_heading).to_be_visible()
 
         msg_heading.scroll_into_view_if_needed()
-        expect(msg_heading).to_be_visible()
         if sh: sh.capture(msg_heading, "verify_會員訊息標題")
-
-        if sh: sh.full_page("verify_member_center_整體")
+        expect(msg_heading).to_be_visible()
 
     def test_maintenance_time_button_opens_dialog(self, class_logged_in_page: Page, go_home):
         """WIN-MEMBER-002：點擊「維護時間」按鈕會彈出 .dialog-mask。
@@ -90,6 +90,6 @@ class TestMemberCenter:
         maint_btn.click()
 
         dialog_mask = page.locator('.dialog-mask').first
-        expect(dialog_mask).to_be_visible(timeout=5000)
         if sh: sh.full_page("verify_維護時間dialog開啟")
+        expect(dialog_mask).to_be_visible(timeout=5000)
 

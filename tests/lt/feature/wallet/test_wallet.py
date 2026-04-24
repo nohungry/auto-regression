@@ -38,8 +38,8 @@ class TestBalanceVisibility:
 
         expect(home.navbar_balance).to_be_in_viewport()
         balance_text = (home.navbar_balance.inner_text() or "").strip()
-        assert balance_text != "", "navbar 信用額度欄位不應為空"
         if sh: sh.capture(home.navbar_balance, f"verify_navbar信用額度非空_{balance_text}")
+        assert balance_text != "", "navbar 信用額度欄位不應為空"
 
     def test_balance_visible_in_member_center(self, class_logged_in_page: Page, go_home):
         """WIN-WALLET-002：/member-center 顯示非空信用額度
@@ -56,5 +56,5 @@ class TestBalanceVisibility:
         balance.scroll_into_view_if_needed()
         expect(balance).to_be_visible()
         balance_text = (balance.inner_text() or "").strip()
-        assert balance_text != "", "member-center 信用額度欄位不應為空"
         if sh: sh.capture(balance, f"verify_member_center信用額度非空_{balance_text}")
+        assert balance_text != "", "member-center 信用額度欄位不應為空"

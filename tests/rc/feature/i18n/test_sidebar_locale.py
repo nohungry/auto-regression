@@ -56,8 +56,8 @@ class TestI18NSidebar:
         _switch_language(page, site_config.url, lang_name)
 
         sh = get_screenshotter(page)
+        if sh: sh.full_page(f"verify_{lang_name}_sidebar文案")
         body = page.locator("body")
         expect(body).to_contain_text(personal_info)
         expect(body).to_contain_text(game_detail)
         expect(body).to_contain_text(inbox)
-        if sh: sh.full_page(f"verify_{lang_name}_sidebar文案")
