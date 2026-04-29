@@ -26,6 +26,13 @@ def page(playwright: Playwright, browser):
     """
     iphone = playwright.devices["iPhone 13"]
     context = browser.new_context(**iphone)
-    page = context.new_page()
-    yield page
-    context.close()
+    try:
+        page = context.new_page()
+    except BaseException:
+        context.close()
+        raise
+
+    try:
+        yield page
+    finally:
+        context.close()

@@ -207,25 +207,31 @@ def _new_configured_page(browser):
     - 視窗最大化（CDP）
     - 注入 MutationObserver 自動關閉伺服器錯誤彈窗
     回傳 (context, page)
+
+    若 setup 過程任何步驟失敗，會關閉已建立的 context 再 raise，避免 Chrome 視窗洩漏。
     """
     context = browser.new_context(no_viewport=True)
-    page = context.new_page()
+    try:
+        page = context.new_page()
 
-    cdp = context.new_cdp_session(page)
-    window_id = cdp.send("Browser.getWindowForTarget")["windowId"]
-    cdp.send("Browser.setWindowBounds", {
-        "windowId": window_id,
-        "bounds": {"windowState": "maximized"},
-    })
-    cdp.detach()
+        cdp = context.new_cdp_session(page)
+        window_id = cdp.send("Browser.getWindowForTarget")["windowId"]
+        cdp.send("Browser.setWindowBounds", {
+            "windowId": window_id,
+            "bounds": {"windowState": "maximized"},
+        })
+        cdp.detach()
 
-    page.add_init_script("""
-        new MutationObserver(() => {
-            // 自動關閉伺服器錯誤彈窗（RC 站特有）
-            const toastBtn = document.querySelector('button.toast-confirm-btn');
-            if (toastBtn && toastBtn.offsetParent !== null) toastBtn.click();
-        }).observe(document.body, { childList: true, subtree: true });
-    """)
+        page.add_init_script("""
+            new MutationObserver(() => {
+                // 自動關閉伺服器錯誤彈窗（RC 站特有）
+                const toastBtn = document.querySelector('button.toast-confirm-btn');
+                if (toastBtn && toastBtn.offsetParent !== null) toastBtn.click();
+            }).observe(document.body, { childList: true, subtree: true });
+        """)
+    except BaseException:
+        context.close()
+        raise
 
     return context, page
 
@@ -296,8 +302,10 @@ def page(browser):
     測試後由 auto_logout_after_test 自動登出並關閉 context。
     """
     context, pg = _new_configured_page(browser)
-    yield pg
-    context.close()
+    try:
+        yield pg
+    finally:
+        context.close()
 
 
 @pytest.fixture(scope="function")
@@ -340,17 +348,22 @@ def class_logged_in_page(browser, site_config):
     HomePage = get_home_page_class(site_config.site_id)
 
     context, pg = _new_configured_page(browser)
+    try:
+        login = LoginPage(pg, site_config.url)
+        login.goto_and_login(site_config.username, site_config.password)
 
-    login = LoginPage(pg, site_config.url)
-    login.goto_and_login(site_config.username, site_config.password)
+        home = HomePage(pg)
+        # 先清彈窗（RC 公告 popup 為 server async 渲染，可能在 verify 過程中跳出遮住 avatar）
+        home.dismiss_any_popups()
+        home.verify_logged_in()
+    except BaseException:
+        context.close()
+        raise
 
-    home = HomePage(pg)
-    # 先清彈窗（RC 公告 popup 為 server async 渲染，可能在 verify 過程中跳出遮住 avatar）
-    home.dismiss_any_popups()
-    home.verify_logged_in()
-
-    yield pg
-    context.close()
+    try:
+        yield pg
+    finally:
+        context.close()
 
 
 @pytest.fixture(scope="function")
