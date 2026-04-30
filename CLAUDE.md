@@ -44,6 +44,17 @@ Reports are written to `reports/report.html` (self-contained HTML).
 
 各站點測試放在 `tests/<site_id>/` 下；smoke 測試統一命名 `test_p0_smoke.py`，功能型測試放 `tests/<site_id>/feature/<feature_name>/`。
 
+## 測試結果判讀（Result Interpretation）
+
+當測試失敗時，先區分「測試問題」還是「真實 FAIL」：
+
+1. **檢視流程**：照截圖逐步確認 selector 命中、按鈕被按到、API 真的有送出 — 是否走完原本設計的 happy path？
+2. **若流程無異常但結果非預期**（例如：點擊都成功但畫面顯示「連線失敗」、API 回傳錯誤碼、後續驗證找不到應有資料），**判定為真實 FAIL，不可加 `@pytest.mark.skip` 掩蓋**。
+3. 真實 FAIL 通常代表**被測站點本身有 regression**（後端服務改動、產品 bug、資料配置壞掉）— 測試的職責就是揪出這個訊號。
+4. 只有當問題明確屬於**測試自身**（selector 過時、timing race、test data 失效）才修測試碼或加 skip + 完整理由。
+
+> 反例：dev-rc 遊戲 spin 後顯示「連線失敗 - 錯誤代碼 5305」，按鈕都點對了、API 也送了 — 這是 RD 改動造成遊戲後端壞掉的 regression FAIL，不該為了讓 CI 綠燈而 skip 該 test。
+
 ## Architecture
 
 ```

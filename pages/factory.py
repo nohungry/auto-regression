@@ -21,11 +21,13 @@ def _import_class(module_path: str, class_name: str):
 _LOGIN_PAGE_REGISTRY = {
     'rc': ('pages.rc.login_page', 'LoginPage'),
     'lt': ('pages.lt.login_page', 'LoginPage'),
+    're': ('pages.re.login_page', 'LoginPage'),
 }
 
 _HOME_PAGE_REGISTRY = {
     'rc': ('pages.rc.home_page', 'HomePage'),
     'lt': ('pages.lt.home_page', 'HomePage'),
+    're': ('pages.re.home_page', 'HomePage'),
 }
 
 
