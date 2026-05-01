@@ -92,14 +92,17 @@ dev-notes/                   — personal developer notes (gitignored except REA
 
 ## Agent Skills
 
-本 repo 有兩個 user-invocable skills（位於 `.claude/skills/`），用於不同類型的工作：
+本 repo 有以下 user-invocable skills（位於 `.claude/skills/`），用於不同類型的工作：
 
 | Skill | 用途 |
 |-------|------|
 | `ui-test-author` | 新增/修改 testcase、page object、fixture；含新增站點 onboarding checklist |
+| `pom-architect` | 規劃/調整 Page Objects、component objects、multi-site UI 結構與跨站共用策略 |
 | `test-review` | Review 測試變更，逐項檢查 flaky、脆弱 selector、multi-site 擴展性風險 |
+| `git-commit` | 提交前檢查、整理 diff、建議驗證步驟與 commit message |
+| `env-sync` | 維持 `.env` 與 `.env.example` 結構同步；處理同事發放的新 .env 範本合併 |
 
-兩個 skill 的指引與本 CLAUDE.md 互補：CLAUDE.md 是 repo 層級的 source of truth，skills 包含更詳細的 checklist 與實戰 pitfalls。Authoring 工作優先參考 `ui-test-author`，review 工作優先參考 `test-review`。
+各 skill 的指引與本 CLAUDE.md 互補：CLAUDE.md 是 repo 層級的 source of truth，skills 包含更詳細的 checklist 與實戰 pitfalls。Authoring 用 `ui-test-author`、設計 POM 用 `pom-architect`、review 用 `test-review`、commit 前用 `git-commit`、動 .env 用 `env-sync`。
 
 ## Documentation vs Developer Notes
 
