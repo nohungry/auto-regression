@@ -105,6 +105,8 @@ dev-notes/                   — personal developer notes (gitignored except REA
 
 各 skill 的指引與本 CLAUDE.md 互補：CLAUDE.md 是 repo 層級的 source of truth，skills 包含更詳細的 checklist 與實戰 pitfalls。Authoring 用 `ui-test-author`、設計 POM 用 `pom-architect`、review 用 `test-review`、commit 前用 `git-commit`、動 .env 用 `env-sync`、probe selector 用 `selector-probe`。
 
+**完整接力工作流**（為什麼這 6 個 skill、如何接力、真實任務範例、避讓機制）見 [`docs/agent-skills-workflow.md`](docs/agent-skills-workflow.md)。
+
 ## Documentation vs Developer Notes
 
 This repo has **two distinct documentation folders** with different purposes and git-tracking policy. When creating or editing markdown files, pick the right folder and follow the convention.
