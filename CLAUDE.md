@@ -101,8 +101,11 @@ dev-notes/                   — personal developer notes (gitignored except REA
 | `test-review` | Review 測試變更，逐項檢查 flaky、脆弱 selector、multi-site 擴展性風險 |
 | `git-commit` | 提交前檢查、整理 diff、建議驗證步驟與 commit message |
 | `env-sync` | 維持 `.env` 與 `.env.example` 結構同步；處理同事發放的新 .env 範本合併 |
+| `selector-probe` | 用 agent-browser CLI 即時 probe 網頁 selector / ARIA 結構，補強 chrome-devtools MCP 在「寫測試前探勘」與「pytest 失敗 root cause 分析」場景 |
 
-各 skill 的指引與本 CLAUDE.md 互補：CLAUDE.md 是 repo 層級的 source of truth，skills 包含更詳細的 checklist 與實戰 pitfalls。Authoring 用 `ui-test-author`、設計 POM 用 `pom-architect`、review 用 `test-review`、commit 前用 `git-commit`、動 .env 用 `env-sync`。
+各 skill 的指引與本 CLAUDE.md 互補：CLAUDE.md 是 repo 層級的 source of truth，skills 包含更詳細的 checklist 與實戰 pitfalls。Authoring 用 `ui-test-author`、設計 POM 用 `pom-architect`、review 用 `test-review`、commit 前用 `git-commit`、動 .env 用 `env-sync`、probe selector 用 `selector-probe`。
+
+**完整接力工作流**（為什麼這 6 個 skill、如何接力、真實任務範例、避讓機制）見 [`docs/agent-skills-workflow.md`](docs/agent-skills-workflow.md)。
 
 ## Documentation vs Developer Notes
 
