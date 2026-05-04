@@ -1,9 +1,10 @@
 """
-登入頁面 Page Object — rc 站點
-Selector 來源：Chrome DevTools MCP 探索（見 .env SITE_RC_URL）
+登入頁面 Page Object — re 站點 (BeWin)
+與 rc 共用同一份 t9platform 平台 DOM 結構，selector 完全一致；
+獨立檔案保留是為了未來 site-specific 變更時可獨立調整。
 """
 
-from playwright.sync_api import Page, expect, TimeoutError as PlaywrightTimeoutError
+from playwright.sync_api import Page, TimeoutError as PlaywrightTimeoutError
 from utils.dialog_helper import dismiss_server_error_if_present, dismiss_announcement_popup_if_present
 from utils.screenshot_helper import get_screenshotter
 
@@ -23,7 +24,7 @@ class LoginPage:
     def goto(self):
         """開啟首頁，並處理進站彈窗（伺服器錯誤 / 公告大圖輪播）
 
-        - goto 改 domcontentloaded：dev-rc 有背景 WebSocket/心跳，load event 常不觸發。
+        - goto 改 domcontentloaded：dev 站有背景 WebSocket/心跳，load event 常不觸發。
         - helpers 會先用 count() 短路：元素不在 DOM → 立即回傳，不耗 timeout。
         """
         self.page.goto(self.base_url, wait_until="domcontentloaded")
@@ -37,8 +38,7 @@ class LoginPage:
         trigger button 本身也要等：SPA 初始化完才會掛入 DOM。
 
         防 flaky：偶發第一次 click 沒觸發 modal（推測 hydration race），
-        若 5s 內 username_input 未出現則再 click 一次。對齊 RE 站做法
-        （pages/re/login_page.py）。
+        若 5s 內 username_input 未出現則再 click 一次。
         """
         sh = get_screenshotter(self.page)
         self.login_trigger_btn.wait_for(state="visible", timeout=15000)
@@ -72,14 +72,13 @@ class LoginPage:
         self.login_btn.click()
 
         # 等待 loading 狗動畫（ALL_Loading.gif）出現後消失
-        # 登入 API 回應期間會顯示此動畫，需等它消失才代表登入完成
         self._wait_for_loading()
 
         # 登入後可能出現伺服器錯誤彈窗
         dismiss_server_error_if_present(self.page)
 
-        # 處理「用戶協議」彈窗（首次登入才會出現）
-        self._handle_user_agreement()
+        # 處理登入後可能出現的彈窗（用戶協議 / 警告等）
+        self._handle_post_login_popup()
 
     def _wait_for_loading(self):
         """
@@ -97,21 +96,35 @@ class LoginPage:
         except PlaywrightTimeoutError:
             pass  # loading 未出現或已快速消失，略過
 
-    def _handle_user_agreement(self):
-        """處理用戶協議彈窗（若出現則點確定）
+    def _handle_post_login_popup(self):
+        """處理登入後可能出現的彈窗：
+        - 「用戶協議」彈窗（首次登入時出現），自動按「確定」進站
+        - 「警告」彈窗（密碼錯誤 / 帳號不存在），保留給測試自己斷言
 
-        先用 count() 短路：非首次登入 DOM 不會有此按鈕，立即略過不耗 timeout。
+        判斷邏輯：
+        1. count() 短路：DOM 沒有「確定」按鈕直接 return（非首次登入常見路徑）
+        2. 若同時偵測到「警告」標題，視為錯誤彈窗，**不**自動關閉
+        3. 否則視為用戶協議彈窗，按下確定
+
+        排除 toast-confirm-btn 是為了相容 RC 樣式的錯誤彈窗（有 toast-confirm-btn class）。
         """
-        # 排除 toast-confirm-btn，避免誤關錯誤提示彈窗
-        agreement_btn = self.page.locator("button:not(.toast-confirm-btn)", has_text="確定")
-        if agreement_btn.count() == 0:
+        # 排除 toast-confirm-btn，避免誤關 RC 樣式的錯誤提示彈窗
+        confirm_btn = self.page.locator("button:not(.toast-confirm-btn)", has_text="確定")
+        if confirm_btn.count() == 0:
             return
+
+        # RE 警告彈窗特徵：有「警告」標題 + 錯誤訊息文案
+        # 若偵測到，視為錯誤彈窗，留給測試自己斷言，不點掉
+        warning_indicators = self.page.locator("text=警告")
+        if warning_indicators.count() > 0 and warning_indicators.first.is_visible():
+            return
+
         try:
-            agreement_btn.wait_for(state="visible", timeout=3000)
+            confirm_btn.wait_for(state="visible", timeout=3000)
             sh = get_screenshotter(self.page)
-            agreement_btn.scroll_into_view_if_needed()
-            if sh: sh.capture(agreement_btn, "click_用戶協議確定")
-            agreement_btn.click()
+            confirm_btn.scroll_into_view_if_needed()
+            if sh: sh.capture(confirm_btn, "click_用戶協議確定")
+            confirm_btn.click()
         except PlaywrightTimeoutError:
             pass  # 在 DOM 但未 visible（罕見），略過
 

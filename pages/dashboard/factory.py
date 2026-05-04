@@ -22,11 +22,13 @@ def _import_class(module_path: str, class_name: str):
 _DASHBOARD_LOGIN_REGISTRY = {
     'rc': ('pages.dashboard.rc.login_page', 'DashboardLoginPage'),
     'lt': ('pages.dashboard.lt.login_page', 'DashboardLoginPage'),
+    're': ('pages.dashboard.re.login_page', 'DashboardLoginPage'),
 }
 
 _DASHBOARD_MANAGEMENT_REGISTRY = {
     'rc': ('pages.dashboard.rc.management_page', 'ManagementPage'),
     'lt': ('pages.dashboard.lt.management_page', 'ManagementPage'),
+    're': ('pages.dashboard.re.management_page', 'ManagementPage'),
 }
 
 
