@@ -61,13 +61,19 @@ Reports are written to `reports/report.html` (self-contained HTML).
 conftest.py                  — browser setup, environment detection (Windows/WSL/Linux), global fixtures
 config/settings.py           — multi-site SiteConfig dataclass loaded from .env
 pages/factory.py             — routes site_id → LoginPage/HomePage class via registry dict (no if/else fallback; unknown site_id raises ValueError)
-pages/rc/                   — rc site Page Objects (LoginPage, HomePage)
-pages/lt/                   — lt site Page Objects (LoginPage, HomePage)
+pages/rc/                   — rc site Page Objects (LoginPage, HomePage) — 王老吉娛樂城
+pages/lt/                   — lt site Page Objects (LoginPage, HomePage) — LT來財
+pages/re/                   — re site Page Objects (LoginPage, HomePage) — BeWin
+pages/rd/                   — rd site Page Objects (LoginPage, HomePage) — 狗狗娛樂城
 tests/api/lt/               — lt site API-layer tests (no browser)
 tests/rc/                   — rc site tests (test_p0_smoke.py p0, feature/<name>/ p1: announcement_popup, i18n, navigation, wallet)
 tests/rc/conftest.py        — rc-specific overrides: site_config=rc, go_home (+ dismiss announcement popup)
 tests/lt/                   — lt site tests (test_p0_smoke.py p0, test_locale_visual_matrix.py p2 [skipped], feature/<name>/ p1: auth, copy, i18n, member, public, visual, wallet)
 tests/lt/conftest.py        — lt-specific overrides: site_config=lt, page fixture without MutationObserver
+tests/re/                   — re site tests (test_p0_smoke.py p0, feature/<name>/ p1: announcement_popup, copy, game, home_sections, i18n, member, navigation, sidebar, visual, wallet)
+tests/re/conftest.py        — re-specific overrides: site_config=re, go_home
+tests/rd/                   — rd site tests (test_p0_smoke.py p0, 7 pass / 1 skip — feature 待後續 onboarding)
+tests/rd/conftest.py        — rd-specific overrides: site_config=rd, go_home
 utils/locale_helper.py       — set_locale(): injects i18n_redirected_lt cookie for lt site
 utils/dialog_helper.py       — helpers: dismiss server error popups, wait for loading animation
 utils/screenshot_helper.py   — element-highlight screenshot system, auto README.md generation
