@@ -69,6 +69,53 @@ def dismiss_announcement_popup_if_present(page: Page, timeout: int = 3000) -> bo
     return True
 
 
+def dismiss_dialog_mask_if_present(page: Page, timeout: int = 3000) -> bool:
+    """
+    關閉 dev-rd 首頁蓋板廣告（.dialog-mask + .dialog-container 結構）。
+
+    與 dismiss_announcement_popup_if_present 不同：
+    - announcement_popup 是 RC 站的 .popup-announcement-mask（Vue Transition fade-in），
+      內含 button.close-circle-btn（多張輪播）
+    - dialog-mask 是 RD 站的 Nuxt dialog 系統，蓋板廣告以 dialog-container 呈現，
+      內含「關閉」button（class 含 bg-shade03 / lg:block）
+
+    處理策略：
+    1. 先試 click 蓋板的「關閉」按鈕
+    2. 若 mask 沒消失（dev-rd 「關閉」按鈕 click 在 spike 階段實測無效），
+       fallback 用 JS 強制 hide 整個 mask（測試的是登入而非蓋板邏輯，hack 可接受）
+
+    Returns:
+        True  - 有蓋板且已處理（click 或 force hide 任一成功）
+        False - 沒蓋板
+    """
+    mask = page.locator(".dialog-mask")
+    if mask.count() == 0:
+        return False
+    try:
+        mask.first.wait_for(state="visible", timeout=timeout)
+    except PlaywrightTimeoutError:
+        return False
+
+    # 路徑 A：嘗試 click 蓋板的「關閉」按鈕（在 dialog-container 內）
+    close_btn = page.locator(".dialog-container button", has_text="關閉")
+    if close_btn.count() > 0:
+        try:
+            close_btn.first.click(timeout=3000)
+            mask.first.wait_for(state="hidden", timeout=3000)
+            return True
+        except PlaywrightTimeoutError:
+            pass  # click 沒效或 mask 沒消失，走 fallback
+
+    # 路徑 B：fallback — JS 強制 hide mask 與 dialog-container（避免 pointer-events 攔截）
+    page.evaluate("""
+        document.querySelectorAll('.dialog-mask, .dialog-container').forEach(el => {
+            el.style.display = 'none';
+            el.style.pointerEvents = 'none';
+        });
+    """)
+    return True
+
+
 def wait_loading_if_present(page: Page, timeout: int = 2000) -> bool:
     """
     等待 loading 狗動畫（img[alt="Loading"] / ALL_Loading.gif）消失。

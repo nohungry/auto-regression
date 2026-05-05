@@ -12,8 +12,8 @@
 | 層級 | 範圍 | 目標耗時 | 目的 |
 |------|------|---------|------|
 | **L0 Sanity** | API 健康度 + 單站 smoke 核心 3 項 | < 2 分鐘 | 快速驗證環境與後端活著 |
-| **L1 Smoke** | 兩站 P0 smoke 全跑（26 tests） | ~10 分鐘 | 核心流程健康度 |
-| **L2 Feature** | 兩站 P1 feature 全跑（~139 tests） | ~45 分鐘 | 功能層回歸 |
+| **L1 Smoke** | 各站 P0 smoke 全跑（rc/lt/re/rd） | ~10 分鐘 | 核心流程健康度 |
+| **L2 Feature** | 各站 P1 feature 全跑 | ~45 分鐘 | 功能層回歸 |
 | **L3 Full** | L1 + L2 + API 全部 | ~56 分鐘 | 完整回歸 |
 
 > 各層應可獨立執行（透過 pytest marker 或路徑篩選）。
@@ -60,7 +60,7 @@
 | 規則 | 原因 |
 |------|------|
 | **同帳號不可並行**（含 API + UI 並行） | 後端「從其他裝置登入」機制會互踢 session，回傳 HTTP 401 PermissionDenied |
-| **RC 與 LT 可並行** | 不同帳號、不同站台，彼此不衝突 |
+| **不同站台可並行** | rc/lt/re/rd 各用獨立帳號，彼此不衝突 |
 | **API 可獨立並行** | 不依賴瀏覽器，但仍受同帳號規則限制 |
 
 ---
@@ -69,7 +69,7 @@
 
 | 類型 | 現況 | 規範 |
 |------|------|------|
-| 測試帳號 | RC: `norman001` / LT: `dlttest01` | 固定帳號，密碼在 `.env` 管理 |
+| 測試帳號 | RC: `drcauto01` / LT: `dltauto01` / RE: `dreauto01` / RD: `drdauto01` | 固定帳號，密碼在 `.env` 管理 |
 | 測試資料 | 依賴 dev 站台現有資料 | 需跨測試隔離時，每個 test 自行 cleanup（例：充值後提取歸零）|
 | 環境 | 僅 dev 環境 | 禁止在 staging / prod 執行自動化 |
 | `.env` | 開發者本機管理 | 禁止 commit；CI 用 Secrets |
@@ -83,7 +83,7 @@
 所有測試 class 至少要有以下三類 marker：
 
 1. **層級**：`p0` / `p1` / `p2`
-2. **站點**：`rc` / `lt` / `api`
+2. **站點**：`rc` / `lt` / `re` / `rd` / `api`
 3. **功能類別**：`login` / `home` / `wallet` / `i18n` / `visual` / `copy` 等
 
 ### Marker 新增條件
