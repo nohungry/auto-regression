@@ -4,6 +4,7 @@ pytest-playwright-snapshot
 pytest-html
 pytest-base-url
 pytest-metadata
+pytest-rerunfailures
 python-dotenv
 playwright
 pygments

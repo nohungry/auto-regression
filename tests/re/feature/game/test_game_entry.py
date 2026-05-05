@@ -33,13 +33,17 @@ PROVIDER_NAME = "T9電子"
 GAME_NAME = "關老爺"
 
 # 遊戲內按鈕位置（百分比座標，相對於 iframe bounding box）
+# RE 與 RC 的關鍵差異：
+# - RE iframe 1920x1015（RC 是 1536x762），canvas UI 元素為固定像素位置 → 百分比不同
+# - RE 機台選擇 dialog 比 RC 多一個 「點機台 → 選取 → 確認 popup」的步驟（RC 直接 確定 進遊戲）
+# - 座標經 PIL 找橘色 button center 校準（pages/dashboard/re/management_page.py 同樣手法）
 GAME_BTN = {
-    "開始":    (0.50, 0.92),
-    "確定":    (0.78, 0.88),   # 機台選擇確認（modal 右下角）
-    "減注":    (0.62, 0.94),   # 「-」按鈕
-    "spin":   (0.90, 0.85),   # Spin 大綠按鈕（實測 start_spin API 觸發位置）
-    "選單":    (0.90, 0.60),   # 三條橫線（漢堡選單）
-    "紀錄":    (0.88, 0.46),   # 側邊欄展開後「紀錄」按鈕
+    "開始":   (0.50, 0.92),  # 預覽畫面綠色開始 button
+    "確定":   (0.78, 0.85),  # 機台 select dialog 右下橘色「確定」(PIL 校準；默認機台直接 confirm)
+    "減注":   (0.62, 0.94),  # 「-」按鈕
+    "spin":  (0.90, 0.85),  # Spin 大綠按鈕（實測 start_spin API 觸發位置）
+    "選單":   (0.90, 0.60),  # 三條橫線（漢堡選單）
+    "紀錄":   (0.88, 0.46),  # 側邊欄展開後「紀錄」按鈕
 }
 
 
@@ -63,15 +67,6 @@ def _get_game_frame(page: Page, timeout: int = 30000) -> Frame:
 @pytest.mark.p1
 @pytest.mark.re
 @pytest.mark.game
-@pytest.mark.skip(
-    reason="RE 機台選擇 dialog 的『確定』/X 按鈕在 dev-re 上完全不接受 click 觸發 "
-           "(實機 probe 過 mouse/touch/pointer event、JS dispatchEvent、Playwright click、"
-           "10+ 種座標、不同 viewport 大小皆無效；machine grid 正常 selectable，"
-           "僅 confirm/close button 的事件綁定壞掉)。"
-           "RC 同樣流程能通，差異屬 RE 平台 regression — 不是測試碼問題，"
-           "等 RD 修復 RE 機台選擇 dialog 後再 unskip。"
-           "Phase 1 (loading wait 3s→15s) 已確認可正確進入 machine select dialog。"
-)
 class TestGameEntry:
     """RE-GAME-001：前台遊戲進入與下注流程"""
 
@@ -143,11 +138,13 @@ class TestGameEntry:
                 if sh:
                     sh.full_page(f"click_遊戲_{btn_name}_after")
 
-            # 開始 → 機台選擇
+            # 開始 → 機台選擇 dialog
             game_click("開始", wait_after=8000)
 
-            # 確定機台 → 進入遊戲
-            game_click("確定", wait_after=10000)
+            # 確定 → 用 default 機台直接進遊戲（同 RC 流程，只是座標不同）
+            # 註：若點到機台才按確定 → 變成「選取」會跳 popup「將切換到 X 號桌」
+            #     避免那條 path，直接點 確定 即可；座標來自 PIL 校準（橘色 button center）
+            game_click("確定", wait_after=12000)
 
             # 減注（8→4）
             game_click("減注", wait_after=1000)
