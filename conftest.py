@@ -209,6 +209,14 @@ def _new_configured_page(browser):
     回傳 (context, page)
 
     若 setup 過程任何步驟失敗，會關閉已建立的 context 再 raise，避免 Chrome 視窗洩漏。
+
+    歷史記錄（2026-05-04 嘗試移除 / 改寫 observer 失敗）：
+    - 完全移除 → 6 fail + 5 error（伺服器錯誤 popup 擋住操作）
+    - 白名單（只關「伺服器錯誤」）→ 漏其他 popup
+    - 黑名單（密碼錯誤/帳號不存在不關）→ JS 掃 DOM 慢 50-100ms 仍被 popup 擋
+    結論：保留原始 aggressive observer。test_login_wrong_password /
+    test_login_wrong_username 偶發 flaky（observer 秒關 toast 在 assert 之前）
+    用 pytest-rerunfailures 重試一次處理（pytest.ini --reruns 1）。
     """
     context = browser.new_context(no_viewport=True)
     try:

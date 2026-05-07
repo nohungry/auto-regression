@@ -44,6 +44,24 @@ class TestNavigation:
         if sh: sh.full_page("verify_捕魚分類頁載入")
         expect(page).to_have_url(re.compile("Categories/fishing"), timeout=8000)
 
+    def test_sports_page_loads(self, class_logged_in_page: Page, go_home):
+        """點擊體育分類後頁面正常載入（2026-05 產品新增）"""
+        page = class_logged_in_page
+        home = HomePage(page)
+        sh = get_screenshotter(page)
+        home.click_nav_item("體育")
+        if sh: sh.full_page("verify_體育分類頁載入")
+        expect(page).to_have_url(re.compile("Categories/sports"), timeout=8000)
+
+    def test_lottery_page_loads(self, class_logged_in_page: Page, go_home):
+        """點擊彩票分類後頁面正常載入（2026-05 產品新增）"""
+        page = class_logged_in_page
+        home = HomePage(page)
+        sh = get_screenshotter(page)
+        home.click_nav_item("彩票")
+        if sh: sh.full_page("verify_彩票分類頁載入")
+        expect(page).to_have_url(re.compile("Categories/lottery"), timeout=8000)
+
     def test_casino_halls_visible(self, class_logged_in_page: Page, go_home):
         """TC-015：真人頁顯示所有廳館（T9真人、RC真人、DG真人、MT真人、歐博）"""
         page = class_logged_in_page

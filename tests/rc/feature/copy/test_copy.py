@@ -35,17 +35,25 @@ class TestCopy:
         expect(page).to_have_title("王老吉娛樂城")
 
     def test_home_category_order(self, page: Page, site_config):
-        """首頁主分類 href 順序：casino → slots → fishing（語系無關）"""
+        """首頁主分類 href 順序：casino → slots → sports → lottery → fishing（語系無關）
+
+        2026-05 變更：產品新增「體育」(sports) 與「彩票」(lottery) 兩個分類，
+        插在 slots 與 fishing 中間。原本只驗 [casino, slots, fishing] 已不符實況。
+        """
         login = LoginPage(page, site_config.url)
         login.goto()
         hrefs = page.locator('a[href*="/Categories/"]').evaluate_all(
             """links => links.map(a => a.getAttribute('href'))"""
         )
-        # 取前 3 個主分類，過濾掉 hash-only fragment
-        main = [h for h in hrefs if "/Categories/" in h][:3]
+        # 取前 5 個主分類，過濾掉 hash-only fragment
+        main = [h for h in hrefs if "/Categories/" in h][:5]
+        sh = get_screenshotter(page)
+        if sh: sh.full_page(f"verify_主分類順序檢測_{main}")
         assert main == [
             "/Categories/casino#gameListSection",
             "/Categories/slots#gameListSection",
+            "/Categories/sports#gameListSection",
+            "/Categories/lottery#gameListSection",
             "/Categories/fishing#gameListSection",
         ], f"主分類順序不符，實際：{main}"
 

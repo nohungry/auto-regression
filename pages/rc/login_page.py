@@ -36,12 +36,20 @@ class LoginPage:
         wait 拉長至 15s：dev 站 SPA hydration + 登入 modal 動畫可能需時。
         trigger button 本身也要等：SPA 初始化完才會掛入 DOM。
 
-        防 flaky：偶發第一次 click 沒觸發 modal（推測 hydration race），
-        若 5s 內 username_input 未出現則再 click 一次。對齊 RE 站做法
-        （pages/re/login_page.py）。
+        防 flaky：
+        - 公告大圖輪播 popup-announcement-mask 為 server async 渲染，
+          可能在 goto() 後才插入 DOM 並攔截 pointer events，導致 click 永遠 timeout。
+          click 前再 dismiss 一次（已存在則清掉，沒出現會短路 return）。
+        - 偶發第一次 click 沒觸發 modal（推測 hydration race），
+          若 5s 內 username_input 未出現則再 click 一次。對齊 RE 站做法
+          （pages/re/login_page.py）。
         """
         sh = get_screenshotter(self.page)
         self.login_trigger_btn.wait_for(state="visible", timeout=15000)
+
+        # 公告 popup 可能在 goto() 之後才出現 → click 前再清一次
+        dismiss_announcement_popup_if_present(self.page)
+
         self.login_trigger_btn.scroll_into_view_if_needed()
         if sh: sh.capture(self.login_trigger_btn, "click_登入按鈕")
         self.login_trigger_btn.click()
@@ -50,7 +58,8 @@ class LoginPage:
             return
         except PlaywrightTimeoutError:
             pass
-        # Retry once：SPA hydration race 容忍
+        # Retry once：SPA hydration race 容忍 + 再清一次 popup 以防中途彈出
+        dismiss_announcement_popup_if_present(self.page)
         if sh: sh.capture(self.login_trigger_btn, "click_登入按鈕_retry")
         self.login_trigger_btn.click()
         self.username_input.wait_for(state="visible", timeout=10000)
