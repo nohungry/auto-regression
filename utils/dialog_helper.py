@@ -42,30 +42,37 @@ def dismiss_server_error_if_present(page: Page, timeout: int = 3000) -> bool:
 
 def dismiss_announcement_popup_if_present(page: Page, timeout: int = 3000) -> bool:
     """
-    關閉老吉公告彈窗（popup-announcement-mask）。
-    彈窗為多張輪播，每次點擊 close-circle-btn 僅推進一張，
-    需持續點擊直到所有張數翻完後 popup 自動消失。
+    清除 RC 公告大圖輪播彈窗（popup-announcement-mask）。
 
-    彈窗由伺服器 async 渲染，可能在 domcontentloaded 之後才插入 DOM，
-    不能用 count() 短路，必須等 timeout。
+    策略：注入永久 CSS 規則 + 移除既有 DOM。
+
+    為何不走「click ✕ 翻完所有張數」路徑：
+    1. dev-rc 已知 bug — 螢幕不夠大時 ✕ 按鈕在 viewport 外完全點不到。
+    2. 即便 click 成功，Vue + 伺服器 async 渲染會在 click 與後續 login 操作之間
+       重新 mount popup（timing race）— 造成 login_trigger_btn.click() 仍被攔截。
+    3. CSS `display: none !important` 是冪等且持久的：之後 popup 即使重新 render
+       也直接 invisible 且 pointer-events 失效，不會再攔截操作。
+
+    本 helper 對非 RC 站（無 popup-announcement-mask 元素）為 no-op，安全。
+    timeout 參數保留以維持 caller 簽名相容，內部不使用。
 
     Returns:
-        True  - 有彈窗且已關閉
-        False - 沒有彈窗
+        True - 注入完成（不論 popup 當下是否在 DOM）
     """
-    mask = page.locator(".popup-announcement-mask")
-    try:
-        mask.wait_for(state="visible", timeout=timeout)
-    except PlaywrightTimeoutError:
-        return False
-
-    close_btn = page.locator("button.close-circle-btn")
-    for _ in range(30):
-        try:
-            close_btn.wait_for(state="visible", timeout=1000)
-            close_btn.click()
-        except PlaywrightTimeoutError:
-            break  # 按鈕消失 = 所有張數已翻完，popup 關閉
+    page.evaluate("""
+        (() => {
+            // 注入永久 CSS killer（idempotent；同 page 只注一次）
+            if (!document.getElementById('__rc_popup_announcement_killer')) {
+                const style = document.createElement('style');
+                style.id = '__rc_popup_announcement_killer';
+                style.textContent = '.popup-announcement-mask { display: none !important; pointer-events: none !important; }';
+                document.head.appendChild(style);
+            }
+            // 清除目前已存在的 mask 與 body class（CSS rule 已能處理未來新出現的）
+            document.querySelectorAll('.popup-announcement-mask').forEach(el => el.remove());
+            document.body.classList.remove('dialog-open');
+        })()
+    """)
     return True
 
 
