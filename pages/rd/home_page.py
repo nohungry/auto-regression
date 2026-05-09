@@ -21,10 +21,14 @@ class HomePage:
         # Selectors
         # navbar 「登錄」按鈕（未登入才出現），用 button.neon-btn 過濾掉 modal/下載 等其他主按鈕
         self.login_btn  = page.locator('button.neon-btn', has_text="登錄")
-        # 「個人資訊」是 navbar 永遠存在的 menu icon（不論登入態），用作登入後 navbar 已 hydrate 的信號
-        self.personal_info_menu = page.locator('text=個人資訊').first
-        # 登出按鈕：點「個人資訊」進 dropdown / page 後才出現（待後續 probe）
-        self.logout_btn = page.locator('button', has_text="登出")
+        # 「個人資訊」是 navbar 永遠存在的 menu item（不論登入態），用作登入後 navbar 已 hydrate 的信號；
+        # 登入後點擊會打開個人資訊面板，內含「登出」按鈕
+        # NOTE: 內層 <p>個人資訊</p> 有 `opacity-0 lg:hidden` 在 lg viewport 上 display:none，
+        # 不能用 `text=個人資訊`（會命中 invisible 的 P）— 改用外層 `div.cursor-pointer` + has_text
+        # 鎖定可點擊的 sidebar item DIV。
+        self.personal_info_menu = page.locator('div.cursor-pointer', has_text="個人資訊").first
+        # 登出按鈕在個人資訊面板內，使用 button.main-btn 與其他面板按鈕（如「修改密碼」）區分
+        self.logout_btn = page.locator('button.main-btn', has_text="登出")
         # 為了 logout flow API 一致，留 avatar 介面但 RD 上實際是「個人資訊」icon
         self.avatar = self.personal_info_menu
 
@@ -61,11 +65,18 @@ class HomePage:
         dismiss_announcement_popup_if_present(self.page)
 
     def open_user_dropdown(self):
-        """點擊頭像，展開下拉選單"""
+        """點擊「個人資訊」icon 開啟個人資訊面板（內含登出按鈕）
+
+        RD 與 rc/re 不同：navbar 沒有 avatar dropdown，登入後仍是側邊「個人資訊」menu，
+        點擊後開啟一個面板顯示帳號資訊與「修改密碼 / 登出」按鈕。
+
+        dialog-mask 蓋板會攔截 pointer events（同 login_page.open_login_form 的 pattern），
+        必須用 dispatch_event 繞過 actionability check。
+        """
         sh = get_screenshotter(self.page)
         self.avatar.scroll_into_view_if_needed()
-        if sh: sh.capture(self.avatar, "click_頭像開啟選單")
-        self.avatar.click()
+        if sh: sh.capture(self.avatar, "click_個人資訊_開啟面板")
+        self.avatar.dispatch_event("click")
         self.logout_btn.wait_for(state="visible", timeout=5000)
 
     def click_nav_item(self, name: str):
@@ -79,14 +90,18 @@ class HomePage:
             if sh: sh.full_page(f"loading_完成_分類_{name}")
 
     def logout(self):
-        """點擊頭像 → 選擇登出 → 驗證登出成功"""
+        """點擊個人資訊 → 選擇登出 → 驗證登出成功
+
+        登出按鈕位於個人資訊面板內，與 login modal 共用 dialog-mask 蓋板系統，
+        點擊用 dispatch_event 繞過 pointer-events 攔截（與 open_user_dropdown 同 pattern）。
+        """
         sh = get_screenshotter(self.page)
         dismiss_server_error_if_present(self.page)
         self.open_user_dropdown()
         dismiss_server_error_if_present(self.page)
         self.logout_btn.scroll_into_view_if_needed()
         if sh: sh.capture(self.logout_btn, "click_登出")
-        self.logout_btn.click()
+        self.logout_btn.dispatch_event("click")
         # 驗證登出成功：右上角出現「登錄」按鈕（注意 RD 用「登錄」非「登入」）
         expect(self.login_btn).to_be_visible(timeout=5000)
         if sh: sh.capture(self.login_btn, "verify_登出成功")
