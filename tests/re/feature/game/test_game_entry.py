@@ -11,8 +11,16 @@ RE-GAME-001
 重要：必須在整個遊戲階段共用同一個 CDP session，
 每次建新 session 會干擾遊戲引擎的事件處理。
 
-與 tests/rc/feature/game/test_game_entry.py 共用 t9platform 平台 DOM 與遊戲引擎，
-selector 與座標完全沿用；若 RE 遊戲版面後續有差異再 fork。
+為何不用 Playwright page.mouse.click？
+2026-05-09 實機驗證：在 RE iframe canvas 上 page.mouse.click(abs_x, abs_y)
+完全不觸發「確定」按鈕的 click handler（machine select dialog 不會關），
+spin click 也打不到 — start_spin API timeout。CDP raw mouse event 才能
+驅動 RE 的 canvas event 系統。屬 RE 平台特性，非 over-engineering。
+
+與 tests/rc/feature/game/test_game_entry.py 雖然都跑 t9platform 同款遊戲，
+但 GAME_BTN 座標已 fork（RE iframe 1920x1015 與 RC 1536x762 比例不同；
+RE 機台 select dialog 流程也與 RC 微異）— 修改座標時請各自獨立調整，
+不要互相 sync。
 """
 
 import re
@@ -106,7 +114,13 @@ class TestGameEntry:
             sh.full_page("verify_遊戲載入完成")
 
         # ===== Phase 2: 遊戲內操作 =====
-        # 建立單一持久 CDP session（整個遊戲階段共用）
+        # 為何用 CDP Input.dispatchMouseEvent 而非 Playwright page.mouse.click？
+        # 實驗 2026-05-09：把 game_click 換成 page.mouse.click(abs_x, abs_y) 跑同一
+        # 流程，「確定」button 完全不被觸發（machine select dialog 沒關，spin
+        # click 落在 dialog 上 → start_spin API timeout）。CDP raw mouse event
+        # 才能觸發 RE 遊戲 iframe canvas 的 click handler — 與 RC iframe 行為差異。
+        # 結論：CDP 是 RE 必要的 workaround，不是 over-engineering。
+        # （此差異也是當初 Luke 把 RC test 與 RE test 都用 CDP 統一的原因。）
         cdp = page.context.new_cdp_session(page)
 
         try:
@@ -114,7 +128,7 @@ class TestGameEntry:
             assert iframe_box, "找不到遊戲 iframe"
 
             def game_click(btn_name: str, wait_after: int = 2000):
-                """使用共用 CDP session 點擊遊戲按鈕"""
+                """使用共用 CDP session 點擊遊戲按鈕（Playwright click 在 RE 不 work）"""
                 x_pct, y_pct = GAME_BTN[btn_name]
                 abs_x = iframe_box["x"] + iframe_box["width"] * x_pct
                 abs_y = iframe_box["y"] + iframe_box["height"] * y_pct
