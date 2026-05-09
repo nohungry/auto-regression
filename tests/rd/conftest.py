@@ -9,7 +9,11 @@ rd 站點測試專用 conftest (狗狗娛樂城)
 import pytest
 from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
 from config.settings import get_site_config
-from utils.dialog_helper import dismiss_server_error_if_present, dismiss_announcement_popup_if_present
+from utils.dialog_helper import (
+    dismiss_server_error_if_present,
+    dismiss_announcement_popup_if_present,
+    dismiss_dialog_mask_if_present,
+)
 
 
 @pytest.fixture(scope="session")
@@ -33,4 +37,6 @@ def go_home(class_logged_in_page, site_config):
         pass
     dismiss_server_error_if_present(pg)
     dismiss_announcement_popup_if_present(pg)
+    # RD 站專屬蓋板廣告（.dialog-mask + .dialog-container），會攔截 navbar 點擊
+    dismiss_dialog_mask_if_present(pg)
     yield
