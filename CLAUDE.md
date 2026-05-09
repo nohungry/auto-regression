@@ -72,7 +72,7 @@ tests/lt/                   — lt site tests (test_p0_smoke.py p0, test_locale_
 tests/lt/conftest.py        — lt-specific overrides: site_config=lt, page fixture without MutationObserver
 tests/re/                   — re site tests (test_p0_smoke.py p0, feature/<name>/ p1: announcement_popup, copy, game, home_sections, i18n, member, navigation, sidebar, visual, wallet)
 tests/re/conftest.py        — re-specific overrides: site_config=re, go_home
-tests/rd/                   — rd site tests (test_p0_smoke.py p0, 8 pass — feature 待後續 onboarding)
+tests/rd/                   — rd site tests (test_p0_smoke.py p0, feature/<name>/ p1: announcement_popup)
 tests/rd/conftest.py        — rd-specific overrides: site_config=rd, go_home
 utils/locale_helper.py       — set_locale(): injects i18n_redirected_lt cookie for lt site
 utils/dialog_helper.py       — helpers: dismiss server error popups, wait for loading animation
