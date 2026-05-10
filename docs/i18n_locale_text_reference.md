@@ -153,3 +153,68 @@ RC 站台（SITE_RC_URL）支援六種語系：繁體中文、簡体中文、日
 | 帳號欄位 | `input.input-style[type='text']` | placeholder 隨語系變動 |
 | 密碼欄位 | `input.input-style[type='password']` | placeholder 隨語系變動 |
 | Sidebar 項目 | `.sidebar-item` | DOM 中有文字，CSS width=0 隱藏 |
+
+---
+
+# RD 站台
+
+RD 站台（SITE_RD_URL，狗狗娛樂城）支援五種語系：繁體中文、簡体中文、日本語、Tiếng Việt、English（**無泰語**，與 RC/RE 6 語系不同）。
+語系切換方式：點 navbar 上「顯示當前語言」的按鈕（`button.bg-shade03`）→ 從下拉選單（`div.cursor-pointer p`）選擇目標語系。
+
+> **與 RC 不同**：RD 沒有 globe icon，語系觸發按鈕直接顯示當前語言名稱。click handler 因 SPA hydration 必須用 `dispatch_event("click")`，第一次失敗時等 ~2s 重試。
+
+## 首頁登錄按鈕 + 6 分類文案（RD-I18N-HOME-001 ~ 005）
+
+測試檔：`tests/rd/feature/i18n/test_home_locale.py`
+
+**6 個分類順序**：電子 / 真人 / 捕魚 / 體育 / 彩票 / 鬥雞（RD 獨有 6 類，含彩票與鬥雞）。
+
+| 語系 | 登錄按鈕 | 1.電子 | 2.真人 | 3.捕魚 | 4.體育 | 5.彩票 | 6.鬥雞 |
+|------|---------|--------|--------|--------|--------|--------|--------|
+| 繁體中文 | 登錄 | 電子 | 真人 | 捕魚 | 體育 | 彩票 | 鬥雞 |
+| 簡体中文 | 登录 | **任意电子** ⚠️ | 真人 | 捕鱼 | 体育 | **任意彩票** ⚠️ | 斗鸡 |
+| 日本語 | ログイン | eゲーム | ライブ | フィッシング | スポーツ | ロト | 闘鶏 |
+| Tiếng Việt | Đăng nhập | Điện tử | Người thực | Bắn cá | Thể thao | xổ số | Đá gà |
+| English | Login | Slots | Casino | Fishing | Sports | **Cockfight / Fighting rooster** ⚠️ | Cockfight |
+
+> **As-is 慣例（dev-rd 翻譯已知問題，本測試以當前文案為準，產品修正後 test fail = i18n regression 訊號）**：
+> - **簡体中文**：「电子」/「彩票」分類顯示為「任意电子」/「任意彩票」（i18n key 未對齊，誤用 "任意 X" 變體）
+> - **English**：第 5 格（彩票/lottery）顯示為「Cockfight / Fighting rooster」（漏翻 / key 重用 cockfighting）；第 6 格才是預期的 "Cockfight"
+
+---
+
+## 登入 Modal 文案（RD-I18N-LOGIN-001 ~ 005）
+
+測試檔：`tests/rd/feature/i18n/test_login_locale.py`
+
+| 語系 | 帳號 placeholder | 密碼 placeholder | 送出按鈕 |
+|------|-----------------|-----------------|---------|
+| 繁體中文 | 帳號 | 密碼 | 登錄 |
+| 簡体中文 | **帳號** ⚠️ | 密码 | 登录 |
+| 日本語 | アカウント | パスワード | ログイン |
+| Tiếng Việt | Tài khoản | Mật khẩu | Đăng nhập |
+| English | User Name | Password | Login |
+
+> **As-is 慣例**：簡体中文 username placeholder 為「帳號」（與其他繁體欄位混用），看似翻譯遺漏。若產品端修為「账号」則此測試會 fail，視為 i18n regression 訊號。
+
+---
+
+## 語系下拉選單（RD-TC-L01）
+
+測試檔：`tests/rd/feature/i18n/test_language_dropdown.py`
+
+驗證 navbar 語言下拉選單包含 5 個語系（繁體中文 / 簡体中文 / English / Tiếng Việt / 日本語），無泰語。
+
+---
+
+## RD Selector 備註
+
+| 元素 | Selector | 說明 |
+|------|----------|------|
+| 語系觸發按鈕 | `button.bg-shade03` | navbar 顯示當前語言；filter 用 LANG names regex 鎖定 |
+| 語系選項 | `div.cursor-pointer p` | dropdown 內各語系名稱 |
+| 登錄按鈕 | `button.neon-btn` | navbar 主按鈕（has_text="登錄"），用以區分其他主按鈕 |
+| 登入 Modal 帳密欄位 | `input` 第 0/1 個（nth(0)/nth(1)） | placeholder 隨語系變動 |
+| 登入 Modal 送出 | `button.main-btn` + has_text=login_text | 送出按鈕，文案隨語系變動 |
+| 公告蓋板 | `.dialog-mask` | 切語系前必須先 dismiss，否則 navbar 點擊會被攔截 |
+| 互動模式 | `dispatch_event("click")` | SPA hydration race + dialog-mask 攔截，普通 click 失效 |
