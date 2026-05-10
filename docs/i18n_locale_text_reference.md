@@ -199,6 +199,25 @@ RD 站台（SITE_RD_URL，狗狗娛樂城）支援五種語系：繁體中文、
 
 ---
 
+## 側邊欄前 3 項文案（RD-I18N-SIDEBAR-001 ~ 005）
+
+測試檔：`tests/rd/feature/i18n/test_sidebar_locale.py`
+
+> RD 側邊欄文字節點為 `p.opacity-0.lg:hidden`（lg viewport 上 `display:none`，但 DOM 中仍存在）。  
+> 用 `body.to_contain_text()` 驗證（不需 hover / scroll，與 RC 同 pattern）。
+
+| 語系 | 個人資訊 | 遊戲明細 | 站內信 |
+|------|---------|---------|-------|
+| 繁體中文 | 個人資訊 | 遊戲明細 | 站內信 |
+| 簡体中文 | **我的帳戶** ⚠️ | 游戏记录 | 信件 |
+| 日本語 | マイアカウント | ゲーム履歴 | メール |
+| Tiếng Việt | Tài khoản của tôi | Lịch sử trò chơi | Thư |
+| English | My Account | Game records | Member message |
+
+> **As-is 慣例（簡体中文「我的帳戶」用繁體「帳」字，應為「账」；mixed 繁/簡 為已知 i18n bug，產品修正後 test fail = regression 訊號）**
+
+---
+
 ## 語系下拉選單（RD-TC-L01）
 
 測試檔：`tests/rd/feature/i18n/test_language_dropdown.py`
