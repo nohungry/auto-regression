@@ -13,9 +13,13 @@ description: 審查 auto-regression repo 中的 pytest-playwright 測試、page 
 
 # Repo context
 - 技術棧：Python + pytest-playwright。
-- 多站台架構：`pages/factory.py` 使用 registry dict 依 `site_id` 路由對應 page object。
-- 測試位於 `tests/<site_id>/`，page objects 位於 `pages/<site_id>/`。
-- 每站有自己的 `tests/<site_id>/conftest.py`，覆寫 `site_config` 與站台特定 fixture。
+- **雙系統 multi-site 架構**：
+  - 前台（玩家端）：`pages/factory.py` 用 registry dict 依 `site_id` 路由；page objects 位於 `pages/<site_id>/`；測試位於 `tests/<site_id>/`。
+  - 後台 dashboard（代理/管理端）：`pages/dashboard/factory.py`（**獨立 registry**）；page objects 位於 `pages/dashboard/<site_id>/`；測試位於 `tests/dashboard/<site_id>/`。
+  - API 層：無 factory，requests 直打；測試位於 `tests/api/<site_id>/`。
+  - 前台與後台為兩套獨立系統，**禁止互相 import**。
+- 已註冊站點以兩個 factory 的 registry 為準，不要憑記憶推論。
+- 每站有自己的 `tests/<site_id>/conftest.py`（前台）或 `tests/dashboard/<site_id>/conftest.py`（後台），覆寫 `site_config` 與站台特定 fixture。
 - 全域 `conftest.py` 的 `_new_configured_page()` 注入 `toast-confirm-btn` MutationObserver（rc 站專有），其他站需在自己的 conftest 覆寫 `page` fixture 移除此注入。
 - 截圖系統透過 `get_screenshotter(page)` 運作，POM 方法中應有截圖呼叫。
 - LT 站目前採 **reference screenshot** 策略：輸出至 `screenshots/lt/vr_reference/` 供人工確認，不做 pixel 比對（跨環境無法穩定）。`tests/lt/__snapshots__/` 為舊 baseline，無測試引用。
@@ -26,8 +30,9 @@ description: 審查 auto-regression repo 中的 pytest-playwright 測試、page 
 2. **reliability**：是否引入 flaky wait、脆弱 selector、隱性 race condition。
 3. **architecture**：是否破壞既有 multi-site / POM / factory 結構。
 4. **maintainability**：是否新增重複 flow、命名混亂、難以維護的 helper。
-5. **scalability**：是否把目前兩站寫死，導致未來新增站點時難以擴充。
-6. **regression risk**：是否影響 `conftest.py`、`pages/factory.py`、snapshot baseline、跨站共用行為。
+5. **scalability**：是否把任何特定站點寫死在共用層，導致新增站點需修改 factory 以外的程式碼。
+6. **regression risk**：是否影響 `conftest.py`、`pages/factory.py`、`pages/dashboard/factory.py`、snapshot baseline、跨站共用行為。
+7. **system isolation**：前台檔案是否有 import 後台 page（或反向）、共用層是否誤用單一系統的特性。
 
 # Review checklist — common pitfalls
 以下為此 repo 已知的高頻問題，review 時應逐項檢查：
@@ -53,6 +58,26 @@ description: 審查 auto-regression repo 中的 pytest-playwright 測試、page 
 - [ ] 新站是否評估了全域 `page` fixture 的 MutationObserver 注入是否適用？不適用需覆寫。
 - [ ] 若覆寫了 `page` fixture，`class_logged_in_page` 是否也需一併處理？
 
+## Multi-system 問題（前台 / 後台 / API 分離）
+- [ ] 前台檔案（`pages/<site_id>/`、`tests/<site_id>/`、根 `conftest.py`）是否有 import `pages.dashboard.*`？**這是 blocking**。
+- [ ] 後台檔案（`pages/dashboard/<site_id>/`、`tests/dashboard/<site_id>/`）是否有 import 前台 page？**這是 blocking**。
+- [ ] API 測試（`tests/api/<site_id>/`）是否誤啟動瀏覽器或誤 import 任何 `pages/.*`？API 層應只用 `requests` 直打。
+- [ ] 若改 `pages/factory.py`，是否有意外影響到後台流程？反之亦然。兩個 factory 各自 registry，不應跨用。
+- [ ] 新增後台站時，是否同時在 `pages/dashboard/factory.py` 的 `_DASHBOARD_LOGIN_REGISTRY` 與 `_DASHBOARD_MANAGEMENT_REGISTRY` 都註冊？兩個 registry 任一缺漏都會在 runtime 才報錯。
+- [ ] 後台測試的 `tests/dashboard/<site_id>/conftest.py` 是否覆寫 `site_config`？是否處理後台特有的登入流程（TOTP、代理 vs 總代帳號等）？
+- [ ] 後台 page object 是否避開「rc 站 toast MutationObserver」這類前台專屬機制（後台不應繼承前台的 page fixture 注入）？
+
+## 後台 state-mutating 測試問題（會改動真實資料的測試）
+後台測試常涉及對真實會員/代理進行存入、提取、額度調整等動作，review 時針對**會改變後端狀態**的測試逐項檢查：
+
+- [ ] 測試結束後**狀態是否回到初始**？（不論 normal path 還是中途失敗）
+- [ ] 中途失敗是否有**補償機制**避免留下髒資料？
+- [ ] 連續跑兩次是否 **idempotent**？（不累積殘留、不踩到上次未清的資料）
+- [ ] 多人/多 process 同時跑會不會互相干擾？（額度被併發扣到 0 等）
+- [ ] 補償邏輯本身是否也可能失敗？若失敗是否能在日誌中明確標示需人工介入？
+
+> 具體實作 pattern 可為「對稱還原 + try/finally 反向補償」、「fixture teardown 中還原」、或「teardown 時 diff 餘額反向補償」 — review 重點在「狀態可預測性」，不限定 pattern。
+
 ## Factory / POM 問題
 - [ ] test 檔是否直接 `from pages.<site_id>.xxx import` 而不走 factory？
 - [ ] 新增站點是否已在 `factory.py` 的 registry dict 中註冊？
@@ -77,11 +102,11 @@ description: 審查 auto-regression repo 中的 pytest-playwright 測試、page 
 - [ ] 若動到 `tests/lt/__snapshots__/`（legacy baseline），是否能直接刪除，或有保留理由？
 
 # High-risk change rules
-1. 下列變更需特別提高警覺：`conftest.py`、`pages/factory.py`、snapshot baseline、fixture 新增/更名/行為變更、visual regression assertion 調整。
+1. 下列變更需特別提高警覺：`conftest.py`、`pages/factory.py`、`pages/dashboard/factory.py`、snapshot baseline、fixture 新增/更名/行為變更、visual regression assertion 調整。
 2. 若 PR 含 snapshot 更新，需要求說明為何屬於產品預期變更。
 3. 若 PR 同時改 page object API 與多個 tests，需檢查是否有隱性破壞或未覆蓋流程。
 4. 若共用 helper（`utils/dialog_helper.py`、`utils/screenshot_helper.py`、`utils/locale_helper.py`）被修改，需評估是否波及所有既有與未來站點使用方式。
-5. 若新增站點，需檢查是否完整走完 onboarding checklist：`.env` → `pages/<site_id>/` → `factory.py` registry → `tests/<site_id>/conftest.py` → `pytest.ini` markers。
+5. 若新增站點，需檢查是否完整走完 onboarding checklist — 詳見 `ui-test-author` skill 的「Adding a new site — checklist」三分支（A. 前台 / B. 後台 / C. API）。Review 時逐項核對該 checklist，任一分支缺漏需明確標示。前台是必須；後台 / API 視該站需求而定。
 
 # Review comment rules
 1. 先指出 blocking issues，再指出 non-blocking improvements。

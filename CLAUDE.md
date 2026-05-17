@@ -60,12 +60,15 @@ Reports are written to `reports/report.html` (self-contained HTML).
 ```
 conftest.py                  — browser setup, environment detection (Windows/WSL/Linux), global fixtures
 config/settings.py           — multi-site SiteConfig dataclass loaded from .env
-pages/factory.py             — routes site_id → LoginPage/HomePage class via registry dict (no if/else fallback; unknown site_id raises ValueError)
+pages/factory.py             — frontend: routes site_id → LoginPage/HomePage class via registry dict (no if/else fallback; unknown site_id raises ValueError)
+pages/dashboard/factory.py   — backend dashboard: routes site_id → DashboardLoginPage/ManagementPage class (independent registry from frontend; no cross-import)
 pages/rc/                   — rc site Page Objects (LoginPage, HomePage) — 王老吉娛樂城
 pages/lt/                   — lt site Page Objects (LoginPage, HomePage) — LT來財
 pages/re/                   — re site Page Objects (LoginPage, HomePage) — BeWin
 pages/rd/                   — rd site Page Objects (LoginPage, HomePage) — 狗狗娛樂城
-tests/api/lt/               — lt site API-layer tests (no browser)
+pages/dashboard/<site_id>/   — backend dashboard page objects (DashboardLoginPage, ManagementPage); per dashboard factory registry
+tests/api/<site_id>/         — API-layer tests (requests only, no browser, no pages/* import); per-site conftest
+tests/dashboard/<site_id>/   — backend dashboard tests; state-mutating tests should be reversible (rollback / teardown compensation)
 tests/rc/                   — rc site tests (test_p0_smoke.py p0, feature/<name>/ p1: announcement_popup, i18n, navigation, wallet)
 tests/rc/conftest.py        — rc-specific overrides: site_config=rc, go_home (+ dismiss announcement popup)
 tests/lt/                   — lt site tests (test_p0_smoke.py p0, test_locale_visual_matrix.py p2 [skipped], feature/<name>/ p1: auth, copy, i18n, member, public, visual, wallet)
@@ -94,7 +97,7 @@ dev-notes/                   — personal developer notes (gitignored except REA
 - `auto_screenshot` (autouse) — attaches `ScreenshotHelper` to page; auto-categorizes tests into `smoke/` or `feature/` subfolder; generates `screenshots/<site_id>/<timestamp>/<category>/<test_name>/README.md` after each test
 - `auto_logout_after_test` (autouse) — logs out after each smoke test (`page` fixture only)
 
-**Markers** (pytest.ini): `p0`, `p1`, `p2`, `login`, `home`, `member`, `wallet`, `i18n`, `language`, `copy`, `visual`, `visual_regression`, `locale_visual`, `api`, `lt`
+**Markers** (pytest.ini): `p0`, `p1`, `p2`, `login`, `home`, `member`, `wallet`, `i18n`, `language`, `copy`, `visual`, `visual_regression`, `locale_layout`, `docker_only`, `api`, `dashboard`, `game`, `flaky`, `lt`, `rc`, `re`, `rd`
 
 ## Multi-site Factory Pattern
 

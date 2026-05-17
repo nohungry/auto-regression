@@ -13,22 +13,24 @@ description: 為 auto-regression repo 規劃或調整 Page Objects、component o
 # Repo context
 - 技術棧：Python + pytest-playwright。
 - 專案採 multi-site 架構，站台差異透過 `pages/factory.py` 的 registry dict 與 `site_id` 路由處理。
-- 各站 page objects 位於 `pages/<site_id>/`，目前有 `rc`、`lt` 兩站。
-- 各站測試位於 `tests/<site_id>/`，每站有自己的 `conftest.py` 覆寫 `site_config` 與站台特定 fixture。
+- 各站 page objects 位於 `pages/<site_id>/`，已註冊站點以 `pages/factory.py` 的 registry 為準（前台），`pages/dashboard/factory.py` 的 registry 為準（後台）。前台與後台為兩套獨立 factory，不互相 import。
+- 各站測試位於 `tests/<site_id>/`（前台）或 `tests/dashboard/<site_id>/`（後台），每站有自己的 `conftest.py` 覆寫 `site_config` 與站台特定 fixture。
 - 截圖系統透過 `utils/screenshot_helper.py` 的 `get_screenshotter(page)` 運作，POM 方法中需在關鍵操作點加入截圖呼叫。
-- 未來站點數量會增加，因此結構必須偏向可擴展，而不是只優化當前兩站。
+- 站點數量會持續增加，結構必須偏向可擴展，新增站點應只動 factory registry，而不需改 function 邏輯或共用層。
 
 # Current POM structure
+前台 page objects（由 `pages/factory.py` 路由）：
+
 ```
 pages/
-├── factory.py              — registry dict 路由 site_id → LoginPage/HomePage class
-├── rc/
-│   ├── login_page.py       — LoginPage（Modal overlay 登入、toast 彈窗、Loading 動畫、用戶協議）
-│   └── home_page.py        — HomePage（avatar dropdown 登出、nav 導覽、伺服器錯誤處理）
-├── lt/
-│   ├── login_page.py       — LoginPage（SPA /login 路由、locale cookie、networkidle 等待）
-│   └── home_page.py        — HomePage（hamburger drawer 登出、dispatch_event 處理 viewport 外按鈕）
+├── factory.py              — 前台 registry dict 路由 site_id → LoginPage/HomePage class
+├── <site_id>/              — 各前台站台，每站含 login_page.py 與 home_page.py（站台差異見下方範例表）
+└── dashboard/
+    ├── factory.py          — 後台 registry dict 路由 site_id → DashboardLoginPage/ManagementPage class
+    └── <site_id>/          — 各後台站台，每站含 login_page.py 與 management_page.py
 ```
+
+站台清單以兩個 factory 的 registry dict 為準，不在此文件中列舉，避免文件與 registry 失同步。
 
 # Page object public API contract
 各站的 `LoginPage` 與 `HomePage` 雖然內部實作不同，但必須維持一致的 public API，供 `conftest.py` fixtures 與 test 檔呼叫：
@@ -88,7 +90,10 @@ POM 方法中應整合截圖系統：
 6. 若新站點只有 selector 差異，優先在 site-specific page object 處理，不要複製整個 test flow。
 
 # Site-specific implementation examples
-以下是目前兩站的實際差異，作為未來新站設計參考：
+以下為 `rc` 與 `lt` 兩個早期站台的實際差異對照，作為新站設計時的**典型差異模式參考**，不代表目前 repo 只有這兩站。設計新站時請：
+1. 先查 `pages/factory.py` registry 確認當前已註冊站點。
+2. 從下表挑選最接近新站行為的 pattern 作為起點。
+3. 若新站行為完全不在下表中，補一條 pattern 並更新此 skill。
 
 | 行為 | rc 站 | lt 站 |
 |------|--------|--------|
@@ -107,7 +112,7 @@ POM 方法中應整合截圖系統：
 3. 若重構涉及 visual regression 頁面，需提醒檢查 snapshot / reference screenshot 是否受影響。
 4. 優先小步重構，不做無必要的大規模搬移。
 5. 若只是單一測試使用的小互動，不要急著抽象成共用 helper。
-6. 重構時需考慮未來站點擴充，而不是只讓現有兩站變整齊。
+6. 重構時需考慮未來站點擴充，而不是只讓現有站點變整齊。
 
 # Anti-patterns
 1. 在 test 裡直接複製大量 locator 與 click/fill 細節。
