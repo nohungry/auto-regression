@@ -1,20 +1,16 @@
 """
-WIN-I18N-HYDR-001~003：i18n 與資源 hydrate 健康度守門
+WIN-I18N-HYDR-001~003：i18n 與資源 hydrate 健康度守門（desktop 版，2026-05-18 rewrite）
 
-與既有 locale 切換驗證不同，本檔守門「預設語系下首頁載入時是否完整 hydrate」：
-- 首頁 `.cat-btn` 與底部 tabbar 文案不應出現 raw i18n key（`front.xxx.yyy` 格式）
+守門「預設語系下首頁載入時是否完整 hydrate」：
+- 首頁 hero section title（`span.category-title`）不應出現 raw i18n key（`front.xxx.yyy` 格式）
+- 底部 footer tab（`.footer-bg .content`）不應出現 raw i18n key
 - 首頁可見 `<img>` 不應存在 `src=""` 空值
 
-**現況（2026-04-23）**：dev-lt 產品端 regression 造成 i18n 部分 key 未 hydrate +
-遊戲 icon CDN 回傳空 URL，本檔 3 個測試以 `xfail(strict=True)` 標記。
-當產品端修復後會觸發 XPASS 強制提醒 un-xfail（守門機制）。
-
-參考：
-- PR #16 `TestI18NLangSwitcher.test_lang_text_reflects_locale` 同樣採 xfail(strict=True) pattern
-- `feedback_regression_notify_before_fix.md` — 產品端 regression 已通知主管
+**狀態（2026-05-18 probe）**：dev-lt 2026-04-23 regression 已修復（無 raw key、無 empty src img）；
+原 xfail(strict=True) 守門已解除，3 個 test 改為 enforce 模式 — 若日後 regression 再現會直接 FAIL。
+參考舊版 selector：原 `.cat-btn` 與 `.shadow-menubar` 在 2026-05-18 換版後均不存在。
 """
 
-import re
 import pytest
 from playwright.sync_api import Page
 from pages.lt.login_page import LoginPage
@@ -31,13 +27,11 @@ RAW_I18N_KEY_REGEX = r"^[a-z]+\.[a-zA-Z_.]+$"
 class TestI18NHydration:
     """WIN-I18N-HYDR-001~003：i18n 與資源 hydrate 健康度"""
 
-    @pytest.mark.xfail(
-        strict=True,
-        reason="dev-lt 2026-04-23 regression: `.cat-btn` 出現 front.category_icons.* raw key 未 hydrate。"
-               "產品端修復後觸發 XPASS → 移除此 xfail。",
-    )
-    def test_home_cat_btn_no_raw_i18n_key(self, page: Page, site_config):
-        """WIN-I18N-HYDR-001：首頁 `.cat-btn` 文案不應為 raw i18n key"""
+    def test_home_category_title_no_raw_i18n_key(self, page: Page, site_config):
+        """WIN-I18N-HYDR-001：首頁 hero section title 不應為 raw i18n key
+
+        2026-05-18 換版：原 `.cat-btn` 已被 `span.category-title` 取代。
+        """
         login = LoginPage(page, site_config.url)
         login.goto()
         page.wait_for_timeout(2000)
@@ -46,22 +40,20 @@ class TestI18NHydration:
         raw_keys = page.evaluate(
             """(pattern) => {
                 const regex = new RegExp(pattern);
-                return [...document.querySelectorAll('.cat-btn')]
+                return [...document.querySelectorAll('span.category-title')]
                     .map(el => (el.textContent || '').trim())
                     .filter(text => regex.test(text));
             }""",
             RAW_I18N_KEY_REGEX,
         )
-        if sh: sh.full_page(f"verify_cat_btn_i18n_hydrate現況_raw{len(raw_keys)}")
-        assert raw_keys == [], f".cat-btn 出現 raw i18n key（hydrate 失敗）：{raw_keys}"
+        if sh: sh.full_page(f"verify_category_title_i18n_hydrate現況_raw{len(raw_keys)}")
+        assert raw_keys == [], f"span.category-title 出現 raw i18n key（hydrate 失敗）：{raw_keys}"
 
-    @pytest.mark.xfail(
-        strict=True,
-        reason="dev-lt 2026-04-23 regression: 底部 tabbar 出現 front.Footer.Tab.* raw key 未 hydrate。"
-               "產品端修復後觸發 XPASS → 移除此 xfail。",
-    )
-    def test_home_tabbar_no_raw_i18n_key(self, page: Page, site_config):
-        """WIN-I18N-HYDR-002：底部 tabbar 文案不應為 raw i18n key"""
+    def test_home_footer_tab_no_raw_i18n_key(self, page: Page, site_config):
+        """WIN-I18N-HYDR-002：底部 footer tab 文案不應為 raw i18n key
+
+        2026-05-18 換版：原 `.shadow-menubar .cursor-pointer` 已被 `.footer-bg .content` 取代。
+        """
         login = LoginPage(page, site_config.url)
         login.goto()
         page.wait_for_timeout(2000)
@@ -70,22 +62,17 @@ class TestI18NHydration:
         raw_keys = page.evaluate(
             """(pattern) => {
                 const regex = new RegExp(pattern);
-                return [...document.querySelectorAll('.shadow-menubar .cursor-pointer')]
+                return [...document.querySelectorAll('.footer-bg .content')]
                     .map(el => (el.textContent || '').trim())
                     .filter(text => regex.test(text));
             }""",
             RAW_I18N_KEY_REGEX,
         )
-        if sh: sh.full_page(f"verify_tabbar_i18n_hydrate現況_raw{len(raw_keys)}")
-        assert raw_keys == [], f"底部 tabbar 出現 raw i18n key（hydrate 失敗）：{raw_keys}"
+        if sh: sh.full_page(f"verify_footer_tab_i18n_hydrate現況_raw{len(raw_keys)}")
+        assert raw_keys == [], f"footer tab 出現 raw i18n key（hydrate 失敗）：{raw_keys}"
 
-    @pytest.mark.xfail(
-        strict=True,
-        reason='dev-lt 2026-04-23 regression: 遊戲 icon <img src=""> 空字串。'
-               "產品端修復後觸發 XPASS → 移除此 xfail。",
-    )
     def test_home_images_no_empty_src(self, page: Page, site_config):
-        """WIN-I18N-HYDR-003：首頁可見 `<img>` 不應存在 `src=\"\"` 空值（動態值斷言：只驗非空）"""
+        """WIN-I18N-HYDR-003：首頁可見 `<img>` 不應存在 `src=""` 空值（動態值斷言：只驗非空）"""
         login = LoginPage(page, site_config.url)
         login.goto()
         page.wait_for_timeout(2000)

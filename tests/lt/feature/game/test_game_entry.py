@@ -52,6 +52,7 @@ REDUCE_BET_CANDIDATES = [
 class TestGameEntry:
     """LT-GAME-001：前台遊戲進入與下注流程"""
 
+    @pytest.mark.skip(reason="2026-05-18 換版：.cat-btn 分類入口消失（home.click_nav_item 已 NotImplementedError）、provider/遊戲卡片 selector 全變、open_betting_history_dialog 未對應新版 panel；需重新 probe 遊戲入口流程後整段重寫")
     def test_enter_and_spin(self, page: Page, site_config):
         """LT-GAME-001：登入 → 電子 → T9電子 → 關老爺(新分頁) → 開始 → 確定 → 減注 → Spin → 注單驗證"""
         sh = get_screenshotter(page)

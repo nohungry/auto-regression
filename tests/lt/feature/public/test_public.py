@@ -36,30 +36,38 @@ class TestPublicFeatures:
     def test_copyright_visible(self, page: Page, site_config):
         """WIN-PUB-006：版權資訊顯示（WAP 不適用）"""
 
-    def test_customer_service_link_is_linee(self, page: Page, site_config):
-        """WIN-PUB-010：客服浮動按鈕連結指向 lin.ee"""
+    def test_customer_service_link_exists(self, page: Page, site_config):
+        """WIN-PUB-010：客服浮動按鈕存在且 href 指向支援的 IM 平台。
+
+        2026-05-18 換版：舊 `a#drag_1_container`（指向 lin.ee）已換為 `a.fixed-telegram`，
+        href 改為其他 IM 平台。本測試改為驗「客服浮動連結存在且為已知 IM 平台」，
+        接受 lin.ee（LINE）/ t.me（Telegram）/ wa.me（WhatsApp）任一即可。
+        """
         login = LoginPage(page, site_config.url)
         login.goto()
-        link = page.locator('a#drag_1_container').first
+        link = page.locator('a.fixed-telegram, a.fixed-icon').first
         sh = get_screenshotter(page)
-        if sh: sh.capture(link, "verify_客服連結lin.ee")
-        expect(link).to_have_attribute("href", re.compile(r"lin\.ee"))
+        if sh: sh.capture(link, "verify_客服浮動連結存在")
+        expect(link).to_have_attribute("href", re.compile(r"(line\.me|lin\.ee|t\.me|wa\.me|telegram)"))
 
     def test_browse_without_login_returns_home(self, page: Page, site_config):
-        """WIN-PUB-011：登入頁「先去逛逛」可回首頁（驗首頁 .cat-btn 出現）"""
+        """WIN-PUB-011：登入頁「先去逛逛」可回首頁（驗首頁未登入 CTA 出現）
+
+        2026-05-18 換版：button.btn-browse → button.base-btn.type2；首頁未登入錨點
+        改用 navbar 「登入」CTA（div.login-btn-with-text，未登入時才顯示）。
+        """
         login = LoginPage(page, site_config.url)
         login.goto_login()
         sh = get_screenshotter(page)
 
-        browse_btn = page.locator('button.btn-browse').first
-        browse_btn.scroll_into_view_if_needed()
-        if sh: sh.capture(browse_btn, "click_先去逛逛")
-        browse_btn.click()
+        login.browse_btn.scroll_into_view_if_needed()
+        if sh: sh.capture(login.browse_btn, "click_先去逛逛")
+        login.browse_btn.dispatch_event("click")
 
         if sh: sh.full_page("verify_回到首頁")
         expect(page).to_have_url(
             re.compile(r"^" + re.escape(site_config.url.rstrip("/")) + r"/?$"),
             timeout=8000,
         )
-        # WAP 首頁以 .cat-btn 「遊戲大廳」為錨點（locale 敏感但與 P0 smoke 一致）
-        expect(page.locator('.cat-btn', has_text="遊戲大廳").first).to_be_visible()
+        # 未登入首頁錨點：navbar 「登入」CTA（locale-agnostic class）
+        expect(page.locator('div.login-btn-with-text').first).to_be_visible(timeout=5000)

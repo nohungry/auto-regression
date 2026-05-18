@@ -1,25 +1,23 @@
 """
-首頁 Page Object — lt 站點（WAP 版，2026-04-21 rewrite）
+首頁 Page Object — lt 站點（desktop responsive 版，2026-05-18 rewrite）
 
-WAP 改版後沿用的設計：
-- 無 hamburger / 桌機 drawer — 會員入口改為底部 tabbar「個人」→ `/member-center` 頁面
-- Navbar：`.bg-navbar` 65px sticky，內含 logo、餘額（`p.text-amount`）、登入狀態 pill
-- 登入狀態 pill：`p.text-text-light-main`
-  - 未登入：顯示 `Not Login` (英) / `尚未登入` (繁) — 隨 locale
-  - 已登入：顯示 username
-- 底部 tabbar：`.shadow-menubar` fixed bottom，5 個 `div.cursor-pointer` tab
-  (維護 / 公告 / [中間 CTA] / 排行榜 / 個人)
-- 登出：在 `/member-center` 內的 `button.bg-secondary:has-text("登出")`
+關鍵概念（probe 2026-05-18）：
+- 個人中心非獨立路由（無 /member-center）；點底部「個人」tab 在 `/` 開 `.dialog-mask-full` overlay panel
+- 登入成功標記：DLT cookie 存在（Nuxt SPA pushState 但 page.url 仍顯示 /login，不可靠）
+- Navbar 已登入：信用額度 `.coin-wrap-bg span`、帳號 `.user-info-bg p.tip-single`
+- 登出：panel 內的 `button.cancel-btn` filter "登出"，無確認 dialog
+- 所有 click 都要 dispatch_event（Vue handler 攔截 + tab 是 div 不是 button）
+
+WAP 時期（2026-04-21）的這些假設已全部失效：
+- `.bg-navbar` / `.shadow-menubar` / `.cat-btn` / `.bg-secondary` 都不在了
+- `/member-center` 路由不存在
+- LaiTsai / userLaiTsai cookie 已改名為 DLT
 """
 
-import re
+import time
 
 from playwright.sync_api import Page, TimeoutError as PlaywrightTimeoutError, expect
 from utils.screenshot_helper import get_screenshotter
-
-
-# 未登入狀態下登入 pill 可能出現的文字（各語系）— 用於 is_logged_in() 判斷
-_NOT_LOGGED_IN_TEXTS = {"Not Login", "尚未登入", "未登录", "未登入"}
 
 
 class HomePage:
@@ -27,86 +25,84 @@ class HomePage:
     def __init__(self, page: Page):
         self.page = page
 
-        # Navbar selectors
-        self.navbar          = page.locator('.bg-navbar').first
-        self.navbar_balance  = page.locator('.bg-navbar p.text-amount').first
-        # 登入狀態指示 pill（未登入 "Not Login" / 已登入 username）
-        self.navbar_login_pill = page.locator('.bg-navbar p.text-text-light-main').first
+        # Navbar
+        self.navbar = page.locator(".nav-bg-m").first
+        self.navbar_balance = page.locator(".coin-wrap-bg span").first
+        # 已登入時顯示 username；保留舊命名 navbar_login_pill 以維持測試介面相容
+        self.navbar_login_pill = page.locator(".user-info-bg p.tip-single").first
+        # 未登入時 navbar 右側「登入」CTA
+        self.login_cta_btn = page.locator("div.login-btn-with-text").first
 
-        # Bottom tabbar「個人」(最右側 tab)：結構化 locale-agnostic selector。
-        # 排除中間 CTA（`.flex-1`），剩 4 個側邊 tab 中最後一個即「個人」。
-        # 2026-04-23 dev-lt regression 證明 `has_text="個人"` 並非真的 locale-agnostic（i18n 壞會變 raw key）。
-        self.bottom_tab_member = page.locator('.shadow-menubar .cursor-pointer:not(.flex-1)').last
+        # 底部 tabbar「個人」— tap 後在 / 開 .dialog-mask-full panel
+        # 結構性 locale-agnostic：footer 5 個 .content tab，「個人」固定在最後
+        # 不用 has_text="個人"（i18n 切換後其他語系命中不到，POM 整個 fail）
+        self.bottom_tab_member = page.locator(".footer-bg .content").last
 
-        # Member center page (/member-center) — 登出按鈕
-        self.logout_btn = page.locator('button.bg-secondary', has_text="登出").first
-
-        # 未登入時首頁顯示的登入 CTA（從 probe 實測，未登入首頁可能會有此按鈕；保留相容）
-        self.login_btn = page.locator('button.btn-login').first
+        # Member center overlay panel
+        self.member_panel = page.locator(".dialog-mask-full").first
+        self.logout_btn = page.locator("button.cancel-btn").filter(has_text="登出").first
 
     def is_logged_in(self) -> bool:
-        """navbar login pill 文字不屬於「未登入」清單即為已登入。~3s"""
-        try:
-            self.navbar_login_pill.wait_for(state="visible", timeout=3000)
-        except PlaywrightTimeoutError:
-            return False
-        text = (self.navbar_login_pill.inner_text() or "").strip()
-        return text not in _NOT_LOGGED_IN_TEXTS and text != ""
+        """以 DLT cookie 存在判斷登入狀態"""
+        for c in self.page.context.cookies():
+            if c.get("name") == "DLT" and c.get("value"):
+                return True
+        return False
 
     def verify_logged_in(self):
-        """輕量驗證：已登入（navbar pill 不顯示「未登入」類文字）。~3s，無副作用。"""
+        """斷言已登入：navbar pill 顯示非空帳號文字"""
         sh = get_screenshotter(self.page)
         self.navbar_login_pill.wait_for(state="visible", timeout=10000)
         text = (self.navbar_login_pill.inner_text() or "").strip()
-        assert text not in _NOT_LOGGED_IN_TEXTS and text != "", (
-            f"expected logged-in state, got pill text: {text!r}"
-        )
+        assert text != "", "navbar login pill 應顯示帳號"
         if sh: sh.capture(self.navbar_login_pill, "verify_已登入_navbar_pill")
 
     def verify_login_success(self, username: str):
-        """驗證登入成功：navbar pill 顯示 username。"""
+        """驗證登入成功：navbar pill 顯示 username"""
         sh = get_screenshotter(self.page)
         expect(self.navbar_login_pill).to_have_text(username, timeout=10000)
         if sh: sh.capture(self.navbar_login_pill, f"verify_帳號顯示_{username}")
 
     def dismiss_any_popups(self):
-        """lt WAP 站點無伺服器錯誤彈窗。登入流程中的 UA / 成功 dialog 由 LoginPage.login() 處理。"""
+        """LT 無伺服器錯誤 popup；UA / 錯誤 dialog 由 LoginPage 處理"""
         pass
 
     def open_member_center(self):
-        """tap 底部「個人」tab → 導向 `/member-center`。冪等：已在 member-center 則跳過。
-        用 dispatch_event("click") 規避右下角「24小時客服」浮動圖示對 pointer events 的攔截。
-
-        Readiness signal 使用 locale-agnostic selector：
-        - URL 變為 /member-center
-        - 頁面內至少有兩顆 `button.bg-secondary`（維護時間 / 登出）
-        不用 has_text="登出" 等待，避免 en/th/vn 下按鈕文案不同造成 timeout。
+        """tap 底部「個人」tab → 開啟 .dialog-mask-full overlay panel（非 navigate）。
+        冪等：panel 已開則跳過。
         """
         sh = get_screenshotter(self.page)
-        if "/member-center" in self.page.url:
+        if self.member_panel.is_visible():
             return
-        self.bottom_tab_member.scroll_into_view_if_needed()
+        self.bottom_tab_member.wait_for(state="visible", timeout=5000)
         if sh: sh.capture(self.bottom_tab_member, "click_個人tab")
         self.bottom_tab_member.dispatch_event("click")
-        self.page.wait_for_url(lambda url: "/member-center" in url, timeout=8000)
-        self.page.locator('button.bg-secondary').nth(1).wait_for(state="visible", timeout=5000)
+        self.member_panel.wait_for(state="visible", timeout=8000)
 
     def logout(self):
-        """tap 個人 → tap 登出 → 驗證回到未登入狀態"""
+        """tap 個人 → tap 登出。無確認 dialog；登出後 DLT cookie 被清除。"""
         sh = get_screenshotter(self.page)
         self.open_member_center()
-        self.logout_btn.scroll_into_view_if_needed()
+        self.logout_btn.wait_for(state="visible", timeout=5000)
         if sh: sh.capture(self.logout_btn, "click_登出")
-        self.logout_btn.click()
-        # 登出後 SPA pushState 回首頁，navbar pill 回到「未登入」文字（locale 可能為 Not Login / 尚未登入 等）
-        not_logged_in_re = re.compile("|".join(re.escape(t) for t in _NOT_LOGGED_IN_TEXTS))
-        expect(self.navbar_login_pill).to_have_text(not_logged_in_re, timeout=10000)
-        if sh: sh.capture(self.navbar_login_pill, "verify_登出成功")
+        self.logout_btn.dispatch_event("click")
+
+        # 等 DLT cookie 消失（最多 10s）
+        deadline = time.monotonic() + 10
+        while time.monotonic() < deadline:
+            if not self.is_logged_in():
+                break
+            time.sleep(0.2)
+
+        # 並等未登入 CTA 出現
+        self.login_cta_btn.wait_for(state="visible", timeout=5000)
+        if sh: sh.capture(self.login_cta_btn, "verify_登出成功_未登入CTA出現")
 
     def click_nav_item(self, name: str):
-        """點擊主導覽列項目（WAP：遊戲大廳 / 我的最愛 / 台灣真人 / 國際真人 / 更多）"""
-        sh = get_screenshotter(self.page)
-        nav = self.page.locator('.cat-btn', has_text=name).first
-        nav.scroll_into_view_if_needed()
-        if sh: sh.capture(nav, f"click_分類_{name}")
-        nav.click()
+        """舊 .cat-btn 分類 tab 在 2026-05-18 換版已被新版 swipe sections 取代。
+        若需點 section title 請改用 `page.locator('span.category-title').filter(has_text=name)`。
+        保留簽名僅為防呼叫端 import 錯誤；呼叫會 raise，提示重寫。
+        """
+        raise NotImplementedError(
+            "LT desktop 版已無 .cat-btn 分類；改用 swipe sections (span.category-title)"
+        )

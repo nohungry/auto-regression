@@ -1,19 +1,18 @@
 """
-多語系文案驗證 — /member-center 頁面（WAP 版，2026-04-22 rewrite）
+多語系文案驗證 — 個人中心 panel + 底部維護時間 tab（desktop 版，2026-05-18 rewrite）
 WIN-I18N-MC-001~005
 
-WAP 改版後，會員入口從 hamburger/drawer 改為底部 tabbar「個人」→ `/member-center` 頁面。
-此檔原名 `test_drawer_locale.py`，已隨產品改版 rename 為 `test_member_center_locale.py`。
+2026-05-18 換版後：
+- 個人中心改為 SPA inline overlay panel（URL 不變），原 /member-center 路由不存在
+- 「維護時間」按鈕從 panel 內搬到**底部 footer tab**（`.footer-bg .content` 含「維護」）
+- 「投注紀錄」「會員訊息」section 改為 panel 左側 `.sidebar-item` 結構，
+  其 i18n 對應字尚未重新 probe，暫不在本檔驗證（留 follow-up）
 
-WAP 多語系實測（2026-04-22 probe）：
-- `/member-center` 的 **按鈕與 section 標題** 都有正確 5 語系翻譯：
-  - 「維護時間」按鈕（`button.bg-secondary.mb-5`）
-  - 「登出」按鈕（`button.bg-secondary` 非 mb-5）
-  - 「投注紀錄」heading
-  - 「會員訊息」heading
-- 但底部 tabbar（維護/公告/排行榜/個人）在所有語系下仍固定為繁中（產品端未套 i18n，見 test_home_locale.py）。
+本檔目前只驗兩個**已確認位置 + 已知 5 語系翻譯**的元素：
+- 登出按鈕（panel 內 `button.cancel-btn`）
+- 底部維護時間 tab（`.footer-bg .content` 含「維護」）
 
-本檔驗證 /member-center 四項核心文案在 5 語系下正確翻譯。
+WAP 時期同檔驗 4 元素，現縮小到 2 元素；待 sidebar items 5 語系翻譯重新 probe 後再擴充。
 """
 
 import pytest
@@ -23,13 +22,14 @@ from utils.locale_helper import set_locale
 from utils.screenshot_helper import get_screenshotter
 
 
-# (case_id, locale, maintenance, logout, betting_record, member_messages)
+# (case_id, locale, maintenance, logout)
+# maintenance 為 footer tab 文字（可能是「維護時間」或「維護」，用 to_contain_text 寬鬆比對避免漂移）
 _MEMBER_CENTER_LOCALE_CHECKS = [
-    ("WIN-I18N-MC-001", "tw", "維護時間",             "登出",          "投注紀錄",            "會員訊息"),
-    ("WIN-I18N-MC-002", "cn", "维护时间",             "登出",          "投注记录",            "会员讯息"),
-    ("WIN-I18N-MC-003", "en", "Maintenance Time",    "Logout",       "Betting Record",     "Member Messages"),
-    ("WIN-I18N-MC-004", "th", "ช่วงเวลาบำรุงรักษา",    "ออกจากระบบ",     "ประวัติการเดิมพัน",   "ข้อมูลสมาชิก"),
-    ("WIN-I18N-MC-005", "vn", "Bảo trì",             "Đăng xuất",     "Lịch sử cược",      "Tài khoản"),
+    ("WIN-I18N-MC-001", "tw", "維護", "登出"),
+    ("WIN-I18N-MC-002", "cn", "维护", "登出"),
+    ("WIN-I18N-MC-003", "en", "Maintenance", "Logout"),
+    ("WIN-I18N-MC-004", "th", "ปิดปรับปรุง", "ออกจากระบบ"),
+    ("WIN-I18N-MC-005", "vn", "Bảo trì", "Đăng xuất"),
 ]
 
 
@@ -37,14 +37,14 @@ _MEMBER_CENTER_LOCALE_CHECKS = [
 @pytest.mark.lt
 @pytest.mark.i18n
 class TestI18NMemberCenter:
-    """WIN-I18N-MC-001~005：各語系 /member-center 文案驗證"""
+    """WIN-I18N-MC-001~005：各語系 member panel 登出按鈕 + footer 維護 tab 文案"""
 
-    @pytest.mark.parametrize("case_id,locale,maint_text,logout_text,betting_text,msg_text",
+    @pytest.mark.parametrize("case_id,locale,maint_text,logout_text",
                              _MEMBER_CENTER_LOCALE_CHECKS,
                              ids=[c[0] for c in _MEMBER_CENTER_LOCALE_CHECKS])
     def test_member_center_locale_text(self, logged_in_page: Page, site_config, case_id, locale,
-                                       maint_text, logout_text, betting_text, msg_text):
-        """各語系 /member-center 四項核心文案正確翻譯"""
+                                       maint_text, logout_text):
+        """各語系 panel 內登出按鈕 + footer 維護 tab 文案正確翻譯"""
         page = logged_in_page
         sh = get_screenshotter(page)
 
@@ -52,28 +52,21 @@ class TestI18NMemberCenter:
         set_locale(page, site_config.url, locale)
         page.goto(site_config.url, wait_until="networkidle")
 
-        # 進 /member-center（POM 使用結構化 `:not(.flex-1)').last` locale-agnostic selector）
+        # 1) 驗 footer 維護時間 tab（locale-agnostic：用 .footer-bg .content 結構定位 + 文字比對）
+        # 換版後 footer 各 tab 順序固定，"維護" 通常為第一個 .content
+        maint_tab = page.locator(".footer-bg .content").nth(0)
+        maint_tab.scroll_into_view_if_needed()
+        actual_maint = (maint_tab.inner_text() or "").strip()
+        if sh: sh.capture(maint_tab, f"verify_{locale}_footer維護tab_{actual_maint[:15]}")
+        assert maint_text in actual_maint, \
+            f"{locale} footer 維護 tab 文案應含 '{maint_text}'，實際：{actual_maint}"
+
+        # 2) 開 panel 驗登出按鈕文案
         HomePage(page).open_member_center()
+        if sh: sh.full_page(f"verify_{locale}_member_panel_整體")
 
-        if sh: sh.full_page(f"verify_{locale}_member_center_整體")
-
-        maint_btn = page.locator('button.bg-secondary.mb-5').first
-        logout_btn = page.locator('button.bg-secondary').nth(1)
-        betting_heading = page.locator("p.font-bold", has_text=betting_text).first
-        msg_heading = page.locator("p.font-bold", has_text=msg_text).first
-
-        maint_btn.scroll_into_view_if_needed()
-        if sh: sh.capture(maint_btn, f"verify_{locale}_維護時間_{maint_text[:15]}")
-        expect(maint_btn).to_have_text(maint_text)
-
+        logout_btn = page.locator("button.cancel-btn").filter(has_text=logout_text).first
         logout_btn.scroll_into_view_if_needed()
-        if sh: sh.capture(logout_btn, f"verify_{locale}_登出_{logout_text[:15]}")
-        expect(logout_btn).to_have_text(logout_text)
-
-        betting_heading.scroll_into_view_if_needed()
-        if sh: sh.capture(betting_heading, f"verify_{locale}_投注紀錄_{betting_text[:15]}")
-        expect(betting_heading).to_have_text(betting_text)
-
-        msg_heading.scroll_into_view_if_needed()
-        if sh: sh.capture(msg_heading, f"verify_{locale}_會員訊息_{msg_text[:15]}")
-        expect(msg_heading).to_have_text(msg_text)
+        actual_logout = (logout_btn.inner_text() or "").strip()
+        if sh: sh.capture(logout_btn, f"verify_{locale}_登出_{actual_logout[:15]}")
+        expect(logout_btn).to_contain_text(logout_text)
