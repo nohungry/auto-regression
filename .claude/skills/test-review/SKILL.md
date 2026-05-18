@@ -101,6 +101,21 @@ description: 審查 auto-regression repo 中的 pytest-playwright 測試、page 
 - [ ] 若動到 `tests/lt/feature/visual/` 下的測試，是否維持「存檔不比對」的 reference screenshot 模式？
 - [ ] 若動到 `tests/lt/__snapshots__/`（legacy baseline），是否能直接刪除，或有保留理由？
 
+## Regression cover-up patterns（隱藏 fail 的反模式）
+若 PR 在沒對應產品變更下，把原本 fail 的 test 改成 pass，**這是高優先級 blocking**。常見反模式：
+
+- [ ] `assert X == Y` 改成 `assert X != Y`（反向斷言讓 fail 變 pass）
+- [ ] `assert X` 改成 `assert X or True`、`if X: pass` 弱化判斷
+- [ ] 加 `try/except AssertionError: pass` 吃掉 assertion 失敗
+- [ ] `xfail(strict=True)` 改成 `xfail(strict=False)` 或拿掉 strict 參數（XPASS 不再警報）
+- [ ] `@pytest.mark.skip` 沒附理由，或理由是「dev 環境不穩」這類模糊說法
+- [ ] Selector 變得異常寬鬆（如 `*` selector、超寬 text contains）讓「任何 element」都命中
+- [ ] timeout 拉超大（`wait_for(timeout=60000)` 等）讓不確定的 race 永遠不 fail
+- [ ] 把原本 assertion 改成 print / log，不再實際斷言
+- [ ] 改 expect 值對齊當前實際輸出，沒先確認該輸出是否屬於 product regression
+
+判斷原則：若 diff 中有上述任一 pattern，**必須在 PR description 明確說明對應的產品變更**（issue 編號 / 設計文件 / 主管 ack 等）；無對應依據則建議補產品 ticket 確認後再合，或要求改回原 assertion 並回報 product team 確認是否為 regression。
+
 # High-risk change rules
 1. 下列變更需特別提高警覺：`conftest.py`、`pages/factory.py`、`pages/dashboard/factory.py`、snapshot baseline、fixture 新增/更名/行為變更、visual regression assertion 調整。
 2. 若 PR 含 snapshot 更新，需要求說明為何屬於產品預期變更。

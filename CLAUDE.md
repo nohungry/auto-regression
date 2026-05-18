@@ -127,6 +127,18 @@ dev-notes/                   — personal developer notes (gitignored except REA
 
 **完整接力工作流**（為什麼這 6 個 skill、如何接力、真實任務範例、避讓機制）見 [`docs/agent-skills-workflow.md`](docs/agent-skills-workflow.md)。
 
+## Subagents
+
+本 repo 還有 3 個 main agent 可主動派工的 subagent（位於 `.claude/agents/`，獨立 context 不污染主對話）：
+
+| Subagent | 用途 | Inject 的 skill | 工具範圍 |
+|---------|------|---------------|---------|
+| `test-author` | 新增/修改 testcase、POM、實作功能驗證 | `ui-test-author`、`pom-architect` | Read/Write/Edit/Bash/Grep/Glob |
+| `test-reviewer` | Read-only review、找 flaky / cover-up / 跨站風險 | `test-review` | Read/Grep/Glob/Bash |
+| `selector-explorer` | DOM 探查、ARIA 拿 selector | `selector-probe` | Read/Grep/Glob/Bash |
+
+Skill 是**人類**用 `/skill-name` 觸發；subagent 是 **main agent** 主動 delegate。詳細差異、三 agent 接力 SOP、避讓機制見 [`docs/agent-skills-workflow.md`](docs/agent-skills-workflow.md) 的 `## Subagent 層` 段。
+
 ## Documentation vs Developer Notes
 
 This repo has **two distinct documentation folders** with different purposes and git-tracking policy. When creating or editing markdown files, pick the right folder and follow the convention.

@@ -190,6 +190,28 @@ description: 新增或修改 Python pytest-playwright 測試、Page Objects、�
 3. 更新 snapshot 前，先確認是產品預期變更，不可為了讓測試通過而直接更新 baseline。
 4. 若新增或更新 snapshot，必須在輸出中明確說明原因與受影響檔案。
 
+# Execution discipline
+測試執行紀律 — subagent / 人工執行皆適用。
+
+1. **單 session 防呆**：同一個測試帳號不可同時跑兩個 pytest process（含 API 測試與 UI 測試共用同帳號的情況）。後端以 token 機制互踢，會導致雙方 session 同時失效，後跑的測試看到不可預期狀態。執行前確認該帳號未被其他 process 使用；若不確定，先回報而不是直接跑。
+
+2. **Regression notify before fix**：若原本通過的 test 突然 fail，**先停手回報主對話**，不要自己改 test 碼。原因：fail 經常代表產品 regression（後端壞掉、產品 bug、資料配置壞掉）而非測試 bug；自行修測試會把產品 regression 掩蓋掉，反而違背測試套件的存在價值。判斷流程：
+   - 看截圖逐步確認 selector 命中、按鈕被按到、API 真的有送出
+   - 若流程都正確但結果非預期（畫面「連線失敗」、API 錯誤碼、應有資料找不到）→ **真實 FAIL，回報主對話確認屬於測試問題還是 product regression**
+   - 只有當問題明確屬於測試自身（selector 過時、timing race、test data 失效）才修測試碼
+   - 不可加 `@pytest.mark.skip` 掩蓋未確認的 fail
+   - 即使是 xfail(strict=True) 守門 test 突然 XPASS 也屬於需要回報的情況（產品狀態變動）
+
+# State-mutating 測試設計（dashboard 尤其）
+若測試會改動後端真實狀態（存入提取、額度調整、會員建檔、訂單操作），必須有可逆設計：
+
+1. **設計可逆操作**：normal path 對稱還原 — 例如存 100 → 領 100 回到初始，整個 test 結束後狀態與起始相同。
+2. **try/finally 補償**：中途失敗時反向動作不留髒資料。例如「存入成功但驗證失敗」必須 finally 補一次提取。
+3. **連跑兩次也 idempotent**：不累積殘留、不踩到上次未清資料。Teardown 失敗的情境下也應該能再跑。
+4. **docstring 註明 rollback 策略**：讓 reviewer 與下次維護者快速判斷補償邏輯是否完整。
+
+具體實作 pattern 不限定（對稱還原 + try/finally、fixture teardown 補償、teardown diff 餘額補償都可），重點是「測試結束後狀態可預測」。Review 時 test-reviewer / `test-review` skill 會檢查相同維度。
+
 # Output expectations
 完成任務時，應：
 - 說明修改了哪些 tests/pages/utils。
