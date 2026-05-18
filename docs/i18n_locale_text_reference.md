@@ -7,17 +7,18 @@
 # LT 站台
 
 LT 站台（SITE_LT_URL）支援五種語系：繁中（tw）、簡中（cn）、英文（en）、泰文（th）、越文（vn）。  
-語系切換方式：注入 `i18n_redirected_lt` cookie（`utils/locale_helper.set_locale()`）。
+語系切換方式：注入 `i18n_locale` cookie（`utils/locale_helper.set_locale()`）。
 
 ---
 
-> **WAP 改版後 i18n 覆蓋現況（2026-04-23）**：
-> - ✅ **登入頁 input placeholder** 有完整 5 語系翻譯
-> - ✅ **`/member-center` 按鈕與 section heading** 有完整 5 語系翻譯
-> - ❌ **首頁 nav**（`.cat-btn`、底部 tabbar）所有語系固定繁中，未套 i18n
-> - ❌ **登入頁按鈕**（`btn-login` / `btn-browse`）、**lang-text** 語系切換文案固定繁中
+> **desktop responsive 換版後 i18n 覆蓋現況（2026-05-19）**：
+> - ✅ **登入頁 input placeholder** 有完整 5 語系翻譯（產品改了動詞 例：請填寫→請輸入，已用「該語系代表字」keyword 容錯）
+> - ✅ **個人中心 panel 登出按鈕** + **底部 footer 維護 tab** 有完整 5 語系翻譯
+> - ✅ **footer 個人 tab** 文字隨 locale 變化（cn=个人、en=Personal、th=ส่วนตัว、vn=Cá nhân）— 不可再用 `has_text="個人"` 寫死
+> - ❌ **首頁 hero swipe sections** (`span.category-title`) 仍為繁中（來財獨家/爆分精選/活動專區），i18n 未覆蓋
+> - ❓ **`span.lang-text`** 是否仍固定繁中尚未在新版重測，`TestI18NLangSwitcher.test_lang_text_reflects_locale` 仍以 `xfail(strict=True)` 守門
 >
-> 下表僅列出「測試目前實際驗證」的項目；已 skip 或固定繁中的項目另列說明。
+> 2026-04-23 i18n hydration regression 已修復（無 raw key、無 empty src img），原 14 個 xfail 守門全處理。
 
 ---
 
@@ -25,7 +26,7 @@ LT 站台（SITE_LT_URL）支援五種語系：繁中（tw）、簡中（cn）�
 
 測試檔：`tests/lt/feature/i18n/test_home_locale.py`（`pytestmark.skip`）
 
-WAP 首頁 `.cat-btn`（遊戲大廳/我的最愛/台灣真人/國際真人/更多）與底部 tabbar（維護/公告/排行榜/個人）在所有語系下固定繁中，i18n 尚未套到首頁 nav 層。待產品端實作後再 un-skip。
+換版後首頁分類 `.cat-btn` 消失，改為 hero swipe sections (`span.category-title`)，3 個 section title（來財獨家 / 爆分精選 / 活動專區）所有語系固定繁中。原 WAP 時期 5 分類 i18n 守門已無對應元素，整檔 skip 待產品定型新版分類互動模式後重設計。
 
 ---
 
@@ -33,57 +34,71 @@ WAP 首頁 `.cat-btn`（遊戲大廳/我的最愛/台灣真人/國際真人/更�
 
 測試檔：`tests/lt/feature/i18n/test_login_locale.py`
 
-WAP `input.login-input` 帳號/密碼欄位 placeholder 為關鍵字包含驗證（非全字比對，避免半形/全形空格差異）：
+`input.input-style:not(.password-input)` / `input.password-input` placeholder 為**「該語系代表字」**驗證（產品 2026-05-18 換版動詞變動：請填寫→請輸入 / Please enter→Enter / Vui lòng điền→Vui lòng nhập，改用代表字可同時 cover 新舊）：
 
 | 語系 | 帳號欄位 placeholder 關鍵字 | 密碼欄位 placeholder 關鍵字 |
 |------|---------------------------|---------------------------|
-| tw（繁中） | 請填寫 | 請填寫 |
-| cn（簡中） | 请填写 | 请填写 |
-| en（英文） | Please enter | Please enter |
-| th（泰文） | กรุณากรอก | กรุณากรอก |
-| vn（越文） | Vui lòng điền | Vui lòng điền |
+| tw（繁中） | 請 | 請 |
+| cn（簡中） | 请 | 请 |
+| en（英文） | Enter | Enter |
+| th（泰文） | กรุณา | กรุณา |
+| vn（越文） | Vui lòng | Vui lòng |
 
-> **已知產品現況（非 bug）**：
-> - `button.btn-login` 固定「立即登入」，所有語系不變
-> - `button.btn-browse` 固定「先去逛逛」，所有語系不變
-> - `span.lang-text` 左上語系切換文案固定「繁中」，所有語系不變 — 對應 `TestI18NLangSwitcher.test_lang_text_reflects_locale` 以 `xfail(strict=True)` 標記，產品端修正後會 XPASS 並觸發失敗提醒拿掉 xfail
+> **已知產品現況**：
+> - `button.base-btn.type1`（會員登入）/ `.type2`（先去逛逛）文案是否仍固定繁中尚未重新確認；本檔不驗
+> - `span.lang-text` 左上語系切換文案在新版位置與行為待重新 probe，`TestI18NLangSwitcher` 仍以 `xfail(strict=True)` 守門
 
 ---
 
-## /member-center 文案（WIN-I18N-MC-001~005）
+## 個人中心 panel + footer 維護文案（WIN-I18N-MC-001~005）
 
 測試檔：`tests/lt/feature/i18n/test_member_center_locale.py`
 
-WAP 改版後「會員 drawer」已作廢，改為獨立 `/member-center` 頁面。4 項核心文案皆有完整 5 語系翻譯：
+2026-05-18 換版後：
+- 個人中心改為 `.dialog-mask-full` SPA inline overlay panel（URL 不變，**無 /member-center 路由**）
+- 維護時間從 panel 內按鈕搬到底部 footer 第一個 tab
+- 「投注紀錄」「會員訊息」改為 panel 左側 slide-in `.sidebar-item.*` 結構，其 5 語系文案尚未重新 probe，本檔暫不驗
 
-| 語系 | 維護時間 | 登出 | 投注紀錄 | 會員訊息 |
-|------|---------|------|---------|---------|
-| tw（繁中） | 維護時間 | 登出 | 投注紀錄 | 會員訊息 |
-| cn（簡中） | 维护时间 | 登出 | 投注记录 | 会员讯息 |
-| en（英文） | Maintenance Time | Logout | Betting Record | Member Messages |
-| th（泰文） | ช่วงเวลาบำรุงรักษา | ออกจากระบบ | ประวัติการเดิมพัน | ข้อมูลสมาชิก |
-| vn（越文） | Bảo trì | Đăng xuất | Lịch sử cược | Tài khoản |
+本檔目前只驗兩個**位置與 5 語系翻譯都已確認**的元素：
+
+| 語系 | footer 維護 tab | panel 登出按鈕 |
+|------|----------------|----------------|
+| tw（繁中） | 維護 | 登出 |
+| cn（簡中） | 维护 | 登出 |
+| en（英文） | Maintenance | Logout |
+| th（泰文） | ปิดปรับปรุง | ออกจากระบบ |
+| vn（越文） | Bảo trì | Đăng xuất |
 
 > **說明**：
-> - 「維護時間」按鈕為存款功能槽位佔位（LT 為信用板站點無存款流程，見 `memory/project_lt_credit_site.md`）；dev 環境顯示為維護時間文案。
-> - 進入 /member-center 的 bottom tabbar「個人」tab 在所有語系固定繁中（非 i18n），selector `has_text="個人"` 為 locale-agnostic-in-effect。
+> - th 維護文案實測為「ปิดปรับปรุง」（暫停服務）— 與原 WAP 時期「ช่วงเวลาบำรุงรักษา」不同
+> - 「維護時間」按鈕為存款功能槽位佔位（LT 為信用板站點無存款流程）
+> - 底部「個人」tab 在新版**有 i18n** — POM 改用結構 `.footer-bg .content` `.last` 取（不可再用 `has_text="個人"`）
 
 ---
 
-## LT Selector 備註（WAP）
+## LT Selector 備註（desktop responsive，2026-05-18 換版後）
 
 | 元素 | Selector | 說明 |
 |------|----------|------|
-| 登入頁帳密欄位 | `input.login-input` | 雙 input 透過 `nth(0)`/`nth(1)` 區分；placeholder 有 i18n |
-| 登入送出按鈕 | `button.btn-login` | 固定繁中「立即登入」 |
-| 不登入逛逛按鈕 | `button.btn-browse` | 固定繁中「先去逛逛」 |
-| navbar 信用額度 | `.bg-navbar p.text-amount` | 只驗非空，不寫死值 |
-| navbar 登入狀態 pill | `.bg-navbar p.text-text-light-main` | 未登入顯示 `Not Login` / `尚未登入` 等；已登入顯示 username |
-| 底部個人 tab | `.shadow-menubar .cursor-pointer[has-text="個人"]` | locale-agnostic-in-effect（所有語系固定繁中） |
-| /member-center 信用額度 | `p.font-bold.text-amount` | 與 navbar 餘額同步 |
-| /member-center 維護時間按鈕 | `button.bg-secondary.mb-5` | 唯一 mb-5 class，locale-agnostic |
-| /member-center 登出按鈕 | `button.bg-secondary` 第 2 個（`.nth(1)`） | locale-agnostic；勿用 `has_text="登出"` 會 timeout en/th/vn |
-| /member-center section heading | `p.font-bold` 搭 `has_text=<locale-specific>` | 投注紀錄/會員訊息 i18n 文案 |
+| 登入頁帳號欄 | `input.input-style:not(.password-input)` | text input；placeholder 有 i18n |
+| 登入頁密碼欄 | `input.password-input` | password input；placeholder 有 i18n |
+| 登入送出按鈕 | `button.base-btn.type1` | 結構 selector；文案 i18n 變動，**禁用 `has_text`** |
+| 不登入逛逛按鈕 | `button.base-btn.type2` | 結構 selector；同上 |
+| 登入錯誤 dialog 確定 | `button.toast-confirm-btn` | ⚠️ 與全域 MutationObserver 撞 selector，LT conftest 必須不注入 observer |
+| navbar 容器 | `.nav-bg-m` | 取代舊 `.bg-navbar` |
+| navbar 信用額度 | `.coin-wrap-bg span` | 只驗非空，不寫死值 |
+| navbar 帳號 pill | `.user-info-bg p.tip-single` | 已登入顯示 username |
+| 未登入 navbar CTA | `div.login-btn-with-text` | 未登入時 navbar 右側「登入」 |
+| 底部 footer 容器 | `.footer-bg` | 取代舊 `.shadow-menubar` |
+| footer 各 tab | `.footer-bg .content` | 5 個 tab：`[0]維護 / [1]公告 / [2]中間 CTA / [3]排行榜 / [4]個人` |
+| footer 個人 tab | `.footer-bg .content` `.last` | **不用 `has_text="個人"`**，文案會 i18n |
+| footer 維護 tab | `.footer-bg .content` `.nth(0)` | 同上原則 |
+| 個人中心 panel | `.dialog-mask-full` | UA dialog 與 member panel 共用，用 `.first/.last` 區分 |
+| panel 登出按鈕 | `button.cancel-btn` filter `has_text="<locale 登出>"` | 文案有 i18n，需傳對應語系字串 |
+| UA dialog 確定 | `.dialog-mask-full div[class*='cursor-pointer']` filter `has_text="確定"` | 容器是 div，需 `dispatch_event("click")` |
+| 客服浮動按鈕 | `a.fixed-icon.fixed-telegram` | class 叫 telegram 但 href 仍是 LINE Official（`line.me/R/...`） |
+| 登入完成判定 | `DLT` cookie 存在 | **不能用 page.url**（Nuxt pushState 不更新 url 對象） |
+| 登入 click 時機 | `dispatch_event("click")` | Vue handler 攔截，raw `.click()` 不觸發 submit |
 
 ---
 

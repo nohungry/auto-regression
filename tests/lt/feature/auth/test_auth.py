@@ -48,20 +48,6 @@ class TestAuthFeatures:
             if sh: sh.capture(el, f"verify_會員功能_{text}")
             expect(el).to_be_visible()
 
+    @pytest.mark.skip(reason="2026-05-18 換版：.cat-btn 分類 tab 與 .cat-btn--selected 切換機制已消失（改為 hero swipe sections，無 selected 狀態）；待產品新版分類互動模式定型後重新設計")
     def test_category_navigation_after_login(self, logged_in_page: Page, site_config):
-        """WIN-AUTH-004：登入後可切換多個 `.cat-btn` 分類，帳號 pill 仍顯示"""
-        home = HomePage(logged_in_page)
-        sh = get_screenshotter(logged_in_page)
-
-        # WAP 分類切換不改 URL，以 .cat-btn--selected 判定
-        # 用 dispatch_event("click") 規避 CS 浮動/常駐浮層對 pointer events 的攔截
-        for label in ["台灣真人", "國際真人"]:
-            nav = logged_in_page.locator('.cat-btn', has_text=label).first
-            nav.scroll_into_view_if_needed()
-            if sh: sh.capture(nav, f"click_分類_{label}")
-            nav.dispatch_event("click")
-            expect(nav).to_have_class(re.compile(r"cat-btn--selected"), timeout=5000)
-
-            # 切換後帳號仍顯示
-            if sh: sh.capture(home.navbar_login_pill, f"verify_帳號顯示_{label}分類")
-            expect(home.navbar_login_pill).to_have_text(site_config.username, timeout=5000)
+        """WIN-AUTH-004：登入後可切換多個分類，帳號 pill 仍顯示（待依新版分類互動重新設計）"""

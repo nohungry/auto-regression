@@ -1,20 +1,19 @@
 """
-LT 多語系測試共用 helpers
-移植自 tests/lt/test_locale_visual_matrix.py（已停用）
+LT 多語系測試共用 helpers（desktop responsive 版，2026-05-18 rewrite）
 
 此模組提供：
-- LOCALES / LOCALE_IDS：語系清單（所有 i18n 測試皆會 import）
-- LOCALE_LABELS：會員 `/member-center` 各語系文案對照（bettingRecord / memberInfo / maintenance）
-- collect_overflow_issues / assert_no_overflow：環境無關的 DOM 超框偵測（PR5 locale_layout 使用）
-- login_with_locale：5 語系登入流程（PR4/PR5 使用）
-- open_member_menu：進入 `/member-center`（WAP 底部「個人」tab，命名保留以維持既有 test import 相容）
-- open_member_screen：進 `/member-center` 後 scroll 至指定 section（bettingRecord/memberInfo heading 或 maintenance 按鈕）
+- LOCALES / LOCALE_IDS：語系清單
+- collect_overflow_issues / assert_no_overflow：環境無關的 DOM 超框偵測（test_locale_layout 用）
+- login_with_locale：5 語系登入流程
+- open_member_menu：開啟個人中心 overlay panel（命名沿用以保 import 相容；
+  2026-05-18 換版後 /member-center 已不存在，個人中心改為 SPA inline panel）
+- open_member_screen：開 panel 後點對應 sidebar item 或 footer tab
 
-WAP 多語系實測現況（2026-04-22 probe）：
-- 首頁 nav 文案（.cat-btn、底部 tabbar）所有語系都固定顯示繁中，未套 i18n。
-- 登入頁 input placeholder 有正確 5 語系翻譯；
-  `button.btn-login` 固定「立即登入」、`button.btn-browse` 固定「先去逛逛」、
-  `span.lang-text` 固定「繁中」，均為產品現況已知固定文案（非測試 bug）。
+2026-05-18 換版要點：
+- panel 開於 `/`，非導向 `/member-center`
+- 內部結構：navbar 信用額度 + panel 帳號資訊 + 4 個 sidebar items
+  (.sidebar-item.user / .game-details / .maintain / .mail) + 登出按鈕
+- footer 5 個 .content tab：[0]維護 / [1]公告 / [2]中間 CTA / [3]排行榜 / [4]個人
 """
 
 from __future__ import annotations
@@ -35,14 +34,6 @@ LOCALES = [
 ]
 LOCALE_IDS = [loc for loc, _ in LOCALES]
 
-# 各語系 `/member-center` 文案對照
-LOCALE_LABELS = {
-    "tw": {"bettingRecord": "投注紀錄", "memberInfo": "會員訊息", "maintenance": "維護時間"},
-    "cn": {"bettingRecord": "投注记录", "memberInfo": "会员讯息", "maintenance": "维护时间"},
-    "en": {"bettingRecord": "Betting Record", "memberInfo": "Member Messages", "maintenance": "Maintenance Time"},
-    "th": {"bettingRecord": "ประวัติการเดิมพัน", "memberInfo": "ข้อมูลสมาชิก", "maintenance": "ช่วงเวลาบำรุงรักษา"},
-    "vn": {"bettingRecord": "Lịch sử cược", "memberInfo": "Tài khoản", "maintenance": "Bảo trì"},
-}
 
 # 銀幕尺寸變動時仍合理出現的跑馬燈/固定文案，overflow 檢查時忽略
 IGNORED_KEYWORDS = [
@@ -118,7 +109,7 @@ def assert_no_overflow(page: Page, context_label: str) -> None:
 
 
 # ─────────────────────────────────────────────────────────────
-# 操作輔助
+# 操作輔助（desktop 版 panel + sidebar）
 # ─────────────────────────────────────────────────────────────
 
 def login_with_locale(page: Page, site_config, locale: str) -> None:
@@ -128,35 +119,50 @@ def login_with_locale(page: Page, site_config, locale: str) -> None:
 
 
 def open_member_menu(page: Page) -> None:
-    """WAP：等 networkidle + 底部 tabbar render 後，tap「個人」進入 `/member-center`。命名保留以相容既有 test import。
+    """開啟個人中心 overlay panel（取代 WAP 時期的 /member-center 導航）。
 
-    與 `test_member_center_locale.py` 不同，本 helper 的 caller（如 `test_locale_reference.py`）不一定有明確 goto 首頁的步驟；
-    登入完成後 SPA 可能停在過渡 state 而底部 tabbar 尚未 render，需在此補等待。
+    命名沿用以保 import 相容。實作直接走 POM `open_member_center()`，
+    POM 已處理 footer hydrate 等待與 dispatch_event 觸發。
     """
     try:
         page.wait_for_load_state("networkidle", timeout=5000)
     except PlaywrightTimeoutError:
         pass
-    page.locator('.shadow-menubar').first.wait_for(state="visible", timeout=10000)
     HomePage(page).open_member_center()
     page.wait_for_timeout(500)
 
 
 def open_member_screen(page: Page, locale: str, key: str) -> None:
-    """WAP：進 `/member-center` 並 scroll 至指定 section。
+    """開 panel 後點對應 sidebar item 或 footer tab。
 
-    key：
-    - `bettingRecord` / `memberInfo` → `p.font-bold` heading，locale 文案從 `LOCALE_LABELS` 取
-    - `maintenance` → `button.bg-secondary.mb-5`（唯一 mb-5 class，locale-agnostic）
+    key 對應（2026-05-18 換版後對照）：
+    - `bettingRecord` → `.sidebar-item.game-details`（遊戲明細，最接近投注紀錄概念）
+    - `memberInfo`    → `.sidebar-item.mail`（站內信，最接近會員訊息概念）
+    - `maintenance`   → footer 第一個 .content tab（維護時間獨立為底部 footer，不在 panel 內）
     """
-    open_member_menu(page)
     if key == "maintenance":
-        target = page.locator("button.bg-secondary.mb-5").first
-    elif key in ("bettingRecord", "memberInfo"):
-        target_text = LOCALE_LABELS[locale][key]
-        target = page.locator("p.font-bold", has_text=target_text).first
-    else:
+        # 維護時間搬到底部 footer，不需開 panel
+        maint_tab = page.locator(".footer-bg .content").nth(0)
+        maint_tab.wait_for(state="visible", timeout=5000)
+        maint_tab.scroll_into_view_if_needed()
+        maint_tab.dispatch_event("click")
+        page.wait_for_timeout(500)
+        return
+
+    if key not in ("bettingRecord", "memberInfo"):
         raise ValueError(f"不支援的 key：{key}（可用：bettingRecord / memberInfo / maintenance）")
-    target.wait_for(state="visible", timeout=5000)
-    target.scroll_into_view_if_needed()
-    page.wait_for_timeout(500)
+
+    open_member_menu(page)
+
+    # sidebar item 在 non-tw locale 為 slide-in 結構，初始可能未可見；
+    # 對 vr_reference 用途而言「panel 開啟即截圖」已具人工 review 價值，sidebar 點擊為 best-effort。
+    sidebar_class = ".sidebar-item.game-details" if key == "bettingRecord" else ".sidebar-item.mail"
+    target = page.locator(sidebar_class).first
+    try:
+        target.wait_for(state="visible", timeout=3000)
+        target.scroll_into_view_if_needed()
+        target.dispatch_event("click")
+        page.wait_for_timeout(500)
+    except PlaywrightTimeoutError:
+        # slide-in 未自動展開，留在 panel 預設 view 截圖即可
+        pass

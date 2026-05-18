@@ -34,9 +34,9 @@ class TestVisualRegression:
         save_vr_screenshot(page.screenshot(animations="disabled"), "lt", "lt-login-panel.png")
 
     def test_navbar_screenshot(self, page: Page, site_config):
-        """WIN-VR-003：首頁上方導覽列截圖存檔"""
+        """WIN-VR-003：首頁上方導覽列截圖存檔（2026-05-18 換版：.bg-navbar → .nav-bg-m）"""
         login = LoginPage(page, site_config.url)
         login.goto()
         page.wait_for_timeout(1500)
-        navbar = page.locator('[class*="bg-navbar"]').first
+        navbar = page.locator('.nav-bg-m').first
         save_vr_screenshot(navbar.screenshot(animations="disabled"), "lt", "lt-top-nav.png")
