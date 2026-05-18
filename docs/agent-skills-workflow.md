@@ -60,12 +60,13 @@ pom-architect → selector-probe → ui-test-author → test-review → git-comm
 你：「LT 又改版了，home_page.py 全套 selector 都過時，請重寫」
 
 階段 1：架構決策
-  → pom-architect：「新版 LT 是桌面 responsive WAP，drawer 結構變了，
-                    home_page 要不要拆成 home_page + drawer_component？」
+  → pom-architect：「新版 LT 是 desktop responsive，個人中心改為 .dialog-mask-full
+                    SPA inline panel（無 /member-center 路由），home_page 是否要拆出 panel_component？」
 
 階段 2：實際 selector probe
-  → selector-probe：用 agent-browser snapshot LT 首頁 + drawer 開關後狀態，
-                    拿出新版實際 className（如 .login-btn-with-text 取代 .bg-navbar）
+  → selector-probe：用 agent-browser snapshot LT 首頁未/已登入 + panel 開啟狀態，
+                    拿出新版實際 className（如 .nav-bg-m 取代 .bg-navbar、
+                    .footer-bg .content 取代 .shadow-menubar .cursor-pointer）
 
 階段 3：重寫 page object
   → ui-test-author：把 probe 出來的 selector 寫進新 home_page.py，
