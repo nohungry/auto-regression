@@ -2,10 +2,13 @@ name: P0 Smoke (4 sites)
 
 # 觸發條件：
 # - PR 開啟 / 更新時自動跑（擋住有問題的 merge）
+# - 成功 merge 到 main 後再跑一次（確認 squash 後合進去的版本實際 OK）
 # - 每日 09:00 台灣（= 01:00 UTC）定時跑，捕捉產品端 drift（無 PR 時的健康度）
 # - 手動 trigger（Actions 介面按鈕）
 on:
   pull_request:
+    branches: [main]
+  push:
     branches: [main]
   schedule:
     - cron: '0 1 * * *'  # 每天 01:00 UTC = 09:00 台灣
