@@ -31,9 +31,31 @@ Key `.env` variables:
 .venv/bin/pytest -m p0                                                  # by marker
 .venv/bin/pytest -m login                                               # by marker
 .venv/bin/pytest tests/rc/test_p0_smoke.py::TestLogin::test_login_success # single test
+CI=true .venv/bin/pytest tests/rc/test_p0_smoke.py                      # 模擬 CI 模式：headless chromium 直接 launch（無 CDP）
 ```
 
 Reports are written to `reports/report.html` (self-contained HTML).
+
+## CI/CD
+
+GitHub Actions 自動跑測試：
+
+- `p0.yml`：PR 開啟 / push to main / 每天 09:00 台灣 / 手動 → RC + LT + RE + RD P0 smoke 4 站 matrix
+- `full-regression.yml`：每週一 08:00 台灣 / 手動 → 4 站全套（P0 + feature）
+- `docs-sync-check.yml`：PR 時檢查 code 變動是否有對應 .md 更新（hook 機制 + CI 雙保險）
+
+詳細的 trigger 規則、cron 時段、secrets 清單、如何看 run / 下載 artifact / 加 secret / debug fail → 見 [`docs/cicd.md`](docs/cicd.md)。
+
+## Docs sync check（hook + CI 雙保險）
+
+每次 commit / PR 自動檢查「code 變動是否同步更新 docs」：
+
+- **Hook**（`.claude/settings.json` + `.github/scripts/check-docs-sync.sh`）：Claude 在跑 `git commit` 之前 block，stderr 提醒重看哪些 .md
+- **CI**（`.github/workflows/docs-sync-check.yml`）：PR 時相同檢查跑一次，違規 → PR check 紅
+
+確認**不**需要更新時的 override：
+- commit message 加 sentinel `[skip-docs-check]` 並附理由
+- 或設 env var `SKIP_DOCS_CHECK=1`
 
 ## Test Strategy
 

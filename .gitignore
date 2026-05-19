@@ -32,10 +32,11 @@ screenshots/
 dev-notes/*
 !dev-notes/README.md
 
-# Claude Code — 追蹤 skills 與 agents（團隊共用）
+# Claude Code — 追蹤 skills / agents / settings.json（團隊共用 hook 配置）
 .claude/*
 !.claude/skills/
 !.claude/agents/
+!.claude/settings.json
 .claude/skills/playwright-pro/
 
 # Python virtual environment
