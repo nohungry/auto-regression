@@ -1,58 +1,46 @@
 # Auto Regression - Platform 自動化回歸測試
 
-使用 **Python + pytest-playwright**，針對 T9 Platform 遊戲站台進行端對端回歸測試，支援 Windows、WSL、Linux 三種環境自動偵測。
+使用 **Python + pytest-playwright**，針對 T9 Platform 旗下多個遊戲站台進行端對端回歸測試，支援 Windows / WSL / Linux / CI 四種環境自動偵測。
 
 ## 支援站台
 
-| 站台 ID | 網址 | 測試數 |
-|---------|------|--------|
-| `rc` | 見 .env `SITE_RC_URL` | 51 |
-| `lt` | 見 .env `SITE_LT_URL` | 93（含 30 tests SKIP 中）|
-| API | - | 2 |
+| 站台 ID | 中文名 | 網址 | 測試數 |
+|---------|--------|------|--------|
+| `rc` | 王老吉娛樂城 | 見 .env `SITE_RC_URL` | 63 |
+| `lt` | LT 來財 | 見 .env `SITE_LT_URL` | 109 |
+| `re` | BeWin | 見 .env `SITE_RE_URL` | 63 |
+| `rd` | 狗狗娛樂城 | 見 .env `SITE_RD_URL` | 58 |
+| API | (不限站台) | - | 16 |
+| Dashboard | (後台) | - | 3 |
 
-> 測試數以 `.venv/bin/pytest --collect-only -q` 為準，會隨新增測試變動。
+> 測試數以 `.venv/bin/pytest tests/<site>/ --collect-only -q` 為準，會隨新增測試變動。
 
 ## 目錄結構
 
 ```
-conftest.py                          — 全域 fixtures、環境偵測、MutationObserver 注入（rc 專用）
+conftest.py                          — 全域 fixtures、環境偵測（Windows/WSL/Linux/CI）、MutationObserver 注入
 config/settings.py                   — 多站台 SiteConfig，從 .env 讀取
-pages/factory.py                     — site_id → LoginPage/HomePage 路由（registry dict）
-pages/rc/                           — rc 站 Page Objects
-pages/lt/                           — lt 站 Page Objects
-tests/api/lt/                       — lt 站 API 層測試（不啟動瀏覽器）
-tests/rc/                           — rc 站測試
-  ├── conftest.py                    — rc 專屬：site_config 覆寫、go_home 含公告彈窗處理
-  ├── test_p0_smoke.py               — p0 核心流程
-  ├── test_language.py               — 多語系下拉結構驗證（暫留）
-  └── feature/
-      ├── announcement_popup/        — 首頁公告彈窗測試
-      ├── i18n/                      — 多語系文案（home/login/sidebar，6 語系）
-      ├── navigation/                — 分類導覽
-      └── wallet/                    — 餘額相關
-tests/lt/                           — lt 站測試
-  ├── conftest.py                    — lt 專屬：site_config 覆寫、page fixture 不注入 MutationObserver
-  ├── test_p0_smoke.py               — p0 核心流程
-  ├── test_locale_visual_matrix.py   — 多語系截圖矩陣（全 SKIP，待定）
-  ├── __snapshots__/                 — Visual Regression baseline（目前暫時廢棄）
-  └── feature/
-      ├── auth/                      — 登入後功能
-      ├── copy/                      — 文案一致性（預設繁中）
-      ├── i18n/                      — 多語系文案（home/login/drawer，5 語系）
-      ├── member/                    — 會員功能（個人資料/收件匣/投注紀錄）
-      ├── public/                    — 公開頁延伸（客服/版權/語系 icon）
-      ├── visual/                    — DOM 視覺健康度 + VR reference 截圖
-      └── wallet/                    — 餘額/存款入口
-utils/locale_helper.py               — set_locale()：注入 i18n_redirected_lt cookie
-utils/dialog_helper.py               — 伺服器錯誤彈窗、公告彈窗、Loading 等待
+pages/factory.py                     — 前台：site_id → LoginPage/HomePage 路由（registry dict）
+pages/dashboard/factory.py           — 後台：site_id → DashboardLoginPage/ManagementPage 路由
+pages/rc/, pages/lt/, pages/re/, pages/rd/   — 各站前台 Page Objects
+pages/dashboard/<site_id>/           — 各站後台 Page Objects
+tests/rc/, tests/lt/, tests/re/, tests/rd/   — 各站前台測試（含 test_p0_smoke.py + feature/）
+tests/api/<site_id>/                 — API 層測試（不啟動瀏覽器，requests 直打 API）
+tests/dashboard/<site_id>/           — 後台管理介面測試
+utils/locale_helper.py               — set_locale()：注入 `i18n_locale` cookie（LT 用）
+utils/dialog_helper.py               — 伺服器錯誤彈窗、公告彈窗（含 MutationObserver enforce killer）、Loading 等待
 utils/screenshot_helper.py           — 截圖系統（元素高亮 + 自動產生繁中 README）
+utils/visual_helpers.py              — VR reference 截圖 + 動態元素遮蔽
+.github/workflows/                   — GitHub Actions（p0 / full-regression / docs-sync-check）
+.github/scripts/                     — CI 共用 script（如 check-docs-sync.sh）
+.claude/                             — Claude Code 配置（hooks / skills / agents，團隊共用）
 docs/                                — 團隊共用文件（追蹤於 git）
 dev-notes/                           — 個人開發筆記（gitignored，僅 README 追蹤）
 screenshots/                         — 截圖與報告，自動分為 smoke/ 與 feature/（gitignored）
-reports/report.html                  — pytest-html 測試報表
+reports/report.html                  — pytest-html 測試報表（gitignored）
 ```
 
-> 詳細分工與判斷原則請參考 [`docs/README.md`](docs/README.md) 與 [`dev-notes/README.md`](dev-notes/README.md)。
+> 詳細的角色分工與架構決策見 [`CLAUDE.md`](CLAUDE.md)；docs 子資料夾索引見 [`docs/README.md`](docs/README.md)。
 
 ## 安裝
 
@@ -70,27 +58,16 @@ playwright install chromium
 .venv/bin/pytest                                                          # 全部測試
 .venv/bin/pytest tests/rc/                                               # rc 站
 .venv/bin/pytest tests/lt/                                               # lt 站
-.venv/bin/pytest tests/api/                                               # 僅 API 測試
+.venv/bin/pytest tests/re/                                               # re 站
+.venv/bin/pytest tests/rd/                                               # rd 站
+.venv/bin/pytest tests/api/                                              # 僅 API 測試
+.venv/bin/pytest tests/dashboard/                                        # 僅後台測試
 .venv/bin/pytest tests/lt/test_p0_smoke.py -m p0                         # lt P0 smoke
 .venv/bin/pytest -m p0                                                    # 所有站台 P0
 .venv/bin/pytest -m "lt and i18n"                                        # lt 多語系測試
 .venv/bin/pytest tests/rc/test_p0_smoke.py::TestLogin::test_login_success # 單一測試
+CI=true .venv/bin/pytest tests/rc/test_p0_smoke.py                       # 模擬 CI 模式：headless chromium 直接 launch（無 CDP）
 ```
-
-### Visual Regression
-
-LT 站目前採用 **reference screenshot** 策略（存檔供人工確認，不做 pixel 比對）：
-
-```bash
-# 執行 VR reference 截圖測試（輸出至 screenshots/lt/vr_reference/）
-.venv/bin/pytest tests/lt/feature/visual/test_visual_regression.py -m visual_regression
-
-# DOM 層視覺健康度（非截圖）
-.venv/bin/pytest tests/lt/feature/visual/test_visual.py -m visual
-```
-
-> `tests/lt/test_locale_visual_matrix.py`（WIN-LVIS）目前全部 `skip`，因 pixel-level 比對無法跨環境穩定運作。  
-> `tests/lt/__snapshots__/` 為舊版 baseline 暫留，目前無測試引用。
 
 ### 查看 HTML 報表
 
@@ -98,12 +75,26 @@ LT 站目前採用 **reference screenshot** 策略（存檔供人工確認，不
 explorer.exe reports/report.html   # WSL
 ```
 
+## CI/CD
+
+GitHub Actions 自動跑測試與 docs 同步檢查：
+
+| Workflow | 觸發 | 跑什麼 |
+|---|---|---|
+| `.github/workflows/p0.yml` | PR / push to main / daily 09:00 台灣 / 手動 | 4 站 P0 smoke matrix |
+| `.github/workflows/full-regression.yml` | 週一 08:00 台灣 / 手動 | 4 站全套（P0 + feature） |
+| `.github/workflows/docs-sync-check.yml` | PR | code 變動是否同步更新 docs |
+
+操作細節（trigger 規則、cron 時段、secrets 清單、看 run / 下載 artifact / debug、docs sync check 操作 + override）見 [`docs/cicd.md`](docs/cicd.md)。
+
 ## WSL 設定
 
-### 1. 設定 Port Proxy（Windows PowerShell，系統管理員）
+### 1. Windows Chrome 啟用 remote debugging
+
+PowerShell（系統管理員）一次設好 portproxy（永久生效）：
 
 ```powershell
-netsh interface portproxy add v4tov4 listenaddress=<WINDOWS_IP> listenport=9223 connectaddress=127.0.0.1 connectport=9223
+netsh interface portproxy add v4tov4 listenport=9223 listenaddress=0.0.0.0 connectport=9223 connectaddress=127.0.0.1
 ```
 
 ### 2. 設定 .env
@@ -114,22 +105,23 @@ CDP_URL=http://<WINDOWS_IP>:9223
 
 查詢 Windows IP：
 ```bash
-cat /etc/resolv.conf | grep nameserver
+ip route show | grep -i default | awk '{print $3}'   # WSL 預設 gateway = Windows host
 ```
 
 ### 3. 執行測試
 
 `conftest.py` 偵測到 WSL 後，若 Chrome 尚未啟動會自動呼叫 `chrome.exe --remote-debugging-port=9223`，不需手動開啟瀏覽器。
 
+完整 port forwarding / 防火牆說明見 [PORTS_AND_SETUP.md](PORTS_AND_SETUP.md)。
+
 ## 環境對照
 
-| 環境 | 瀏覽器啟動方式 |
-|------|----------------|
-| Windows | Playwright 直接啟動 |
-| WSL | 自動啟動 Windows Chrome，透過 CDP 連接（port 9223） |
-| Linux | 手動啟動 Chrome `--remote-debugging-port=9222`，設定 `CDP_URL` |
-
-Port 轉發與環境設定細節請參考 [PORTS_AND_SETUP.md](PORTS_AND_SETUP.md)。
+| 環境 | 瀏覽器啟動方式 | conftest 分支 |
+|------|----------------|----------------|
+| Windows | Playwright 直接啟動 Chrome | `sys.platform == 'win32'` |
+| WSL | 自動啟動 Windows Chrome，CDP 連接（port 9223） | `_is_wsl()` |
+| 純 Linux（非 CI） | 手動啟動 Chrome `--remote-debugging-port=9222`，設 `CDP_URL` | else |
+| **CI（GitHub Actions）** | **Playwright 內建 chromium headless（無需 CDP）** | **`_is_ci()` → 由 `CI=true` env var 觸發** |
 
 ## 測試分級與 Markers
 
@@ -141,43 +133,47 @@ Port 轉發與環境設定細節請參考 [PORTS_AND_SETUP.md](PORTS_AND_SETUP.m
 | `p1` | 功能驗證，重大版本必跑 |
 | `p2` | 視覺/完整回歸 |
 
-### 功能分類
-
-| Marker | 說明 |
-|--------|------|
-| `login` | 登入相關 |
-| `home` | 首頁相關 |
-| `member` | 會員功能（個人資料/收件匣） |
-| `wallet` | 餘額/存款相關 |
-| `i18n` | 多語系文案驗證 |
-| `language` | 多語系切換行為 |
-| `copy` | 文案一致性（預設語系） |
-| `visual` | DOM 層視覺健康度（非截圖） |
-| `visual_regression` | 截圖 baseline / reference |
-| `locale_visual` | 多語系截圖矩陣 |
-| `api` | API 層測試（不啟動瀏覽器） |
-
 ### 站台
 
+| Marker | 站台 |
+|--------|------|
+| `rc` | rc 站（王老吉娛樂城） |
+| `lt` | lt 站（LT 來財） |
+| `re` | re 站（BeWin） |
+| `rd` | rd 站（狗狗娛樂城） |
+
+### 功能 / 其他
+
 | Marker | 說明 |
 |--------|------|
-| `lt` | lt 站點（LT 來財）專屬測試 |
+| `login` / `home` / `member` / `wallet` | 功能領域 |
+| `i18n` / `language` / `copy` | 多語系 / 文案 |
+| `visual` / `visual_regression` / `locale_layout` | 視覺 |
+| `api` / `dashboard` / `game` | 測試類別 |
+| `flaky` | 已知偶發 flaky，附理由 |
+| `docker_only` | 僅 Docker 環境（pixel-level snapshot） |
 
-> 完整 markers 定義請見 [`pytest.ini`](pytest.ini)。
+> 完整 markers 定義與測試分層、flaky 處理原則見 [`pytest.ini`](pytest.ini) 與 [`docs/testing-strategy.md`](docs/testing-strategy.md)。
 
 ## 文件資源
 
 | 路徑 | 用途 |
 |------|------|
-| [`docs/`](docs/) | 團隊共用的事實/策略/規格文件（追蹤於 git） |
-| [`docs/i18n_locale_text_reference.md`](docs/i18n_locale_text_reference.md) | 多語系文案對照表（LT + RC） |
-| [`CLAUDE.md`](CLAUDE.md) | Claude Code 協作指南與慣例定義 |
+| [`CLAUDE.md`](CLAUDE.md) | Claude Code / agent 協作指南、慣例定義、架構說明 |
+| [`docs/`](docs/) | 團隊共用的事實/策略/規格文件 |
+| [`docs/cicd.md`](docs/cicd.md) | GitHub Actions 操作指南 |
+| [`docs/testing-strategy.md`](docs/testing-strategy.md) | 測試分層、通過標準、flaky 處理 |
+| [`docs/i18n_locale_text_reference.md`](docs/i18n_locale_text_reference.md) | 多語系文案對照表（LT 5 + RC 6 + RD 5） |
+| [`docs/agent-skills-workflow.md`](docs/agent-skills-workflow.md) | Agent / skill / subagent 接力工作流 |
+| [`docs/lt-dashboard-sitemap.md`](docs/lt-dashboard-sitemap.md) | LT 後台 25 頁功能地圖 |
+| [`docs/dashboard-technical-notes.md`](docs/dashboard-technical-notes.md) | 後台測試技術注意事項 |
 | [`PORTS_AND_SETUP.md`](PORTS_AND_SETUP.md) | Port 轉發與環境設定 |
-| [`dev-notes/`](dev-notes/) | 個人開發筆記（gitignored，僅 README 追蹤） |
+| [`dev-notes/`](dev-notes/) | 個人開發筆記（gitignored） |
 
 ## 說明
 
-- **多站台支援**：在 `.env` 增加 `SITE_XXX_URL / SITE_XXX_USERNAME / SITE_XXX_PASSWORD`，於 `pages/<site_id>/` 建立 page objects，在 `pages/factory.py` 的 registry dict 註冊，再於 `tests/<site_id>/` 建立測試目錄即可
-- **伺服器錯誤彈窗**：`conftest.py` 內建 MutationObserver 注入，自動處理 rc 站的伺服器錯誤彈窗；lt 站在 `tests/lt/conftest.py` 覆寫 `page` fixture 關閉此注入
+- **多站台支援**：在 `.env` 增加 `SITE_<X>_URL / USERNAME / PASSWORD`，於 `pages/<site_id>/` 建立 Page Objects，在 `pages/factory.py` 的 registry dict 註冊，再於 `tests/<site_id>/` 建立測試目錄即可（dashboard 走 `pages/dashboard/factory.py` 同模式）
+- **伺服器錯誤彈窗**：`conftest.py` 內建 MutationObserver 注入，自動處理 rc 站的伺服器錯誤彈窗；lt 站在 `tests/lt/conftest.py` 覆寫 `page` fixture 關閉此注入（避免 lt 錯誤 dialog 撞同 selector）
 - **截圖系統**：每個測試自動截圖並高亮操作元素（紅框），存於 `screenshots/<site_id>/<timestamp>/<smoke|feature>/<test_name>/`，自動依測試路徑分類，並產生繁中操作流程 README
 - **報表與截圖**：`reports/`、`screenshots/` 均已加入 `.gitignore`
+- **Docs sync check**：commit 時自動檢查 code 變動有沒有對應 .md 更新（hook + CI 雙保險），見 [`docs/cicd.md`](docs/cicd.md)
