@@ -1,0 +1,30 @@
+name: Docs Sync Check
+
+# 對 PR 變動做 code-vs-docs 同步檢查。
+# - PR 內任一 commit message 含 [skip-docs-check] 或設 SKIP_DOCS_CHECK=1 → 略過
+# - 違規 → job fail（PR check 顯示紅，不強制 block merge；要強制可在 Settings → Branches 設 required check）
+
+on:
+  pull_request:
+    branches: [main]
+
+# 強制 actions 用 Node 24
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  docs-sync-check:
+    name: Docs Sync Check
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+
+    steps:
+      - name: Checkout (fetch full history to diff against base)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # 預設 1 不夠，需有 base SHA 才能 diff
+
+      - name: Run docs sync check
+        run: |
+          # PR base commit SHA（GitHub Actions context 內建）
+          bash .github/scripts/check-docs-sync.sh ${{ github.event.pull_request.base.sha }}
