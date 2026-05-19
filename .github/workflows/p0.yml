@@ -16,6 +16,10 @@ concurrency:
   group: p0-${{ github.ref }}
   cancel-in-progress: true
 
+# 強制 actions 用 Node.js 24（2026-06-02 GH 強制升 24；提前消滅 deprecation 警告）
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
   p0-smoke:
     name: P0 Smoke (${{ matrix.site }})
@@ -71,7 +75,18 @@ jobs:
           SITE_RD_USERNAME: ${{ secrets.SITE_RD_USERNAME }}
           SITE_RD_PASSWORD: ${{ secrets.SITE_RD_PASSWORD }}
         run: |
-          pytest tests/${{ matrix.site }}/test_p0_smoke.py -m p0 --reruns 1 --tb=short
+          pytest tests/${{ matrix.site }}/test_p0_smoke.py \
+            -m p0 \
+            --reruns 1 \
+            --tb=short \
+            --junitxml=junit/${{ matrix.site }}.xml
+
+      # 把 JUnit XML 轉成 markdown 表格寫到 Job Summary（GH run 頁面直接看，不用下載 artifact）
+      - name: Publish Test Summary
+        if: always()
+        uses: test-summary/action@v2
+        with:
+          paths: "junit/${{ matrix.site }}.xml"
 
       # 永遠 upload 報告（成功或失敗都可下載 review）；artifact 名要含 site 避免衝突
       - name: Upload HTML report
