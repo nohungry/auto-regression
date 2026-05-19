@@ -14,6 +14,10 @@ concurrency:
   group: full-regression-${{ github.ref }}
   cancel-in-progress: true
 
+# 強制 actions 用 Node.js 24（2026-06-02 GH 強制升 24；提前消滅 deprecation 警告）
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
   full-regression:
     name: Full Regression (${{ matrix.site }})
@@ -68,7 +72,17 @@ jobs:
           SITE_RD_PASSWORD: ${{ secrets.SITE_RD_PASSWORD }}
         run: |
           # 跑該 site 整個目錄（含 P0 + 全 feature）；--reruns 1 處理 flaky；--tb=short 縮短 log
-          pytest tests/${{ matrix.site }}/ --reruns 1 --tb=short
+          pytest tests/${{ matrix.site }}/ \
+            --reruns 1 \
+            --tb=short \
+            --junitxml=junit/${{ matrix.site }}.xml
+
+      # 把 JUnit XML 轉成 markdown 表格寫到 Job Summary
+      - name: Publish Test Summary
+        if: always()
+        uses: test-summary/action@v2
+        with:
+          paths: "junit/${{ matrix.site }}.xml"
 
       - name: Upload HTML report
         if: always()
