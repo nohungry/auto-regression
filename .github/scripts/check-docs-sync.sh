@@ -37,11 +37,12 @@ warn_block() {
 $(echo "$changed_code" | sed 's/^/  - /')
 
 請重新確認下列 docs 是否需要同步更新：
+  - README.md（repo 對外總覽：站台清單 / 測試數 / 目錄樹 / 執行指令）
   - CLAUDE.md（架構 / 慣例）
   - docs/cicd.md（CI/CD 觸發規則 / 操作）
   - docs/i18n_locale_text_reference.md（LT selector / i18n 對照表）
   - docs/testing-strategy.md（測試策略）
-  - docs/README.md（文件索引）
+  - docs/README.md（docs/ 子資料夾索引）
 
 確認不需要更新時的 override 方式：
   - commit message 加 sentinel：[skip-docs-check] 並附理由
