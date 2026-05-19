@@ -44,33 +44,59 @@ def dismiss_announcement_popup_if_present(page: Page, timeout: int = 3000) -> bo
     """
     清除 RC 公告大圖輪播彈窗（popup-announcement-mask）。
 
-    策略：注入永久 CSS 規則 + 移除既有 DOM。
+    策略（2026-05-19 升級）：注入永久 CSS killer + MutationObserver 持續 enforce。
 
     為何不走「click ✕ 翻完所有張數」路徑：
     1. dev-rc 已知 bug — 螢幕不夠大時 ✕ 按鈕在 viewport 外完全點不到。
     2. 即便 click 成功，Vue + 伺服器 async 渲染會在 click 與後續 login 操作之間
        重新 mount popup（timing race）— 造成 login_trigger_btn.click() 仍被攔截。
-    3. CSS `display: none !important` 是冪等且持久的：之後 popup 即使重新 render
-       也直接 invisible 且 pointer-events 失效，不會再攔截操作。
+
+    為何 2026-05-19 加 MutationObserver：
+    - probe 確認 CSS killer 注入 <head> 後會被 SPA hydration 清除；
+      隨後互動（如 sidebar click）會觸發 Vue 重新渲染 mask，opacity 從 0 跳回 1。
+    - MO 持續監視 documentElement：
+        a) 偵測 killer style 被移除 → 立即重注
+        b) 偵測 .popup-announcement-mask 重新 mount → 立即 remove
+    - 每 page 只裝一個 MO（`window.__rc_popup_announcement_killer_mo` guard），
+      page reload 後 JS state 重設、下次 caller 再呼叫時重新安裝。
 
     本 helper 對非 RC 站（無 popup-announcement-mask 元素）為 no-op，安全。
     timeout 參數保留以維持 caller 簽名相容，內部不使用。
+
+    注意：`tests/rc/feature/announcement_popup/test_announcement_popup.py` 用 `page.goto`
+    直接走（不經 `LoginPage.goto()`），不會觸發此 killer，popup 行為驗證不受影響。
 
     Returns:
         True - 注入完成（不論 popup 當下是否在 DOM）
     """
     page.evaluate("""
         (() => {
-            // 注入永久 CSS killer（idempotent；同 page 只注一次）
-            if (!document.getElementById('__rc_popup_announcement_killer')) {
-                const style = document.createElement('style');
-                style.id = '__rc_popup_announcement_killer';
-                style.textContent = '.popup-announcement-mask { display: none !important; pointer-events: none !important; }';
-                document.head.appendChild(style);
+            const KILLER_ID = '__rc_popup_announcement_killer';
+            const KILLER_CSS = '.popup-announcement-mask { display: none !important; pointer-events: none !important; opacity: 0 !important; }';
+
+            function installKiller() {
+                if (!document.getElementById(KILLER_ID)) {
+                    const style = document.createElement('style');
+                    style.id = KILLER_ID;
+                    style.textContent = KILLER_CSS;
+                    (document.head || document.documentElement).appendChild(style);
+                }
             }
-            // 清除目前已存在的 mask 與 body class（CSS rule 已能處理未來新出現的）
+
+            // 立即執行：注入 killer + 清一次目前已存在的 mask（後續由 CSS 處理）
+            installKiller();
             document.querySelectorAll('.popup-announcement-mask').forEach(el => el.remove());
-            document.body.classList.remove('dialog-open');
+            if (document.body) document.body.classList.remove('dialog-open');
+
+            // MutationObserver 只盯 <head> 的 style 是否被 SPA hydration 清除 → 立即重注。
+            // 不動 mask DOM（避免 race Vue 進場動畫導致 sibling 元素如 login modal 構建失敗）。
+            // CSS `display:none !important + opacity:0` 已足以視覺隱藏 + 失效 pointer-events。
+            if (!window.__rc_popup_announcement_killer_mo) {
+                const mo = new MutationObserver(installKiller);
+                const target = document.head || document.documentElement;
+                mo.observe(target, { childList: true });
+                window.__rc_popup_announcement_killer_mo = mo;
+            }
         })()
     """)
     return True
