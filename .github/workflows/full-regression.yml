@@ -1,26 +1,24 @@
-name: P0 Smoke (4 sites)
+name: Full Regression (4 sites)
 
 # 觸發條件：
-# - PR 開啟 / 更新時自動跑（擋住有問題的 merge）
-# - 每日 09:00 台灣（= 01:00 UTC）定時跑，捕捉產品端 drift（無 PR 時的健康度）
-# - 手動 trigger（Actions 介面按鈕）
+# - 每週一 08:00 台灣（= 00:00 UTC Monday）跑完整 regression，週末產品變動週一上班看得到
+# - 手動 trigger（Actions 介面按鈕，需要時可即時觸發）
+# - 故意不掛 PR trigger：PR 已有 P0 smoke 把關（p0.yml），全 regression ~17 分太重不適合每 PR 跑
 on:
-  pull_request:
-    branches: [main]
   schedule:
-    - cron: '0 1 * * *'  # 每天 01:00 UTC = 09:00 台灣
+    - cron: '0 0 * * 1'  # 每週一 00:00 UTC = 08:00 台灣
   workflow_dispatch:
 
-# 同 PR 重複 push 時取消上一次跑（節省 runner 分鐘）
+# 同 ref 重複觸發取消上一次（手動連點 / 補跑時節省 runner 分鐘）
 concurrency:
-  group: p0-${{ github.ref }}
+  group: full-regression-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  p0-smoke:
-    name: P0 Smoke (${{ matrix.site }})
+  full-regression:
+    name: Full Regression (${{ matrix.site }})
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 30  # 最慢 RC 全套 ~14 分，30 分保守 buffer
 
     strategy:
       # 任一 site fail 不取消其他 site，讓所有結果可見
@@ -28,8 +26,8 @@ jobs:
       matrix:
         site: [rc, lt, re, rd]
 
-    # 同 site 帳號不能並行（會互踢 session，見 memory feedback_single_session_per_account）；
-    # 不同 site 可並行（不同帳號互不影響）
+    # 同 site 帳號不能並行（會互踢 session）；與 p0.yml 共用同一個 lock group → 若同時 PR 跑與
+    # cron 跑撞在一起，後者會等前者完成（避免帳號互踢）
     concurrency:
       group: ${{ matrix.site }}-account
       cancel-in-progress: false
@@ -53,11 +51,9 @@ jobs:
         run: |
           playwright install --with-deps chromium
 
-      - name: Run ${{ matrix.site }} P0 smoke
+      - name: Run ${{ matrix.site }} full regression
         env:
-          # CI 旗標由 GH Actions 自動帶 (CI=true)；conftest.py 走 _is_ci() 分支用 headless chromium
-          # 一次帶 4 站全部 secrets：每 job 只用對應 site 的 env（其餘 unused）；
-          # GH Actions 不支援 secret name 動態組合（${{ secrets[matrix.X] }} 在 secrets context 受限）。
+          # CI 旗標由 GH Actions 自動帶；conftest.py 走 _is_ci() 分支用 headless chromium
           SITE_RC_URL: ${{ secrets.SITE_RC_URL }}
           SITE_RC_USERNAME: ${{ secrets.SITE_RC_USERNAME }}
           SITE_RC_PASSWORD: ${{ secrets.SITE_RC_PASSWORD }}
@@ -71,24 +67,23 @@ jobs:
           SITE_RD_USERNAME: ${{ secrets.SITE_RD_USERNAME }}
           SITE_RD_PASSWORD: ${{ secrets.SITE_RD_PASSWORD }}
         run: |
-          pytest tests/${{ matrix.site }}/test_p0_smoke.py -m p0 --reruns 1 --tb=short
+          # 跑該 site 整個目錄（含 P0 + 全 feature）；--reruns 1 處理 flaky；--tb=short 縮短 log
+          pytest tests/${{ matrix.site }}/ --reruns 1 --tb=short
 
-      # 永遠 upload 報告（成功或失敗都可下載 review）；artifact 名要含 site 避免衝突
       - name: Upload HTML report
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: report-html-${{ matrix.site }}
+          name: full-regression-report-${{ matrix.site }}
           path: reports/report.html
           if-no-files-found: warn
-          retention-days: 14
+          retention-days: 30  # 比 P0 久（full 跑比較少，保留久一點看 trend）
 
-      # 失敗時 upload 截圖（成功時不存，3GB 沒必要）
       - name: Upload failure screenshots
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: failure-screenshots-${{ matrix.site }}
+          name: full-regression-screenshots-${{ matrix.site }}
           path: screenshots/
           if-no-files-found: warn
-          retention-days: 7
+          retention-days: 14
