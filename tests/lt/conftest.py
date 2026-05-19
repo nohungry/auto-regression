@@ -11,6 +11,7 @@ lt 站點測試專用 conftest
 import pytest
 from playwright.sync_api import Playwright
 from config.settings import get_site_config
+from conftest import _is_ci
 
 
 @pytest.fixture(scope="session")
@@ -26,18 +27,25 @@ def page(browser):
 
     與全域 _new_configured_page 邏輯相同，但拿掉 toast-confirm-btn observer
     （LT 錯誤 dialog 用同一個 selector，注入會破壞錯誤路徑測試）。
+
+    CI 環境（headless 無 window manager）改用 explicit viewport 1920×1080。
     """
-    context = browser.new_context(no_viewport=True)
+    if _is_ci():
+        context = browser.new_context(viewport={"width": 1920, "height": 1080})
+    else:
+        context = browser.new_context(no_viewport=True)
+
     try:
         pg = context.new_page()
 
-        cdp = context.new_cdp_session(pg)
-        window_id = cdp.send("Browser.getWindowForTarget")["windowId"]
-        cdp.send("Browser.setWindowBounds", {
-            "windowId": window_id,
-            "bounds": {"windowState": "maximized"},
-        })
-        cdp.detach()
+        if not _is_ci():
+            cdp = context.new_cdp_session(pg)
+            window_id = cdp.send("Browser.getWindowForTarget")["windowId"]
+            cdp.send("Browser.setWindowBounds", {
+                "windowId": window_id,
+                "bounds": {"windowState": "maximized"},
+            })
+            cdp.detach()
     except BaseException:
         context.close()
         raise

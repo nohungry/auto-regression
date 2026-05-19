@@ -1,0 +1,72 @@
+name: P0 Smoke (RC)
+
+# 觸發條件：
+# - PR 開啟 / 更新時自動跑（擋住有問題的 merge）
+# - 手動 trigger（Actions 介面按鈕）
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+# 同 PR 重複 push 時取消上一次跑（節省 runner 分鐘）
+concurrency:
+  group: p0-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  rc-p0-smoke:
+    name: RC P0 Smoke
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    # 同 RC site 帳號不能並行（會互踢 session，見 memory feedback_single_session_per_account）
+    concurrency:
+      group: rc-account
+      cancel-in-progress: false
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Install Playwright Chromium
+        run: |
+          playwright install --with-deps chromium
+
+      - name: Run RC P0 smoke
+        env:
+          # CI 旗標由 GH Actions 自動帶 (CI=true)；conftest.py 會走 _is_ci() 分支
+          SITE_RC_URL: ${{ secrets.SITE_RC_URL }}
+          SITE_RC_USERNAME: ${{ secrets.SITE_RC_USERNAME }}
+          SITE_RC_PASSWORD: ${{ secrets.SITE_RC_PASSWORD }}
+        run: |
+          pytest tests/rc/test_p0_smoke.py -m p0 --reruns 1 --tb=short
+
+      # 永遠 upload 報告（成功或失敗都可下載 review）
+      - name: Upload HTML report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: report-html
+          path: reports/report.html
+          if-no-files-found: warn
+          retention-days: 14
+
+      # 失敗時 upload 截圖（成功時不存，~3GB 沒必要）
+      - name: Upload failure screenshots
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: failure-screenshots
+          path: screenshots/
+          if-no-files-found: warn
+          retention-days: 7

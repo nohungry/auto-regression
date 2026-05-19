@@ -42,6 +42,11 @@ def _is_wsl() -> bool:
         return False
 
 
+def _is_ci() -> bool:
+    """偵測是否在 CI 環境（GitHub Actions / 通用 CI runner 皆 export `CI=true`）"""
+    return os.getenv("CI", "").lower() == "true"
+
+
 def _is_cdp_ready(cdp_url: str) -> bool:
     """檢查 CDP port 是否已在監聽"""
     parsed = urlparse(cdp_url)
@@ -204,7 +209,8 @@ def _start_chrome_from_wsl(cdp_url: str) -> None:
 def _new_configured_page(browser):
     """
     建立新的 browser context + page，並套用標準設定：
-    - 視窗最大化（CDP）
+    - 視窗最大化（CDP `Browser.setWindowBounds windowState=maximized`）；
+      CI 環境無 window manager 不支援，改用 explicit viewport 1920×1080
     - 注入 MutationObserver 自動關閉伺服器錯誤彈窗
     回傳 (context, page)
 
@@ -218,17 +224,24 @@ def _new_configured_page(browser):
     test_login_wrong_username 偶發 flaky（observer 秒關 toast 在 assert 之前）
     用 pytest-rerunfailures 重試一次處理（pytest.ini --reruns 1）。
     """
-    context = browser.new_context(no_viewport=True)
+    if _is_ci():
+        # CI 用 explicit viewport（headless 無 window manager 不支援 setWindowBounds maximize）
+        context = browser.new_context(viewport={"width": 1920, "height": 1080})
+    else:
+        # 本地（Windows / WSL / Linux + CDP）：no_viewport + CDP maximize
+        context = browser.new_context(no_viewport=True)
+
     try:
         page = context.new_page()
 
-        cdp = context.new_cdp_session(page)
-        window_id = cdp.send("Browser.getWindowForTarget")["windowId"]
-        cdp.send("Browser.setWindowBounds", {
-            "windowId": window_id,
-            "bounds": {"windowState": "maximized"},
-        })
-        cdp.detach()
+        if not _is_ci():
+            cdp = context.new_cdp_session(page)
+            window_id = cdp.send("Browser.getWindowForTarget")["windowId"]
+            cdp.send("Browser.setWindowBounds", {
+                "windowId": window_id,
+                "bounds": {"windowState": "maximized"},
+            })
+            cdp.detach()
 
         page.add_init_script("""
             new MutationObserver(() => {
@@ -246,7 +259,14 @@ def _new_configured_page(browser):
 
 @pytest.fixture(scope="session")
 def browser(playwright: Playwright):
-    if sys.platform == 'win32':
+    if _is_ci():
+        # CI（GitHub Actions / 等）：直接 launch Playwright 內建 chromium，無需 CDP / Windows Chrome
+        # 預設 headless（CI 無顯示），可用 HEADLESS=false 環境變數覆寫做 debug
+        headless = os.getenv("HEADLESS", "true").lower() == "true"
+        browser = playwright.chromium.launch(headless=headless)
+        yield browser
+        browser.close()
+    elif sys.platform == 'win32':
         # Windows：Playwright 直接啟動 Chrome
         headless = os.getenv("HEADLESS", "false").lower() == "true"
         browser = playwright.chromium.launch(channel="chrome", headless=headless)
@@ -264,7 +284,7 @@ def browser(playwright: Playwright):
         yield browser
         # 不關閉 browser，避免把 Windows Chrome 一起關掉
     else:
-        # 純 Linux：透過 CDP 連線（需自行確保 Chrome 已啟動）
+        # 純 Linux（非 CI）：透過 CDP 連線（需自行確保 Chrome 已啟動）
         cdp_url = os.getenv("CDP_URL", "http://localhost:9222")
         _detach_stuck_service_workers(cdp_url)
         browser = playwright.chromium.connect_over_cdp(cdp_url)
