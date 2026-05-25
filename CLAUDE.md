@@ -40,8 +40,8 @@ Reports are written to `reports/report.html` (self-contained HTML).
 
 GitHub Actions 自動跑測試：
 
-- `p0.yml`：PR 開啟 / push to main / 每天 09:00 台灣 / 手動 → RC + LT + RE + RD P0 smoke 4 站 matrix
-- `full-regression.yml`：每週一 08:00 台灣 / 手動 → 4 站全套（P0 + feature）
+- `p0.yml`：PR 開啟 / push to main / 每天 09:00 台灣 / 手動 → RC + LT + RE + RD + QW P0 smoke 5 站 matrix
+- `full-regression.yml`：每週一 08:00 台灣 / 手動 → 5 站全套（P0 + feature）
 - `docs-sync-check.yml`：PR 時檢查 code 變動是否有對應 .md 更新（hook 機制 + CI 雙保險）
 
 詳細的 trigger 規則、cron 時段、secrets 清單、如何看 run / 下載 artifact / 加 secret / debug fail → 見 [`docs/cicd.md`](docs/cicd.md)。
