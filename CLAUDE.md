@@ -88,6 +88,7 @@ pages/rc/                   — rc site Page Objects (LoginPage, HomePage) — �
 pages/lt/                   — lt site Page Objects (LoginPage, HomePage) — LT來財
 pages/re/                   — re site Page Objects (LoginPage, HomePage) — BeWin
 pages/rd/                   — rd site Page Objects (LoginPage, HomePage) — 狗狗娛樂城
+pages/qw/                   — qw site Page Objects (LoginPage, HomePage) — LM來財娛樂城（Nuxt/Vue，多語系）
 pages/dashboard/<site_id>/   — backend dashboard page objects (DashboardLoginPage, ManagementPage); per dashboard factory registry
 tests/api/<site_id>/         — API-layer tests (requests only, no browser, no pages/* import); per-site conftest
 tests/dashboard/<site_id>/   — backend dashboard tests; state-mutating tests should be reversible (rollback / teardown compensation)
@@ -99,6 +100,8 @@ tests/re/                   — re site tests (test_p0_smoke.py p0, feature/<nam
 tests/re/conftest.py        — re-specific overrides: site_config=re, go_home
 tests/rd/                   — rd site tests (test_p0_smoke.py p0, feature/<name>/ p1: announcement_popup, i18n, navigation)
 tests/rd/conftest.py        — rd-specific overrides: site_config=rd, go_home
+tests/qw/                   — qw site tests (test_p0_smoke.py p0, feature/visual/ p2)
+tests/qw/conftest.py        — qw-specific overrides: site_config=qw, go_home (+ dismiss popup-mask)
 utils/locale_helper.py       — set_locale(): injects i18n_locale cookie for lt site
 utils/dialog_helper.py       — helpers: dismiss server error popups, wait for loading animation
 utils/screenshot_helper.py   — element-highlight screenshot system, auto README.md generation
@@ -119,7 +122,7 @@ dev-notes/                   — personal developer notes (gitignored except REA
 - `auto_screenshot` (autouse) — attaches `ScreenshotHelper` to page; auto-categorizes tests into `smoke/` or `feature/` subfolder; generates `screenshots/<site_id>/<timestamp>/<category>/<test_name>/README.md` after each test
 - `auto_logout_after_test` (autouse) — logs out after each smoke test (`page` fixture only)
 
-**Markers** (pytest.ini): `p0`, `p1`, `p2`, `login`, `home`, `member`, `wallet`, `i18n`, `language`, `copy`, `visual`, `visual_regression`, `locale_layout`, `docker_only`, `api`, `dashboard`, `game`, `flaky`, `lt`, `rc`, `re`, `rd`
+**Markers** (pytest.ini): `p0`, `p1`, `p2`, `login`, `home`, `member`, `wallet`, `i18n`, `language`, `copy`, `visual`, `visual_regression`, `locale_layout`, `docker_only`, `api`, `dashboard`, `game`, `flaky`, `lt`, `rc`, `re`, `rd`, `qw`
 
 ## Multi-site Factory Pattern
 
@@ -204,14 +207,15 @@ This repo has **two distinct documentation folders** with different purposes and
 
 若某份 `dev-notes/` 的筆記後來成熟並獲得團隊共識，請**升級**移到 `docs/` 並調整內容為正式文件。反之，若 `docs/` 中某份文件變成僅個人觀點的 WIP 清單，應移到 `dev-notes/`。
 
-## Visual Regression (lt / rc)
+## Visual Regression (lt / rc / qw)
 
-LT 與 RC 皆採用 **reference screenshot** 策略：存檔供人工確認，不做 pixel 比對（跨環境解析度不穩定）。
+LT、RC、QW 皆採用 **reference screenshot** 策略：存檔供人工確認，不做 pixel 比對（跨環境解析度不穩定）。
 
 ```bash
 # VR reference 截圖（輸出至 screenshots/<site_id>/vr_reference/）
 .venv/bin/pytest tests/lt/feature/visual/test_visual_regression.py -m visual_regression
 .venv/bin/pytest tests/rc/feature/visual/test_visual_regression.py -m visual_regression
+.venv/bin/pytest tests/qw/feature/visual/test_visual_regression.py -m visual_regression
 
 # DOM 層視覺健康度（非截圖）
 .venv/bin/pytest -m visual

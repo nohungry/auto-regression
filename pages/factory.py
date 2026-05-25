@@ -23,6 +23,7 @@ _LOGIN_PAGE_REGISTRY = {
     'lt': ('pages.lt.login_page', 'LoginPage'),
     're': ('pages.re.login_page', 'LoginPage'),
     'rd': ('pages.rd.login_page', 'LoginPage'),
+    'qw': ('pages.qw.login_page', 'LoginPage'),
 }
 
 _HOME_PAGE_REGISTRY = {
@@ -30,6 +31,7 @@ _HOME_PAGE_REGISTRY = {
     'lt': ('pages.lt.home_page', 'HomePage'),
     're': ('pages.re.home_page', 'HomePage'),
     'rd': ('pages.rd.home_page', 'HomePage'),
+    'qw': ('pages.qw.home_page', 'HomePage'),
 }
 
 
