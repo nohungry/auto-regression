@@ -22,9 +22,9 @@ conftest.py                          — 全域 fixtures、環境偵測（Window
 config/settings.py                   — 多站台 SiteConfig，從 .env 讀取
 pages/factory.py                     — 前台：site_id → LoginPage/HomePage 路由（registry dict）
 pages/dashboard/factory.py           — 後台：site_id → DashboardLoginPage/ManagementPage 路由
-pages/rc/, pages/lt/, pages/re/, pages/rd/   — 各站前台 Page Objects
+pages/rc/, pages/lt/, pages/re/, pages/rd/, pages/qw/   — 各站前台 Page Objects
 pages/dashboard/<site_id>/           — 各站後台 Page Objects
-tests/rc/, tests/lt/, tests/re/, tests/rd/   — 各站前台測試（含 test_p0_smoke.py + feature/）
+tests/rc/, tests/lt/, tests/re/, tests/rd/, tests/qw/   — 各站前台測試（含 test_p0_smoke.py + feature/）
 tests/api/<site_id>/                 — API 層測試（不啟動瀏覽器，requests 直打 API）
 tests/dashboard/<site_id>/           — 後台管理介面測試
 utils/locale_helper.py               — set_locale()：注入 `i18n_locale` cookie（LT 用）
@@ -60,6 +60,7 @@ playwright install chromium
 .venv/bin/pytest tests/lt/                                               # lt 站
 .venv/bin/pytest tests/re/                                               # re 站
 .venv/bin/pytest tests/rd/                                               # rd 站
+.venv/bin/pytest tests/qw/                                               # qw 站
 .venv/bin/pytest tests/api/                                              # 僅 API 測試
 .venv/bin/pytest tests/dashboard/                                        # 僅後台測試
 .venv/bin/pytest tests/lt/test_p0_smoke.py -m p0                         # lt P0 smoke
@@ -81,8 +82,8 @@ GitHub Actions 自動跑測試與 docs 同步檢查：
 
 | Workflow | 觸發 | 跑什麼 |
 |---|---|---|
-| `.github/workflows/p0.yml` | PR / push to main / daily 09:00 台灣 / 手動 | 4 站 P0 smoke matrix |
-| `.github/workflows/full-regression.yml` | 週一 08:00 台灣 / 手動 | 4 站全套（P0 + feature） |
+| `.github/workflows/p0.yml` | PR / push to main / daily 09:00 台灣 / 手動 | 5 站 P0 smoke matrix（rc/lt/re/rd/qw） |
+| `.github/workflows/full-regression.yml` | 週一 08:00 台灣 / 手動 | 5 站全套（P0 + feature） |
 | `.github/workflows/docs-sync-check.yml` | PR | code 變動是否同步更新 docs |
 
 操作細節（trigger 規則、cron 時段、secrets 清單、看 run / 下載 artifact / debug、docs sync check 操作 + override）見 [`docs/cicd.md`](docs/cicd.md)。

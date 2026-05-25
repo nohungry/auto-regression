@@ -1,4 +1,4 @@
-name: P0 Smoke (4 sites)
+name: P0 Smoke (5 sites)
 
 # 觸發條件：
 # - PR 開啟 / 更新時自動跑（擋住有問題的 merge）
@@ -33,7 +33,7 @@ jobs:
       # 任一 site fail 不取消其他 site，讓所有結果可見
       fail-fast: false
       matrix:
-        site: [rc, lt, re, rd]
+        site: [rc, lt, re, rd, qw]
 
     # 同 site 帳號不能並行（會互踢 session，見 memory feedback_single_session_per_account）；
     # 不同 site 可並行（不同帳號互不影響）
@@ -77,6 +77,9 @@ jobs:
           SITE_RD_URL: ${{ secrets.SITE_RD_URL }}
           SITE_RD_USERNAME: ${{ secrets.SITE_RD_USERNAME }}
           SITE_RD_PASSWORD: ${{ secrets.SITE_RD_PASSWORD }}
+          SITE_QW_URL: ${{ secrets.SITE_QW_URL }}
+          SITE_QW_USERNAME: ${{ secrets.SITE_QW_USERNAME }}
+          SITE_QW_PASSWORD: ${{ secrets.SITE_QW_PASSWORD }}
         run: |
           pytest tests/${{ matrix.site }}/test_p0_smoke.py \
             -m p0 \
