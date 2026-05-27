@@ -33,36 +33,44 @@ class LoginPage:
     def open_login_form(self):
         """點擊右上角「登入」按鈕開啟登入表單
 
-        wait 拉長至 15s：dev 站 SPA hydration + 登入 modal 動畫可能需時。
-        trigger button 本身也要等：SPA 初始化完才會掛入 DOM。
+        SPA hydration race（dev-rc 實機 probe 2026-05-09）：
+        - 「登入」button 在 ~1s 即 visible 進入 DOM
+        - 但 click handler 約在 3.3s-5.3s 才綁定完成（依 hydration 進度）
+        - 在 dead zone 內 click 完全不會觸發 modal（無錯誤訊息，靜默失敗）
 
-        防 flaky：
-        - 公告大圖輪播 popup-announcement-mask 為 server async 渲染，
-          可能在 goto() 後才插入 DOM 並攔截 pointer events，導致 click 永遠 timeout。
-          click 前再 dismiss 一次（已存在則清掉，沒出現會短路 return）。
-        - 偶發第一次 click 沒觸發 modal（推測 hydration race），
-          若 5s 內 username_input 未出現則再 click 一次。對齊 RE 站做法
-          （pages/re/login_page.py）。
+        Luke 原本「click → 等 5s → 重試 1 次」邊界踩在 hydration 邊緣，
+        dev-rc 慢一點就會兩次 click 都落在 dead zone。
+
+        修法：retry loop — click → 短等 1.5s → 沒 modal 就再 click。
+        最多 10 次（≈ 15s 預算），覆蓋 hydration 變異。
+        實機觀察 typical 案例 1-3 次 click 即成功。
+
+        popup-announcement-mask（PR #30）已用 CSS rule 永久 kill，無需 dismiss。
         """
         sh = get_screenshotter(self.page)
         self.login_trigger_btn.wait_for(state="visible", timeout=15000)
 
-        # 公告 popup 可能在 goto() 之後才出現 → click 前再清一次
+        # 確保即使 popup 在 goto 後才出現，也已被 CSS killer 注入過
         dismiss_announcement_popup_if_present(self.page)
 
         self.login_trigger_btn.scroll_into_view_if_needed()
-        if sh: sh.capture(self.login_trigger_btn, "click_登入按鈕")
-        self.login_trigger_btn.click()
-        try:
-            self.username_input.wait_for(state="visible", timeout=5000)
-            return
-        except PlaywrightTimeoutError:
-            pass
-        # Retry once：SPA hydration race 容忍 + 再清一次 popup 以防中途彈出
-        dismiss_announcement_popup_if_present(self.page)
-        if sh: sh.capture(self.login_trigger_btn, "click_登入按鈕_retry")
-        self.login_trigger_btn.click()
-        self.username_input.wait_for(state="visible", timeout=10000)
+
+        max_attempts = 10
+        for attempt in range(1, max_attempts + 1):
+            # 第 1 次與最後 1 次必拍照；中間 retry 留 trace 但減量
+            if sh and (attempt == 1 or attempt == max_attempts):
+                label = "click_登入按鈕" if attempt == 1 else f"click_登入按鈕_attempt{attempt}"
+                sh.capture(self.login_trigger_btn, label)
+            self.login_trigger_btn.click()
+            try:
+                self.username_input.wait_for(state="visible", timeout=1500)
+                if sh and attempt > 1:
+                    sh.capture(self.username_input, f"verify_modal_開啟_於attempt{attempt}")
+                return  # modal opened
+            except PlaywrightTimeoutError:
+                continue  # handler 可能未綁定，再試
+        # 10 次仍 fail → 拋最終錯誤（含完整 timeout 訊息給 debug 用）
+        self.username_input.wait_for(state="visible", timeout=5000)
 
     def login(self, username: str, password: str):
         """填入帳號密碼並登入"""

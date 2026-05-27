@@ -13,10 +13,11 @@ description: 新增或修改 Python pytest-playwright 測試、Page Objects、�
 # Repo context
 - 技術棧：Python + pytest-playwright。
 - 一律使用 `.venv/bin/pytest` 執行。
-- 多站台架構：`pages/factory.py` 會依 `site_id` 路由到對應站台 page object。
-- 各站 page objects 位於 `pages/<site_id>/`。
-- 各站 UI 測試位於 `tests/<site_id>/`，結構為 `test_p0_smoke.py`（smoke）+ `feature/<feature_name>/`（功能驗證）。
-- API 層測試位於 `tests/api/<site_id>/`，以 `requests` 直打，不啟動瀏覽器。
+- **雙系統 multi-site 架構**：
+  - 前台（玩家端）：`pages/factory.py` 依 `site_id` 路由到 `pages/<site_id>/`；UI 測試位於 `tests/<site_id>/`，結構為 `test_p0_smoke.py`（smoke）+ `feature/<feature_name>/`（功能驗證）。
+  - 後台 dashboard（代理/管理端）：`pages/dashboard/factory.py`（**獨立 registry**）依 `site_id` 路由到 `pages/dashboard/<site_id>/`；UI 測試位於 `tests/dashboard/<site_id>/`。
+  - API 層測試位於 `tests/api/<site_id>/`，以 `requests` 直打，**不啟動瀏覽器**、**不 import 任何 `pages/*`**。
+  - 前台與後台為兩套獨立系統，**禁止互相 import**。已註冊站點以兩個 factory 的 registry 為準。
 - 各站測試目錄下有自己的 `conftest.py`，負責覆寫 `site_config` 與站台特定 fixture。
 - LT 站目前採 **reference screenshot** 策略：截圖輸出至 `screenshots/lt/vr_reference/` 供人工確認，不做 pixel 比對。`tests/lt/__snapshots__/` 為舊 baseline，無測試引用。
 
@@ -42,9 +43,11 @@ description: 新增或修改 Python pytest-playwright 測試、Page Objects、�
 4. 若新站點具多語系、易變文案、特殊 layout 或 viewport 行為，應將其視為 site-specific constraint 並在實作中保留彈性。
 
 # Adding a new site — checklist
-新增站點時，依序完成以下步驟：
+新增站點時，依目標範圍完成對應分支。**前台是必須，後台與 API 視該站需求而定**。
 
-1. **.env**：新增 `SITE_<ID>_URL`、`SITE_<ID>_USERNAME`、`SITE_<ID>_PASSWORD`。
+## A. 前台（玩家端）— 一律必做
+
+1. **.env**：新增 `SITE_<ID>_URL`、`SITE_<ID>_USERNAME`、`SITE_<ID>_PASSWORD`（同步更新 `.env.example`，密碼欄留空）。
 2. **`pages/<site_id>/`**：建立站點目錄，至少包含 `__init__.py`、`login_page.py`、`home_page.py`。
    - `LoginPage` 必須實作 `goto_and_login(username, password)` 方法。
    - `HomePage` 必須實作 `verify_logged_in()`（輕量、無副作用）、`verify_login_success(username)`（完整 E2E，可含副作用）、`dismiss_any_popups()`、`is_logged_in()`、`logout()` 方法。LT 站另有 `verify_username_in_drawer(username)`（開 drawer + reload，副作用大，只在需要驗 username 文字時用）。
@@ -54,12 +57,61 @@ description: 新增或修改 Python pytest-playwright 測試、Page Objects、�
 6. **`pytest.ini`**：若有新 marker，在 `markers` 區塊中宣告。
 7. **`tests/<site_id>/`**：建立 `__init__.py`、`test_p0_smoke.py`。
 
+## B. 後台 dashboard（代理/管理端）— 該站若有後台需測就做
+
+1. **.env**：新增後台環境變數組（同步更新 `.env.example`）：
+   - `SITE_<ID>_DASHBOARD_URL`（必要）
+   - `SITE_<ID>_DASHBOARD_USER`、`SITE_<ID>_DASHBOARD_PASS`（總代帳號）
+   - `SITE_<ID>_DASHBOARD_TOTP`（若該站後台啟用 2FA）
+   - `SITE_<ID>_DASHBOARD_AGENT_USER`、`SITE_<ID>_DASHBOARD_AGENT_PASS`（自動化代理帳號，限定權限）
+2. **`pages/dashboard/<site_id>/`**：建立後台站點目錄，至少包含 `__init__.py`、`login_page.py`、`management_page.py`。
+   - `DashboardLoginPage` 必須實作後台登入流程（含 TOTP 若有）。
+   - `ManagementPage` 提供後台主要操作入口（帳號管理、報表、佣金等）。
+3. **`pages/dashboard/factory.py`**：在 `_DASHBOARD_LOGIN_REGISTRY` 與 `_DASHBOARD_MANAGEMENT_REGISTRY` 兩個 dict 中**各加一行**。**任一缺漏會在 runtime 才報錯**。
+4. **`tests/dashboard/<site_id>/conftest.py`**：建立後台專用 conftest，覆寫 `site_config` 與後台特有 fixture（如 TOTP secret 載入、agent vs admin 登入策略切換）。
+
+   **目前已有站點的後台 conftest 慣例**（非硬規定，新站可依需求偏離但需在 docstring 註明理由）：
+   - 登入採 **session-scoped** fixture（後台登入成本高，含 TOTP / 多步驟對話框，session 級登入大幅省時）。
+   - 用 `browser.new_context()` 自建獨立 context，**不繼承根 `conftest.py` 的 `page` fixture**（避開前台專屬的 toast MutationObserver 注入）。
+   - 若新站需 per-test 狀態隔離（如不可重入的測試），可改 function-scope，但需在 conftest docstring 標示原因。
+
+5. **`tests/dashboard/<site_id>/`**：建立 `__init__.py`、`test_p0_smoke.py`。
+6. 後台與前台為獨立系統，**禁止互相 import**（詳細規則見下方 `Factory rules > 跨系統規則`）。
+
+## C. API 層 — 該站若有 API 測試需求就做
+
+1. **.env**：新增 `SITE_<ID>_API_URL`、`SITE_<ID>_API_DOMAIN`、`SITE_<ID>_COMPANYCODE`（同步更新 `.env.example`）。companycode 為公開 site code，非機密，可保留真實值；值不一定等於 site_id（例如 site_id=`rc` 但 companycode=`drc`、site_id=`lt` 但 companycode=`dlt`）。
+2. **`tests/api/<site_id>/conftest.py`**：建立 API 專用 conftest，提供 `site_config`、`api_base_url`、`api_headers` fixture。
+3. **`tests/api/<site_id>/`**：建立 `__init__.py` 與 test 檔（`test_auth.py`、`test_wallet.py` 等）。
+4. **不啟動瀏覽器** — API 測試只用 `requests` 直打。跨系統 import 規則見下方 `Factory rules > 跨系統規則`。
+
+## D. 驗證
+
+- 前台：`.venv/bin/pytest tests/<site_id>/ -v`
+- 後台：`.venv/bin/pytest tests/dashboard/<site_id>/ -v`
+- API：`.venv/bin/pytest tests/api/<site_id>/ -v`
+- 確認 factory 抛 `ValueError` 機制正常（未註冊 site_id 應明確報錯）。
+
 # Factory rules
-1. `pages/factory.py` 使用兩個 registry dict：`_LOGIN_PAGE_REGISTRY` 與 `_HOME_PAGE_REGISTRY`，各自映射 `site_id` → `(module_path, class_name)`。
+本 repo 有**兩套獨立 factory**，前台與後台各自一套，互不互通：
+
+## 前台 — `pages/factory.py`
+1. 使用兩個 registry dict：`_LOGIN_PAGE_REGISTRY` 與 `_HOME_PAGE_REGISTRY`，各自映射 `site_id` → `(module_path, class_name)`。
 2. 禁止使用 if/else fallback 到預設站台；未註冊的 `site_id` 必須拋出明確 `ValueError`，訊息包含可用站台列表。
 3. 新增站點只需在兩個 registry 中各加一行，不需修改 function 邏輯。
 4. factory 只負責回傳 class，不負責 instantiate。
 5. 外部呼叫者一律使用 `get_login_page_class(site_id)` / `get_home_page_class(site_id)`，不直接存取 registry dict。
+
+## 後台 — `pages/dashboard/factory.py`
+1. 使用兩個 registry dict：`_DASHBOARD_LOGIN_REGISTRY` 與 `_DASHBOARD_MANAGEMENT_REGISTRY`。
+2. 規則與前台 factory 相同（無 fallback、外部走 getter function）。
+3. 新增後台站點需在兩個 registry **都**註冊；任一缺漏會在 runtime 才報錯。
+4. 後台 factory 與前台 factory 為獨立模組，不互相 import。
+
+## 跨系統規則
+1. 前台檔案（`pages/<site_id>/*`、`tests/<site_id>/*`、根 `conftest.py`）**禁止** import `pages.dashboard.*`。
+2. 後台檔案（`pages/dashboard/<site_id>/*`、`tests/dashboard/<site_id>/*`）**禁止** import 前台 `pages.<site_id>.*`。
+3. API 測試（`tests/api/<site_id>/*`）**禁止** import 任何 `pages/*`；只用 `requests` 直打。
 
 # Site-specific conftest pattern
 每個站點的 `tests/<site_id>/conftest.py` 負責：
@@ -74,7 +126,7 @@ description: 新增或修改 Python pytest-playwright 測試、Page Objects、�
 3. 若差異只存在於單一站台，實作應留在該站台目錄，不要過早抽象成共用 base class。
 4. Page object 方法名稱應描述使用者行為或頁面意圖，例如 `login_as()`、`open_wallet_tab()`、`close_server_error_dialog()`。
 5. 不要把整段商業流程硬塞在一個超長 page object method；複合流程應由 test 組合多個可讀性高的方法。
-6. test 檔應透過 `pages/factory.py` 取得 page class（或透過 fixture 間接取得），不應直接 `from pages.<site_id>.xxx import`，以維持跨站復用彈性。
+6. test 檔應透過對應 factory 取得 page class（或透過 fixture 間接取得）：前台走 `pages/factory.py`、後台走 `pages/dashboard/factory.py`。不應直接 `from pages.<site_id>.xxx import` 或 `from pages.dashboard.<site_id>.xxx import`，以維持跨站復用彈性。
 
 # Interaction rules
 1. 一般元素互動前，先呼叫 `scroll_into_view_if_needed()` 再 click/fill/type。
@@ -137,6 +189,28 @@ description: 新增或修改 Python pytest-playwright 測試、Page Objects、�
 2. 動態內容頁面只存 reference screenshot，不做 snapshot assertion。
 3. 更新 snapshot 前，先確認是產品預期變更，不可為了讓測試通過而直接更新 baseline。
 4. 若新增或更新 snapshot，必須在輸出中明確說明原因與受影響檔案。
+
+# Execution discipline
+測試執行紀律 — subagent / 人工執行皆適用。
+
+1. **單 session 防呆**：同一個測試帳號不可同時跑兩個 pytest process（含 API 測試與 UI 測試共用同帳號的情況）。後端以 token 機制互踢，會導致雙方 session 同時失效，後跑的測試看到不可預期狀態。執行前確認該帳號未被其他 process 使用；若不確定，先回報而不是直接跑。
+
+2. **Regression notify before fix**：若原本通過的 test 突然 fail，**先停手回報主對話**，不要自己改 test 碼。原因：fail 經常代表產品 regression（後端壞掉、產品 bug、資料配置壞掉）而非測試 bug；自行修測試會把產品 regression 掩蓋掉，反而違背測試套件的存在價值。判斷流程：
+   - 看截圖逐步確認 selector 命中、按鈕被按到、API 真的有送出
+   - 若流程都正確但結果非預期（畫面「連線失敗」、API 錯誤碼、應有資料找不到）→ **真實 FAIL，回報主對話確認屬於測試問題還是 product regression**
+   - 只有當問題明確屬於測試自身（selector 過時、timing race、test data 失效）才修測試碼
+   - 不可加 `@pytest.mark.skip` 掩蓋未確認的 fail
+   - 即使是 xfail(strict=True) 守門 test 突然 XPASS 也屬於需要回報的情況（產品狀態變動）
+
+# State-mutating 測試設計（dashboard 尤其）
+若測試會改動後端真實狀態（存入提取、額度調整、會員建檔、訂單操作），必須有可逆設計：
+
+1. **設計可逆操作**：normal path 對稱還原 — 例如存 100 → 領 100 回到初始，整個 test 結束後狀態與起始相同。
+2. **try/finally 補償**：中途失敗時反向動作不留髒資料。例如「存入成功但驗證失敗」必須 finally 補一次提取。
+3. **連跑兩次也 idempotent**：不累積殘留、不踩到上次未清資料。Teardown 失敗的情境下也應該能再跑。
+4. **docstring 註明 rollback 策略**：讓 reviewer 與下次維護者快速判斷補償邏輯是否完整。
+
+具體實作 pattern 不限定（對稱還原 + try/finally、fixture teardown 補償、teardown diff 餘額補償都可），重點是「測試結束後狀態可預測」。Review 時 test-reviewer / `test-review` skill 會檢查相同維度。
 
 # Output expectations
 完成任務時，應：

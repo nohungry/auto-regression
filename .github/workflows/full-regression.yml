@@ -1,0 +1,106 @@
+name: Full Regression (5 sites)
+
+# 觸發條件：
+# - 每週一 08:00 台灣（= 00:00 UTC Monday）跑完整 regression，週末產品變動週一上班看得到
+# - 手動 trigger（Actions 介面按鈕，需要時可即時觸發）
+# - 故意不掛 PR trigger：PR 已有 P0 smoke 把關（p0.yml），全 regression ~17 分太重不適合每 PR 跑
+on:
+  schedule:
+    - cron: '0 0 * * 1'  # 每週一 00:00 UTC = 08:00 台灣
+  workflow_dispatch:
+
+# 同 ref 重複觸發取消上一次（手動連點 / 補跑時節省 runner 分鐘）
+concurrency:
+  group: full-regression-${{ github.ref }}
+  cancel-in-progress: true
+
+# 強制 actions 用 Node.js 24（2026-06-02 GH 強制升 24；提前消滅 deprecation 警告）
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  full-regression:
+    name: Full Regression (${{ matrix.site }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 30  # 最慢 RC 全套 ~14 分，30 分保守 buffer
+
+    strategy:
+      # 任一 site fail 不取消其他 site，讓所有結果可見
+      fail-fast: false
+      matrix:
+        site: [rc, lt, re, rd, qw]
+
+    # 同 site 帳號不能並行（會互踢 session）；與 p0.yml 共用同一個 lock group → 若同時 PR 跑與
+    # cron 跑撞在一起，後者會等前者完成（避免帳號互踢）
+    concurrency:
+      group: ${{ matrix.site }}-account
+      cancel-in-progress: false
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Install Playwright Chromium
+        run: |
+          playwright install --with-deps chromium
+
+      - name: Run ${{ matrix.site }} full regression
+        env:
+          # CI 旗標由 GH Actions 自動帶；conftest.py 走 _is_ci() 分支用 headless chromium
+          SITE_RC_URL: ${{ secrets.SITE_RC_URL }}
+          SITE_RC_USERNAME: ${{ secrets.SITE_RC_USERNAME }}
+          SITE_RC_PASSWORD: ${{ secrets.SITE_RC_PASSWORD }}
+          SITE_LT_URL: ${{ secrets.SITE_LT_URL }}
+          SITE_LT_USERNAME: ${{ secrets.SITE_LT_USERNAME }}
+          SITE_LT_PASSWORD: ${{ secrets.SITE_LT_PASSWORD }}
+          SITE_RE_URL: ${{ secrets.SITE_RE_URL }}
+          SITE_RE_USERNAME: ${{ secrets.SITE_RE_USERNAME }}
+          SITE_RE_PASSWORD: ${{ secrets.SITE_RE_PASSWORD }}
+          SITE_RD_URL: ${{ secrets.SITE_RD_URL }}
+          SITE_RD_USERNAME: ${{ secrets.SITE_RD_USERNAME }}
+          SITE_RD_PASSWORD: ${{ secrets.SITE_RD_PASSWORD }}
+          SITE_QW_URL: ${{ secrets.SITE_QW_URL }}
+          SITE_QW_USERNAME: ${{ secrets.SITE_QW_USERNAME }}
+          SITE_QW_PASSWORD: ${{ secrets.SITE_QW_PASSWORD }}
+        run: |
+          # 跑該 site 整個目錄（含 P0 + 全 feature）；--reruns 1 處理 flaky；--tb=short 縮短 log
+          pytest tests/${{ matrix.site }}/ \
+            --reruns 1 \
+            --tb=short \
+            --junitxml=junit/${{ matrix.site }}.xml
+
+      # 把 JUnit XML 轉成 markdown 表格寫到 Job Summary
+      - name: Publish Test Summary
+        if: always()
+        uses: test-summary/action@v2
+        with:
+          paths: "junit/${{ matrix.site }}.xml"
+
+      - name: Upload HTML report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: full-regression-report-${{ matrix.site }}
+          path: reports/report.html
+          if-no-files-found: warn
+          retention-days: 30  # 比 P0 久（full 跑比較少，保留久一點看 trend）
+
+      - name: Upload failure screenshots
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: full-regression-screenshots-${{ matrix.site }}
+          path: screenshots/
+          if-no-files-found: warn
+          retention-days: 14

@@ -4,11 +4,10 @@ WIN-I18N-LOGIN-001~005
 
 本檔驗證：各語系切換後，登入頁 input placeholder 是否正確翻譯。
 
-WAP 實測 i18n 覆蓋現況（2026-04-22 probe）：
-- ✅ `input.login-input` 的 placeholder 有 5 語系翻譯（本檔驗證此層）
-- ❌ `button.btn-login` 固定「立即登入」（所有語系）— 產品現況，非 bug
-- ❌ `button.btn-browse` 固定「先去逛逛」（所有語系）— 產品現況，非 bug
-- ❌ `span.lang-text` 固定「繁中」（所有語系）— 產品現況，非 bug
+Desktop 實測 i18n 覆蓋現況（2026-05-18 換版後 probe）：
+- ✅ input placeholder 有 5 語系翻譯（本檔驗證此層；selector 改為 `input.input-style` / `input.password-input`）
+- ❌ `button.base-btn` 文案是否仍固定繁中尚未重新確認，本檔不驗
+- ❌ `span.lang-text` 是否仍固定繁中尚未重新確認，TestI18NLangSwitcher 仍以 xfail(strict=True) 守門
 
 與 `tests/lt/feature/copy/test_copy.py` 職責互補：
 - copy：守門預設繁中文案不得變更
@@ -22,13 +21,15 @@ from utils.screenshot_helper import get_screenshotter
 
 
 # (case_id, locale, username_placeholder_keyword, password_placeholder_keyword)
-# 只檢查關鍵字（非全字比對），避免半形/全形空格、數字中橫線變體造成 flaky
+# 只檢查關鍵字（非全字比對），避免半形/全形空格、數字中橫線變體造成 flaky。
+# 2026-05-18 換版後產品動詞改了（請填寫→請輸入 / Please enter→Enter / Vui lòng điền→Vui lòng nhập），
+# 改用更穩定的「該語系代表字」作 keyword，可同時 cover 新舊兩種動詞。
 _PLACEHOLDER_CHECKS = [
-    ("WIN-I18N-LOGIN-001", "tw", "請填寫",   "請填寫"),
-    ("WIN-I18N-LOGIN-002", "cn", "请填写",   "请填写"),
-    ("WIN-I18N-LOGIN-003", "en", "Please enter", "Please enter"),
-    ("WIN-I18N-LOGIN-004", "th", "กรุณากรอก", "กรุณากรอก"),
-    ("WIN-I18N-LOGIN-005", "vn", "Vui lòng điền", "Vui lòng điền"),
+    ("WIN-I18N-LOGIN-001", "tw", "請",        "請"),
+    ("WIN-I18N-LOGIN-002", "cn", "请",        "请"),
+    ("WIN-I18N-LOGIN-003", "en", "Enter",     "Enter"),
+    ("WIN-I18N-LOGIN-004", "th", "กรุณา",     "กรุณา"),
+    ("WIN-I18N-LOGIN-005", "vn", "Vui lòng",  "Vui lòng"),
 ]
 
 
@@ -48,8 +49,9 @@ class TestI18NLoginPage:
         login.goto_login(locale=locale)
 
         sh = get_screenshotter(page)
-        username_input = page.locator('input.login-input').nth(0)
-        password_input = page.locator('input.login-input').nth(1)
+        # 2026-05-18 換版：input.login-input → input.input-style(text) / input.password-input
+        username_input = login.username_input
+        password_input = login.password_input
 
         # 分別截圖，label 帶 placeholder 方便 review
         username_input.scroll_into_view_if_needed()

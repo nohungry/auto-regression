@@ -42,30 +42,63 @@ def dismiss_server_error_if_present(page: Page, timeout: int = 3000) -> bool:
 
 def dismiss_announcement_popup_if_present(page: Page, timeout: int = 3000) -> bool:
     """
-    關閉老吉公告彈窗（popup-announcement-mask）。
-    彈窗為多張輪播，每次點擊 close-circle-btn 僅推進一張，
-    需持續點擊直到所有張數翻完後 popup 自動消失。
+    清除 RC 公告大圖輪播彈窗（popup-announcement-mask）。
 
-    彈窗由伺服器 async 渲染，可能在 domcontentloaded 之後才插入 DOM，
-    不能用 count() 短路，必須等 timeout。
+    策略（2026-05-19 升級）：注入永久 CSS killer + MutationObserver 持續 enforce。
+
+    為何不走「click ✕ 翻完所有張數」路徑：
+    1. dev-rc 已知 bug — 螢幕不夠大時 ✕ 按鈕在 viewport 外完全點不到。
+    2. 即便 click 成功，Vue + 伺服器 async 渲染會在 click 與後續 login 操作之間
+       重新 mount popup（timing race）— 造成 login_trigger_btn.click() 仍被攔截。
+
+    為何 2026-05-19 加 MutationObserver：
+    - probe 確認 CSS killer 注入 <head> 後會被 SPA hydration 清除；
+      隨後互動（如 sidebar click）會觸發 Vue 重新渲染 mask，opacity 從 0 跳回 1。
+    - MO 持續監視 documentElement：
+        a) 偵測 killer style 被移除 → 立即重注
+        b) 偵測 .popup-announcement-mask 重新 mount → 立即 remove
+    - 每 page 只裝一個 MO（`window.__rc_popup_announcement_killer_mo` guard），
+      page reload 後 JS state 重設、下次 caller 再呼叫時重新安裝。
+
+    本 helper 對非 RC 站（無 popup-announcement-mask 元素）為 no-op，安全。
+    timeout 參數保留以維持 caller 簽名相容，內部不使用。
+
+    注意：`tests/rc/feature/announcement_popup/test_announcement_popup.py` 用 `page.goto`
+    直接走（不經 `LoginPage.goto()`），不會觸發此 killer，popup 行為驗證不受影響。
 
     Returns:
-        True  - 有彈窗且已關閉
-        False - 沒有彈窗
+        True - 注入完成（不論 popup 當下是否在 DOM）
     """
-    mask = page.locator(".popup-announcement-mask")
-    try:
-        mask.wait_for(state="visible", timeout=timeout)
-    except PlaywrightTimeoutError:
-        return False
+    page.evaluate("""
+        (() => {
+            const KILLER_ID = '__rc_popup_announcement_killer';
+            const KILLER_CSS = '.popup-announcement-mask { display: none !important; pointer-events: none !important; opacity: 0 !important; }';
 
-    close_btn = page.locator("button.close-circle-btn")
-    for _ in range(30):
-        try:
-            close_btn.wait_for(state="visible", timeout=1000)
-            close_btn.click()
-        except PlaywrightTimeoutError:
-            break  # 按鈕消失 = 所有張數已翻完，popup 關閉
+            function installKiller() {
+                if (!document.getElementById(KILLER_ID)) {
+                    const style = document.createElement('style');
+                    style.id = KILLER_ID;
+                    style.textContent = KILLER_CSS;
+                    (document.head || document.documentElement).appendChild(style);
+                }
+            }
+
+            // 立即執行：注入 killer + 清一次目前已存在的 mask（後續由 CSS 處理）
+            installKiller();
+            document.querySelectorAll('.popup-announcement-mask').forEach(el => el.remove());
+            if (document.body) document.body.classList.remove('dialog-open');
+
+            // MutationObserver 只盯 <head> 的 style 是否被 SPA hydration 清除 → 立即重注。
+            // 不動 mask DOM（避免 race Vue 進場動畫導致 sibling 元素如 login modal 構建失敗）。
+            // CSS `display:none !important + opacity:0` 已足以視覺隱藏 + 失效 pointer-events。
+            if (!window.__rc_popup_announcement_killer_mo) {
+                const mo = new MutationObserver(installKiller);
+                const target = document.head || document.documentElement;
+                mo.observe(target, { childList: true });
+                window.__rc_popup_announcement_killer_mo = mo;
+            }
+        })()
+    """)
     return True
 
 

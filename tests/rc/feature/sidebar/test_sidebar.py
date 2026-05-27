@@ -4,7 +4,7 @@ RC 側邊欄功能測試
 """
 
 import pytest
-from playwright.sync_api import Page, expect
+from playwright.sync_api import Page, expect, TimeoutError as PlaywrightTimeoutError
 from pages.rc.login_page import LoginPage
 from utils.dialog_helper import wait_loading_if_present
 from utils.screenshot_helper import get_screenshotter
@@ -43,10 +43,27 @@ class TestUnauthenticatedSidebar:
     """TC-020：未登入時的側邊欄行為"""
 
     def test_sidebar_triggers_login(self, page: Page, site_config):
-        """TC-020：未登入時點側邊欄個人資訊應跳出登入表單"""
+        """TC-020：未登入時點側邊欄個人資訊應跳出登入表單。
+
+        Hydration dead zone：sidebar `@click` handler 在 page open 後約 2 秒才綁定，
+        pytest fresh context 在 hydration 完成前 dispatch click 會 no-op（與
+        `pages/rc/login_page.py::open_login_form` 同症狀，同樣用 retry loop 處理）。
+        2026-05-19 probe 確認 root cause。
+        """
         login = LoginPage(page, site_config.url)
         login.goto()
-        page.locator(".sidebar-item.user").dispatch_event("click")
+        sidebar_user = page.locator(".sidebar-item.user")
+
+        max_attempts = 10
+        for attempt in range(1, max_attempts + 1):
+            sidebar_user.dispatch_event("click")
+            try:
+                login.username_input.wait_for(state="visible", timeout=1500)
+                break  # modal opened
+            except PlaywrightTimeoutError:
+                if attempt == max_attempts:
+                    raise
+
         wait_loading_if_present(page)
         sh = get_screenshotter(page)
         if sh: sh.capture(login.username_input, "verify_登入表單出現")

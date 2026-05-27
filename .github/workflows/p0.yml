@@ -1,0 +1,115 @@
+name: P0 Smoke (5 sites)
+
+# 觸發條件：
+# - PR 開啟 / 更新時自動跑（擋住有問題的 merge）
+# - 成功 merge 到 main 後再跑一次（確認 squash 後合進去的版本實際 OK）
+# - 每日 09:00 台灣（= 01:00 UTC）定時跑，捕捉產品端 drift（無 PR 時的健康度）
+# - 手動 trigger（Actions 介面按鈕）
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  schedule:
+    - cron: '0 1 * * *'  # 每天 01:00 UTC = 09:00 台灣
+  workflow_dispatch:
+
+# 同 PR 重複 push 時取消上一次跑（節省 runner 分鐘）
+concurrency:
+  group: p0-${{ github.ref }}
+  cancel-in-progress: true
+
+# 強制 actions 用 Node.js 24（2026-06-02 GH 強制升 24；提前消滅 deprecation 警告）
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  p0-smoke:
+    name: P0 Smoke (${{ matrix.site }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    strategy:
+      # 任一 site fail 不取消其他 site，讓所有結果可見
+      fail-fast: false
+      matrix:
+        site: [rc, lt, re, rd, qw]
+
+    # 同 site 帳號不能並行（會互踢 session，見 memory feedback_single_session_per_account）；
+    # 不同 site 可並行（不同帳號互不影響）
+    concurrency:
+      group: ${{ matrix.site }}-account
+      cancel-in-progress: false
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Install Playwright Chromium
+        run: |
+          playwright install --with-deps chromium
+
+      - name: Run ${{ matrix.site }} P0 smoke
+        env:
+          # CI 旗標由 GH Actions 自動帶 (CI=true)；conftest.py 走 _is_ci() 分支用 headless chromium
+          # 一次帶 4 站全部 secrets：每 job 只用對應 site 的 env（其餘 unused）；
+          # GH Actions 不支援 secret name 動態組合（${{ secrets[matrix.X] }} 在 secrets context 受限）。
+          SITE_RC_URL: ${{ secrets.SITE_RC_URL }}
+          SITE_RC_USERNAME: ${{ secrets.SITE_RC_USERNAME }}
+          SITE_RC_PASSWORD: ${{ secrets.SITE_RC_PASSWORD }}
+          SITE_LT_URL: ${{ secrets.SITE_LT_URL }}
+          SITE_LT_USERNAME: ${{ secrets.SITE_LT_USERNAME }}
+          SITE_LT_PASSWORD: ${{ secrets.SITE_LT_PASSWORD }}
+          SITE_RE_URL: ${{ secrets.SITE_RE_URL }}
+          SITE_RE_USERNAME: ${{ secrets.SITE_RE_USERNAME }}
+          SITE_RE_PASSWORD: ${{ secrets.SITE_RE_PASSWORD }}
+          SITE_RD_URL: ${{ secrets.SITE_RD_URL }}
+          SITE_RD_USERNAME: ${{ secrets.SITE_RD_USERNAME }}
+          SITE_RD_PASSWORD: ${{ secrets.SITE_RD_PASSWORD }}
+          SITE_QW_URL: ${{ secrets.SITE_QW_URL }}
+          SITE_QW_USERNAME: ${{ secrets.SITE_QW_USERNAME }}
+          SITE_QW_PASSWORD: ${{ secrets.SITE_QW_PASSWORD }}
+        run: |
+          pytest tests/${{ matrix.site }}/test_p0_smoke.py \
+            -m p0 \
+            --reruns 1 \
+            --tb=short \
+            --junitxml=junit/${{ matrix.site }}.xml
+
+      # 把 JUnit XML 轉成 markdown 表格寫到 Job Summary（GH run 頁面直接看，不用下載 artifact）
+      - name: Publish Test Summary
+        if: always()
+        uses: test-summary/action@v2
+        with:
+          paths: "junit/${{ matrix.site }}.xml"
+
+      # 永遠 upload 報告（成功或失敗都可下載 review）；artifact 名要含 site 避免衝突
+      - name: Upload HTML report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: report-html-${{ matrix.site }}
+          path: reports/report.html
+          if-no-files-found: warn
+          retention-days: 14
+
+      # 失敗時 upload 截圖（成功時不存，3GB 沒必要）
+      - name: Upload failure screenshots
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: failure-screenshots-${{ matrix.site }}
+          path: screenshots/
+          if-no-files-found: warn
+          retention-days: 7

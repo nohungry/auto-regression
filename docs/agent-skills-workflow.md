@@ -60,12 +60,13 @@ pom-architect → selector-probe → ui-test-author → test-review → git-comm
 你：「LT 又改版了，home_page.py 全套 selector 都過時，請重寫」
 
 階段 1：架構決策
-  → pom-architect：「新版 LT 是桌面 responsive WAP，drawer 結構變了，
-                    home_page 要不要拆成 home_page + drawer_component？」
+  → pom-architect：「新版 LT 是 desktop responsive，個人中心改為 .dialog-mask-full
+                    SPA inline panel（無 /member-center 路由），home_page 是否要拆出 panel_component？」
 
 階段 2：實際 selector probe
-  → selector-probe：用 agent-browser snapshot LT 首頁 + drawer 開關後狀態，
-                    拿出新版實際 className（如 .login-btn-with-text 取代 .bg-navbar）
+  → selector-probe：用 agent-browser snapshot LT 首頁未/已登入 + panel 開啟狀態，
+                    拿出新版實際 className（如 .nav-bg-m 取代 .bg-navbar、
+                    .footer-bg .content 取代 .shadow-menubar .cursor-pointer）
 
 階段 3：重寫 page object
   → ui-test-author：把 probe 出來的 selector 寫進新 home_page.py，
@@ -169,6 +170,88 @@ pom-architect → selector-probe → ui-test-author → test-review → git-comm
 
 `selector-probe` 補強了 chrome-devtools MCP 在「**輕量探勘**」場景的不足
 （CLI 一行就拿 ARIA tree，比 MCP 多輪 tool call 輕）。
+
+---
+
+## Subagent 層（main agent 自動派工）
+
+除了**人類**透過 `/skill-name` 觸發 skill，repo 也有 **main agent** 可主動 delegate 的 subagent，位於 `.claude/agents/<name>.md`。Subagent 解決 skill 解不了的痛點：
+
+| 維度 | Skill | Subagent |
+|------|-------|----------|
+| 觸發者 | 人類 `/skill-name` | Main agent 自主判斷 |
+| 執行 context | 主對話內 | **獨立 context window** |
+| 工具權限 | 繼承主對話 | 自帶白名單（可限縮） |
+| 典型用途 | 流程指引、規則文件 | 並行調查、髒活隔離、大量檔案讀取 |
+| 回傳 | 對話延續 | 一段 summary 字串 |
+
+簡單講：**skill = 主對話的指引；subagent = 主對話派出去辦事的小弟，回來只交報告**。
+
+### 目前有的三個 subagent
+
+| Subagent | Inject 的 skill | 工具 | 主要職責 |
+|---------|---------------|------|---------|
+| `test-author` | `ui-test-author`、`pom-architect` | Read, Write, Edit, Bash, Grep, Glob | 新增/修改 testcase、POM、實作功能驗證 |
+| `test-reviewer` | `test-review` | Read, Grep, Glob, Bash | Read-only review、找 flaky / cover-up / 跨站風險 |
+| `selector-explorer` | `selector-probe` | Read, Grep, Glob, Bash | DOM 探查、ARIA 拿 selector、被蓋板擋住的 debug |
+
+三 agent **互不能 spawn 對方**（都沒 Agent tool），handoff 一律繞回主對話決定下一步。
+
+### 三 agent 接力 SOP
+
+**情境 A：使用者要新增 RC 新功能測試（例如錢包頁）**
+
+```
+使用者：「幫我加 RC 錢包頁的測試」
+
+階段 1：main agent 派 selector-explorer 探 DOM
+  → 回報 selector + 給 test-author 的可用片段
+
+階段 2：main agent 派 test-author 實作
+  → 寫 POM + testcase，跑 .venv/bin/pytest tests/rc/feature/wallet/
+  → 回報變更檔案 + pytest 結果
+
+階段 3：main agent 派 test-reviewer 審查
+  → read-only review，列 blocking / non-blocking
+
+階段 4：main agent 自走 git-commit skill 開 PR
+```
+
+**情境 B：既有測試突然 fail（不確定 root cause）**
+
+```
+階段 1：main agent 派 test-reviewer 看 fail trace + git log + 截圖
+  → 回報 root cause 假設
+
+階段 2：依 root cause 派下一步
+  - selector 過時 → 派 selector-explorer 重 probe
+  - 產品 regression → **回報使用者**（不要派 test-author 修，會掩蓋 regression）
+  - 測試自身 bug → 派 test-author 修
+
+階段 3：修完派 test-reviewer 二審 → 主對話走 git-commit
+```
+
+→ **debug 既有 fail 不要派 test-author**（test-author 的 description 已明示）。
+
+**情境 C：新增第 9 個站（前台 + 後台 + API 全套）**
+
+```
+階段 1：主對話走 env-sync skill 同步 .env
+階段 2：main agent 派 selector-explorer 探 ABC 前台 / 後台 DOM
+階段 3：main agent 派 test-author 寫前台 POM / smoke + 後台 POM / smoke + API conftest
+階段 4：main agent 派 test-reviewer 審 onboarding 完整性（A/B/C 三分支）
+階段 5：主對話走 git-commit
+```
+
+### 避讓機制（subagent vs skill）
+
+兩者的差別不在「該不該存在」而在「**誰負責觸發**」：
+
+- 使用者**明確**輸入 `/skill-name` → 走 skill 模式（主對話內執行）
+- 使用者**隱性**要求「幫我做 X」→ main agent 看 X 屬於哪個 subagent 的職責，主動 delegate
+- 衝突情境（例如使用者輸入 `/ui-test-author` 但 Claude 認為該派 `test-author`）→ **尊重使用者明示意圖**，走 skill 模式
+
+Subagent 三人之間靠 description 與「不在你的職責內」段互斥，handoff 透過主對話橋接（subagent A 想交給 subagent B 時，回報主對話「請改派 B」，由主對話決定）。
 
 ---
 

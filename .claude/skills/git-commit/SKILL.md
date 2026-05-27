@@ -143,10 +143,15 @@ description: 針對 auto-regression repo 的測試變更，執行提交前檢查
 
 | 變更範圍 | 必跑指令（CDP 本地） |
 |---------|---------------------|
-| 單一站點的單一 test 檔 | `.venv/bin/pytest tests/<site_id>/<file>.py -v` |
-| 單一站點的 POM 變動 | `.venv/bin/pytest tests/<site_id>/ -v` |
-| 單一站點的 conftest | `.venv/bin/pytest tests/<site_id>/ -v` |
-| `pages/factory.py` | `.venv/bin/pytest tests/rc/ tests/lt/ -v` |
+| 前台單站單檔（`tests/<site_id>/<file>.py`） | `.venv/bin/pytest tests/<site_id>/<file>.py -v` |
+| 前台單站 POM（`pages/<site_id>/`） | `.venv/bin/pytest tests/<site_id>/ -v` |
+| 前台單站 conftest | `.venv/bin/pytest tests/<site_id>/ -v` |
+| 後台單站單檔（`tests/dashboard/<site_id>/<file>.py`） | `.venv/bin/pytest tests/dashboard/<site_id>/<file>.py -v` |
+| 後台單站 POM（`pages/dashboard/<site_id>/`） | `.venv/bin/pytest tests/dashboard/<site_id>/ -v` |
+| 後台單站 conftest | `.venv/bin/pytest tests/dashboard/<site_id>/ -v` |
+| API 單站（`tests/api/<site_id>/`） | `.venv/bin/pytest tests/api/<site_id>/ -v` |
+| `pages/factory.py`（前台） | `.venv/bin/pytest tests/ -v --ignore=tests/dashboard --ignore=tests/api`（所有已註冊前台站點） |
+| `pages/dashboard/factory.py`（後台） | `.venv/bin/pytest tests/dashboard/ -v`（所有已註冊後台站點） |
 | 全域 `conftest.py` / `utils/*.py` / `config/settings.py` | `.venv/bin/pytest -v`（全量） |
 | VR baseline / reference 變動 | `.venv/bin/pytest -m visual_regression -v` |
 
@@ -231,14 +236,20 @@ description: 針對 auto-regression repo 的測試變更，執行提交前檢查
 
 | 變更範圍 | 建議驗證指令 |
 |----------|-------------|
-| 單一站點的單一測試檔 | `.venv/bin/pytest tests/<site_id>/<file>.py -v` |
-| 單一站點的 page object | `.venv/bin/pytest tests/<site_id>/ -v` |
-| 單一站點的 conftest | `.venv/bin/pytest tests/<site_id>/ -v` |
-| factory.py | `.venv/bin/pytest tests/rc/ tests/lt/ -v`（所有已註冊站點） |
+| 前台單站單檔（`tests/<site_id>/<file>.py`） | `.venv/bin/pytest tests/<site_id>/<file>.py -v` |
+| 前台單站 page object（`pages/<site_id>/`） | `.venv/bin/pytest tests/<site_id>/ -v` |
+| 前台單站 conftest | `.venv/bin/pytest tests/<site_id>/ -v` |
+| 後台單站單檔（`tests/dashboard/<site_id>/<file>.py`） | `.venv/bin/pytest tests/dashboard/<site_id>/<file>.py -v` |
+| 後台單站 page object（`pages/dashboard/<site_id>/`） | `.venv/bin/pytest tests/dashboard/<site_id>/ -v` |
+| 後台單站 conftest | `.venv/bin/pytest tests/dashboard/<site_id>/ -v` |
+| API 單站（`tests/api/<site_id>/`） | `.venv/bin/pytest tests/api/<site_id>/ -v` |
+| factory.py（前台） | `.venv/bin/pytest tests/ -v --ignore=tests/dashboard --ignore=tests/api`（所有已註冊前台站點） |
+| dashboard/factory.py（後台） | `.venv/bin/pytest tests/dashboard/ -v`（所有已註冊後台站點） |
 | 全域 conftest.py | `.venv/bin/pytest -v`（全量） |
 | utils/*.py | `.venv/bin/pytest -v`（全量） |
 | visual regression baseline | `.venv/bin/pytest -m visual_regression -v` |
-| 新站點導入 | `.venv/bin/pytest tests/<new_site_id>/ -v` + 確認 factory 註冊 |
+| 新站點導入（前台） | `.venv/bin/pytest tests/<new_site_id>/ -v` + 確認 factory 註冊 |
+| 新站點導入（後台） | `.venv/bin/pytest tests/dashboard/<new_site_id>/ -v` + 確認 dashboard factory 兩 registry 都註冊 |
 
 其他規則：
 1. 若修改 visual regression baseline 或 reference screenshot，必須要求說明變更原因。

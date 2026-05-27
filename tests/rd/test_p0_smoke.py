@@ -96,9 +96,12 @@ class TestHomePage:
             if sh: sh.capture(el, f"verify_導覽列_{nav_item}")
             expect(el).to_be_visible()
 
-    @pytest.mark.skip(reason="RD navbar 無 visible avatar/dropdown，登出流程需另外 probe（個人資訊 menu 進入後找登出）")
     def test_logout(self, logged_in_page: Page):
-        """RD-TC-007：登入後可正常登出（待 probe RD 登出流程後啟用）"""
+        """RD-TC-007：登入後可正常登出
+
+        登出流程：點「個人資訊」menu 開啟面板 → 點面板內「登出」按鈕 →
+        驗證右上角「登錄」按鈕重新出現。
+        """
         home = HomePage(logged_in_page)
         home.logout()
         expect(home.login_btn).to_be_visible(timeout=5000)

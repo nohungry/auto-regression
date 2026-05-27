@@ -31,9 +31,31 @@ Key `.env` variables:
 .venv/bin/pytest -m p0                                                  # by marker
 .venv/bin/pytest -m login                                               # by marker
 .venv/bin/pytest tests/rc/test_p0_smoke.py::TestLogin::test_login_success # single test
+CI=true .venv/bin/pytest tests/rc/test_p0_smoke.py                      # 模擬 CI 模式：headless chromium 直接 launch（無 CDP）
 ```
 
 Reports are written to `reports/report.html` (self-contained HTML).
+
+## CI/CD
+
+GitHub Actions 自動跑測試：
+
+- `p0.yml`：PR 開啟 / push to main / 每天 09:00 台灣 / 手動 → RC + LT + RE + RD + QW P0 smoke 5 站 matrix
+- `full-regression.yml`：每週一 08:00 台灣 / 手動 → 5 站全套（P0 + feature）
+- `docs-sync-check.yml`：PR 時檢查 code 變動是否有對應 .md 更新（hook 機制 + CI 雙保險）
+
+詳細的 trigger 規則、cron 時段、secrets 清單、如何看 run / 下載 artifact / 加 secret / debug fail → 見 [`docs/cicd.md`](docs/cicd.md)。
+
+## Docs sync check（hook + CI 雙保險）
+
+每次 commit / PR 自動檢查「code 變動是否同步更新 docs」：
+
+- **Hook**（`.claude/settings.json` + `.github/scripts/check-docs-sync.sh`）：Claude 在跑 `git commit` 之前 block，stderr 提醒重看哪些 .md
+- **CI**（`.github/workflows/docs-sync-check.yml`）：PR 時相同檢查跑一次，違規 → PR check 紅
+
+確認**不**需要更新時的 override：
+- commit message 加 sentinel `[skip-docs-check]` 並附理由
+- 或設 env var `SKIP_DOCS_CHECK=1`
 
 ## Test Strategy
 
@@ -60,21 +82,27 @@ Reports are written to `reports/report.html` (self-contained HTML).
 ```
 conftest.py                  — browser setup, environment detection (Windows/WSL/Linux), global fixtures
 config/settings.py           — multi-site SiteConfig dataclass loaded from .env
-pages/factory.py             — routes site_id → LoginPage/HomePage class via registry dict (no if/else fallback; unknown site_id raises ValueError)
+pages/factory.py             — frontend: routes site_id → LoginPage/HomePage class via registry dict (no if/else fallback; unknown site_id raises ValueError)
+pages/dashboard/factory.py   — backend dashboard: routes site_id → DashboardLoginPage/ManagementPage class (independent registry from frontend; no cross-import)
 pages/rc/                   — rc site Page Objects (LoginPage, HomePage) — 王老吉娛樂城
 pages/lt/                   — lt site Page Objects (LoginPage, HomePage) — LT來財
 pages/re/                   — re site Page Objects (LoginPage, HomePage) — BeWin
 pages/rd/                   — rd site Page Objects (LoginPage, HomePage) — 狗狗娛樂城
-tests/api/lt/               — lt site API-layer tests (no browser)
+pages/qw/                   — qw site Page Objects (LoginPage, HomePage) — LM來財娛樂城（Nuxt/Vue，多語系）
+pages/dashboard/<site_id>/   — backend dashboard page objects (DashboardLoginPage, ManagementPage); per dashboard factory registry
+tests/api/<site_id>/         — API-layer tests (requests only, no browser, no pages/* import); per-site conftest
+tests/dashboard/<site_id>/   — backend dashboard tests; state-mutating tests should be reversible (rollback / teardown compensation)
 tests/rc/                   — rc site tests (test_p0_smoke.py p0, feature/<name>/ p1: announcement_popup, i18n, navigation, wallet)
 tests/rc/conftest.py        — rc-specific overrides: site_config=rc, go_home (+ dismiss announcement popup)
 tests/lt/                   — lt site tests (test_p0_smoke.py p0, test_locale_visual_matrix.py p2 [skipped], feature/<name>/ p1: auth, copy, i18n, member, public, visual, wallet)
 tests/lt/conftest.py        — lt-specific overrides: site_config=lt, page fixture without MutationObserver
 tests/re/                   — re site tests (test_p0_smoke.py p0, feature/<name>/ p1: announcement_popup, copy, game, home_sections, i18n, member, navigation, sidebar, visual, wallet)
 tests/re/conftest.py        — re-specific overrides: site_config=re, go_home
-tests/rd/                   — rd site tests (test_p0_smoke.py p0, 7 pass / 1 skip — feature 待後續 onboarding)
+tests/rd/                   — rd site tests (test_p0_smoke.py p0, feature/<name>/ p1: announcement_popup, i18n, navigation)
 tests/rd/conftest.py        — rd-specific overrides: site_config=rd, go_home
-utils/locale_helper.py       — set_locale(): injects i18n_redirected_lt cookie for lt site
+tests/qw/                   — qw site tests (test_p0_smoke.py p0, feature/visual/ p2)
+tests/qw/conftest.py        — qw-specific overrides: site_config=qw, go_home (+ dismiss popup-mask)
+utils/locale_helper.py       — set_locale(): injects i18n_locale cookie for lt site
 utils/dialog_helper.py       — helpers: dismiss server error popups, wait for loading animation
 utils/screenshot_helper.py   — element-highlight screenshot system, auto README.md generation
 screenshots/<site_id>/<timestamp>/<smoke|feature>/<test_name>/  — per-test screenshot folders, auto-categorized (in .gitignore)
@@ -94,7 +122,7 @@ dev-notes/                   — personal developer notes (gitignored except REA
 - `auto_screenshot` (autouse) — attaches `ScreenshotHelper` to page; auto-categorizes tests into `smoke/` or `feature/` subfolder; generates `screenshots/<site_id>/<timestamp>/<category>/<test_name>/README.md` after each test
 - `auto_logout_after_test` (autouse) — logs out after each smoke test (`page` fixture only)
 
-**Markers** (pytest.ini): `p0`, `p1`, `p2`, `login`, `home`, `member`, `wallet`, `i18n`, `language`, `copy`, `visual`, `visual_regression`, `locale_visual`, `api`, `lt`
+**Markers** (pytest.ini): `p0`, `p1`, `p2`, `login`, `home`, `member`, `wallet`, `i18n`, `language`, `copy`, `visual`, `visual_regression`, `locale_layout`, `docker_only`, `api`, `dashboard`, `game`, `flaky`, `lt`, `rc`, `re`, `rd`, `qw`
 
 ## Multi-site Factory Pattern
 
@@ -123,6 +151,18 @@ dev-notes/                   — personal developer notes (gitignored except REA
 各 skill 的指引與本 CLAUDE.md 互補：CLAUDE.md 是 repo 層級的 source of truth，skills 包含更詳細的 checklist 與實戰 pitfalls。Authoring 用 `ui-test-author`、設計 POM 用 `pom-architect`、review 用 `test-review`、commit 前用 `git-commit`、動 .env 用 `env-sync`、probe selector 用 `selector-probe`。
 
 **完整接力工作流**（為什麼這 6 個 skill、如何接力、真實任務範例、避讓機制）見 [`docs/agent-skills-workflow.md`](docs/agent-skills-workflow.md)。
+
+## Subagents
+
+本 repo 還有 3 個 main agent 可主動派工的 subagent（位於 `.claude/agents/`，獨立 context 不污染主對話）：
+
+| Subagent | 用途 | Inject 的 skill | 工具範圍 |
+|---------|------|---------------|---------|
+| `test-author` | 新增/修改 testcase、POM、實作功能驗證 | `ui-test-author`、`pom-architect` | Read/Write/Edit/Bash/Grep/Glob |
+| `test-reviewer` | Read-only review、找 flaky / cover-up / 跨站風險 | `test-review` | Read/Grep/Glob/Bash |
+| `selector-explorer` | DOM 探查、ARIA 拿 selector | `selector-probe` | Read/Grep/Glob/Bash |
+
+Skill 是**人類**用 `/skill-name` 觸發；subagent 是 **main agent** 主動 delegate。詳細差異、三 agent 接力 SOP、避讓機制見 [`docs/agent-skills-workflow.md`](docs/agent-skills-workflow.md) 的 `## Subagent 層` 段。
 
 ## Documentation vs Developer Notes
 
@@ -167,14 +207,15 @@ This repo has **two distinct documentation folders** with different purposes and
 
 若某份 `dev-notes/` 的筆記後來成熟並獲得團隊共識，請**升級**移到 `docs/` 並調整內容為正式文件。反之，若 `docs/` 中某份文件變成僅個人觀點的 WIP 清單，應移到 `dev-notes/`。
 
-## Visual Regression (lt / rc)
+## Visual Regression (lt / rc / qw)
 
-LT 與 RC 皆採用 **reference screenshot** 策略：存檔供人工確認，不做 pixel 比對（跨環境解析度不穩定）。
+LT、RC、QW 皆採用 **reference screenshot** 策略：存檔供人工確認，不做 pixel 比對（跨環境解析度不穩定）。
 
 ```bash
 # VR reference 截圖（輸出至 screenshots/<site_id>/vr_reference/）
 .venv/bin/pytest tests/lt/feature/visual/test_visual_regression.py -m visual_regression
 .venv/bin/pytest tests/rc/feature/visual/test_visual_regression.py -m visual_regression
+.venv/bin/pytest tests/qw/feature/visual/test_visual_regression.py -m visual_regression
 
 # DOM 層視覺健康度（非截圖）
 .venv/bin/pytest -m visual
@@ -236,7 +277,7 @@ element.click()
 - 禁止裸 `time.sleep()`，優先使用 Playwright `expect` 與可判定事件等待。
 
 ### Selector 規則
-- **多語系站台（LT）禁止綁死文案**：placeholder、button name 會隨 locale 變化。使用 CSS-based selector（如 `input.login-input`、`button.primary-btn`）或結構化 locator。
+- **多語系站台（LT）禁止綁死文案**：placeholder、button name、footer tab 文字會隨 locale 變化。使用 CSS-based selector（如 `input.input-style:not(.password-input)`、`input.password-input`、`button.base-btn.type1`）或結構化 locator（如 `.footer-bg .content` 取 `.last`/`.nth(0)`）。
 - **`.first` / `.last` 是 property，不是 method**：寫成 `.first()` 會觸發 `__call__` 錯誤。
 - Selector 優先順序：穩定屬性 > role/結構化 locator > 穩定文案 > nth-child/深 CSS 鏈。
 
