@@ -42,8 +42,8 @@ GAME_BTN = {
     "確定":   (0.78, 0.85),  # 機台 select dialog 右下橘色「確定」(PIL 校準；默認機台直接 confirm)
     "減注":   (0.62, 0.94),  # 「-」按鈕
     "spin":  (0.90, 0.85),  # Spin 大綠按鈕（實測 start_spin API 觸發位置）
-    "選單":   (0.90, 0.60),  # 三條橫線（漢堡選單）
-    "紀錄":   (0.88, 0.46),  # 側邊欄展開後「紀錄」按鈕
+    # 註：原 RC 的 "選單" (0.90, 0.60) / "紀錄" (0.88, 0.46) 已移除 — RE 遊戲右側 toolbar
+    # layout 不同無法直接套用，Phase 3 已從 test 移除（注單驗證由 Phase 4 涵蓋）
 }
 
 
@@ -160,16 +160,12 @@ class TestGameEntry:
             if sh:
                 sh.full_page("verify_Spin結果")
 
-            # ===== Phase 3: 遊戲內查注單紀錄 =====
-
-            # 點漢堡選單展開側邊欄
-            game_click("選單", wait_after=2000)
-
-            # 點紀錄
-            game_click("紀錄", wait_after=3000)
-
-            if sh:
-                sh.full_page("verify_遊戲內注單紀錄")
+            # ===== Phase 3 (in-game 選單→紀錄) — 已移除 =====
+            # 原本 RC 在這裡點 (0.90, 0.60) 選單 + (0.88, 0.46) 紀錄 開啟遊戲內紀錄面板。
+            # RE 遊戲右側 toolbar layout 與 RC 不同（icons 集中在 y_pct 0.13-0.25 區域），
+            # 5 種 (x, y) 候選座標皆無法觸發選單，且本來就無 assertion（純截圖驗證）。
+            # 注單入帳的真實驗證由 Phase 4「回大廳 → 遊戲明細 → 今日 → 搜尋」涵蓋（有 assert）。
+            # 若未來要恢復 Phase 3，須先 probe RE 遊戲右側 toolbar 各 icon 的真實座標。
 
         finally:
             cdp.detach()
