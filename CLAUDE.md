@@ -164,6 +164,8 @@ dev-notes/                   — personal developer notes (gitignored except REA
 
 Skill 是**人類**用 `/skill-name` 觸發；subagent 是 **main agent** 主動 delegate。詳細差異、三 agent 接力 SOP、避讓機制見 [`docs/agent-skills-workflow.md`](docs/agent-skills-workflow.md) 的 `## Subagent 層` 段。
 
+**新站 onboarding 完整 SOP**（含 mermaid 流程圖、subagent / skill 觸發條件、QW 實作經驗的坑、預估時間）見 [`docs/new-site-onboarding-workflow.md`](docs/new-site-onboarding-workflow.md)。
+
 ## Documentation vs Developer Notes
 
 This repo has **two distinct documentation folders** with different purposes and git-tracking policy. When creating or editing markdown files, pick the right folder and follow the convention.
