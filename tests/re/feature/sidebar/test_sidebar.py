@@ -4,7 +4,7 @@ RE 側邊欄功能測試 (BeWin)
 """
 
 import pytest
-from playwright.sync_api import Page, expect
+from playwright.sync_api import Page, expect, TimeoutError as PlaywrightTimeoutError
 from pages.re.login_page import LoginPage
 from utils.dialog_helper import wait_loading_if_present
 from utils.screenshot_helper import get_screenshotter
@@ -43,11 +43,26 @@ class TestUnauthenticatedSidebar:
     """RE-TC-020：未登入時的側邊欄行為"""
 
     def test_sidebar_triggers_login(self, page: Page, site_config):
-        """RE-TC-020：未登入時點側邊欄個人資訊應跳出登入表單"""
+        """RE-TC-020：未登入時點側邊欄個人資訊應跳出 /login 頁
+
+        Hydration race：Vue handler 綁定可能延遲 1~2s，dispatch_event 太早會無事發生。
+        retry click 直到 URL 變 /login（或 5 次後 fail）。
+        """
         login = LoginPage(page, site_config.url)
         login.goto()
-        page.locator(".sidebar-item.user").dispatch_event("click")
-        wait_loading_if_present(page)
+        sidebar_user = page.locator(".sidebar-item.user")
+        sidebar_user.wait_for(state="attached", timeout=8000)
         sh = get_screenshotter(page)
+        if sh: sh.capture(sidebar_user, "click_側邊欄個人資訊")
+        for _ in range(5):
+            sidebar_user.dispatch_event("click")
+            try:
+                page.wait_for_url(lambda url: "/login" in url, timeout=2000)
+                break
+            except PlaywrightTimeoutError:
+                continue
+        else:
+            raise AssertionError("sidebar.user click did not navigate to /login after 5 retries")
+        wait_loading_if_present(page)
         if sh: sh.capture(login.username_input, "verify_登入表單出現")
         expect(login.username_input).to_be_visible(timeout=5000)

@@ -1,7 +1,7 @@
 """
 登入頁面 Page Object — re 站點 (BeWin)
-與 rc 共用同一份 t9platform 平台 DOM 結構，selector 完全一致；
-獨立檔案保留是為了未來 site-specific 變更時可獨立調整。
+與 rc 共用同一份 t9platform 平台 DOM 結構，但 selector 改用 CSS-based
+（input.input-style + type）避開 placeholder 文案 i18n race（2026-05-24 baseline 觀察）。
 """
 
 from playwright.sync_api import Page, TimeoutError as PlaywrightTimeoutError
@@ -15,9 +15,9 @@ class LoginPage:
         self.page = page
         self.base_url = base_url
 
-        # Selectors
-        self.username_input = page.locator('input[placeholder="用戶名"]')
-        self.password_input = page.locator('input[placeholder="密碼"]')
+        # CSS-based locale-agnostic selectors（i18n hydration race 下 placeholder 可能短暫為空）
+        self.username_input = page.locator('input.input-style[type="text"]')
+        self.password_input = page.locator('input.input-style[type="password"]')
         self.login_btn = page.locator("button.primary-btn")
         self.login_trigger_btn = page.locator("button", has_text="登入").first
 

@@ -32,6 +32,7 @@ class TestVisualRegression:
 
         QW 首頁有公告 popup-mask 會擋畫面，截圖前必須先 dismiss_any_popups()。
         使用 domcontentloaded（QW 首頁背景 polling 不會 networkidle，已於 P0 smoke verify）。
+        dismiss 後額外 wait 所有 .popup-mask 皆 offsetParent=null，避免 Vue 立即重 render。
         斷言策略：截圖存檔供人工 review，不做 pixel 比對。
         """
         page.goto(site_config.url, wait_until="domcontentloaded")
@@ -39,6 +40,17 @@ class TestVisualRegression:
 
         home = HomePage(page)
         home.dismiss_any_popups()
+
+        # 等所有 popup-mask 全部 hidden（dismiss_any_popups 只檢查 .first，
+        # 多個 mask 並存時 .first 隱藏不代表其他 mask 隱藏）
+        page.wait_for_function(
+            """() => {
+                const masks = document.querySelectorAll('.popup-mask');
+                if (masks.length === 0) return true;
+                return Array.from(masks).every(m => m.offsetParent === null);
+            }""",
+            timeout=5000,
+        )
 
         save_vr_screenshot(screenshot_with_mask(page, BANNER_SELECTORS), "qw", "qw-home-shell.png")
 
@@ -57,11 +69,17 @@ class TestVisualRegression:
     def test_navbar_screenshot(self, page: Page, site_config):
         """頂部導覽列截圖存檔
 
-        QW navbar 容器：`.nav-row`（probe 確認，1920×74，含 logo + nav items + 登入按鈕）。
+        QW navbar 容器：`.sticky.top-0.z-[999]`（外層 wrapper，1920×82，含 .nav-row + padding）。
+        改用外層容器原因：`.nav-row` 雖含完整 nav items 文字，但 Nuxt hydration 完成前
+        中段 nav 連結未渲染，1.5s wait 內截圖只看到 logo + 登入按鈕，中間留白。
+        改截外層 + 等 nav 連結 hydrate visible，確保完整內容。
         斷言策略：截圖存檔供人工 review，不做 pixel 比對。
         """
         page.goto(site_config.url, wait_until="domcontentloaded")
-        page.wait_for_timeout(1500)
 
-        navbar = page.locator('.nav-row').first
+        # 等 nav menu 列表項 hydrate visible（非 logo <a>，要等真正的 nav item li）
+        page.locator('.nav-row ul li').first.wait_for(state="visible", timeout=10000)
+        page.wait_for_timeout(500)
+
+        navbar = page.locator('.sticky.top-0.z-\\[999\\]').first
         save_vr_screenshot(navbar.screenshot(animations="disabled"), "qw", "qw-top-nav.png")
