@@ -279,7 +279,7 @@ element.click()
 - 禁止裸 `time.sleep()`，優先使用 Playwright `expect` 與可判定事件等待。
 
 ### Selector 規則
-- **多語系站台（LT）禁止綁死文案**：placeholder、button name、footer tab 文字會隨 locale 變化。使用 CSS-based selector（如 `input.input-style:not(.password-input)`、`input.password-input`、`button.base-btn.type1`）或結構化 locator（如 `.footer-bg .content` 取 `.last`/`.nth(0)`）。
+- **避免綁死文案**：placeholder / button name / footer tab 文字會隨 locale 變化（LT 多語系站），且即使單語系站台（RE/QW）也有 i18n hydration race 風險（placeholder 短暫為空）。使用 CSS-based selector（如 LT `input.input-style:not(.password-input)`、QW `input.auth-input__field[type='password']`、RE `input.input-style[type='text']`、`button.base-btn.type1`）或結構化 locator（如 `.footer-bg .content` 取 `.last`/`.nth(0)`）。
 - **`.first` / `.last` 是 property，不是 method**：寫成 `.first()` 會觸發 `__call__` 錯誤。
 - Selector 優先順序：穩定屬性 > role/結構化 locator > 穩定文案 > nth-child/深 CSS 鏈。
 
