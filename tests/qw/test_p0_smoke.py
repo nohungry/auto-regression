@@ -7,10 +7,6 @@ QW P0 Smoke Test — LM來財娛樂城
 - 多語系：LaiBetLanguage cookie；selector 全部 CSS-based，不綁文案
 - Avatar dropdown：hover 觸發（非 click）
 - 使用 `page` fixture（每個 test 獨立 context），autouse `auto_logout_after_test` 處理收尾
-
-TODO（待後續 probe 補充）：
-- test_login_invalid 的 error selector 尚未 probe，目前以 URL 停留 /auth 驗證為主
-- TOTP 提示「下次再說」按鈕的多語系文案待確認（現僅覆蓋繁中）
 """
 
 import pytest
@@ -41,12 +37,11 @@ class TestLogin:
         home.verify_login_success(site_config.username)
 
     def test_login_invalid(self, page: Page, site_config):
-        """TC-QW-002：錯誤密碼登入應失敗，停留在 /auth 或顯示錯誤訊息
+        """TC-QW-002：錯誤密碼登入應失敗，停留在 /auth 且顯示錯誤 toast
 
-        斷言策略（較寬鬆，待後續 probe 補強）：
-        - 主要驗證：URL 仍包含 /auth（代表未成功跳轉回首頁）
-        - TODO：待 selector-explorer 探查 QW 錯誤訊息 selector（可能是 toast、inline error 或
-          dialog）後，補充精準 error element 驗證，取代 URL 驗證
+        斷言策略（probe 2026-05-29）：
+        - URL 停留 /auth（未成功跳轉回首頁）
+        - 錯誤 toast `.toast-msg--error` visible（locale-agnostic CSS class）
         """
         sh = get_screenshotter(page)
         login = LoginPage(page, site_config.url)
@@ -66,11 +61,12 @@ class TestLogin:
         if sh: sh.capture(login.submit_button, "click_login_submit_invalid")
         login.submit_button.click()
 
-        # 等待短暫後截圖（捕捉可能出現的 error UI）
-        page.wait_for_timeout(2000)
-        if sh: sh.full_page("verify_login_invalid_result")
+        # 驗證錯誤 toast 出現
+        error_toast = page.locator('.toast-msg--error').first
+        expect(error_toast).to_be_visible(timeout=5000)
+        if sh: sh.capture(error_toast, "verify_error_toast_visible")
 
-        # 主要驗證：URL 應停留在 /auth（登入失敗未跳轉）
+        # URL 應停留在 /auth（登入失敗未跳轉）
         assert "/auth" in page.url, f"預期停留 /auth，實際 URL：{page.url}"
 
 

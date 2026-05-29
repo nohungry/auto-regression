@@ -85,12 +85,13 @@ class HomePage:
     def dismiss_any_popups(self):
         """清除首頁可能出現的彈窗（公告 + TOTP 提示）。
 
-        QW 兩種彈窗都用 `.popup-mask` 包覆並會 intercept pointer events：
-          1. 公告彈窗（首頁）— `.popup-close` X 按鈕
-          2. TOTP 安全中心提示（登入後）— button text=「下次再說」
+        QW 兩種獨立 popup 系統（probe 2026-05-29）：
+          1. 公告彈窗（首頁）— `.popup-mask` 容器 + `.popup-close` X 按鈕
+          2. TOTP 安全中心提示（登入後）— `.dialog-mask` 容器 +
+             `button.inactive-block.active-btn-shadow`（locale-agnostic，原文案「下次再說」）
 
-        策略：loop 最多 3 輪 dismiss，直到 `.popup-mask` 完全消失或 timeout。
-        TOTP 提示可能在公告 popup 關掉後才 render，所以單次 dismiss 不夠。
+        策略：loop 最多 3 輪 dismiss，直到兩種 mask 都完全消失或 timeout。
+        TOTP 可能在公告 popup 關掉後才 render，所以單次 dismiss 不夠。
         """
         for _ in range(3):
             # 1. 公告彈窗
@@ -101,21 +102,29 @@ class HomePage:
             except PlaywrightTimeoutError:
                 pass
 
-            # 2. TOTP 提示（「下次再說」；多語系站台僅繁中模式下 text 如此）
-            # TODO: 待主 context probe 確認其他語系的文案後，補充對應文案或改 CSS selector
+            # 2. TOTP 提示：用 CSS class 而非文案，跨 locale 不受影響
+            # 「下次再說」按鈕的兩個關鍵 class（`inactive-block` + `active-btn-shadow`）
+            # 在 TOTP dialog 內為唯一組合（probe verified）
             try:
-                totp_dismiss = self.page.locator('button', has_text="下次再說")
+                totp_dismiss = self.page.locator('button.inactive-block.active-btn-shadow').first
                 totp_dismiss.wait_for(state="visible", timeout=1500)
                 totp_dismiss.click()
             except PlaywrightTimeoutError:
                 pass
 
-            # 檢查所有 .popup-mask 是否都已隱藏，若是則跳出 loop
+            # 檢查兩個獨立 mask 系統都消失才退出 loop
+            popup_hidden = True
+            dialog_hidden = True
             try:
                 self.page.locator('.popup-mask').first.wait_for(state="hidden", timeout=1000)
-                break
             except PlaywrightTimeoutError:
-                continue
+                popup_hidden = False
+            try:
+                self.page.locator('.dialog-mask').first.wait_for(state="hidden", timeout=1000)
+            except PlaywrightTimeoutError:
+                dialog_hidden = False
+            if popup_hidden and dialog_hidden:
+                break
 
     # ------------------------------------------------------------------
     # 登出
