@@ -25,17 +25,23 @@ def api_base_url():
 
 @pytest.fixture(scope="session")
 def api_headers(site_config):
-    """API 請求必要 headers：companycode 識別站點，domain 對應站點識別碼"""
+    """API 請求必要 headers：companycode 識別站點，domain 對應站點識別碼，
+    origin/referer 來自 site URL（後端 2026-05-29 起對保護端點檢查 referer，
+    缺 referer 回 PermissionDenied / 請求驗證失敗：非合法來源）。
+    """
     domain = os.getenv("SITE_LT_API_DOMAIN")
     if not domain:
         raise ValueError("請在 .env 設定 SITE_LT_API_DOMAIN")
     companycode = os.getenv("SITE_LT_COMPANYCODE", "dlt")
+    site_origin = site_config.url.rstrip("/")
     return {
         "companycode": companycode,
         "domain": domain,
         "lang": "tw",
         "accept": "application/json",
         "content-type": "application/json",
+        "origin": site_origin,
+        "referer": site_origin + "/",
     }
 
 
