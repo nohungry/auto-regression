@@ -282,8 +282,10 @@ class ManagementPage:
         填寫存入/提取彈窗：金額 + (可選)操作者密碼 + 點送出。
 
         operator_password:
-          - 非空字串：填入（RC 後台 dialog 行為）
-          - None 或空字串：跳過密碼欄位（LT 後台 dialog 行為）
+          - 非空字串：dialog 內有 input[type=password] 時填入；無則略過
+            （RC 後台 2026-05-29 改版：操作者密碼欄位移除，dialog 只剩金額；
+             LT 後台一直無密碼欄。caller 仍可保留傳值以維持簽名）
+          - None 或空字串：直接跳過
 
         定位策略：
           頁面可能同時有多個 .dialog-container（常駐容器 + 彈出的 dialog），
@@ -313,13 +315,14 @@ class ManagementPage:
             sh.capture(amount_input, f"fill_{operation}_金額_{amount}")
         amount_input.fill(str(amount))
 
-        # 填入操作者密碼（RC 需要，LT 呼叫時傳 None/空字串跳過）
+        # 填入操作者密碼（若 dialog 內有 password input；現行 RC/LT 都無，保留以兼容未來）
         if operator_password:
             password_input = dialog.locator('input[type="password"]').first
-            password_input.wait_for(state="visible", timeout=3000)
-            if sh:
-                sh.capture(password_input, f"fill_{operation}_操作者密碼")
-            password_input.fill(operator_password)
+            if password_input.count() > 0:
+                password_input.wait_for(state="visible", timeout=3000)
+                if sh:
+                    sh.capture(password_input, f"fill_{operation}_操作者密碼")
+                password_input.fill(operator_password)
 
         # 點擊送出
         if sh:
