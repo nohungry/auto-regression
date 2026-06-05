@@ -1,0 +1,146 @@
+"""
+首頁 Page Object — lg 站點（大撈家娛樂城）
+登入成功後的首頁驗證、彈窗清理、登出
+
+probe 結果（selector-explorer 2026-06-05）：
+- LG avatar 圖 alt="" → 不能用 QW 的 img[alt="avatar"]
+- 已登入信號改用 .nav-bg .balance-color（餘額文字，登入後才渲染）
+- username 顯示在 nav；用 .nav-bg 整體 to_contain_text(username) 驗證（robust，不綁特定 p）
+- avatar dropdown 由 CLICK toggle（非 QW 的 hover）：點 avatar 圓圈容器 →
+  右側滑入 .w-[280px] panel（translate-x-0 開 / translate-x-full 關）
+- 登出按鈕是 div（非 button）：div.h-10.cursor-pointer.rounded-[10px].border，用 dispatch_event 觸發
+- 本帳號登入後無 TOTP/安全中心彈窗；dismiss_any_popups 只處理進站公告
+- Tailwind arbitrary-value class 方括號在 selector 內需跳脫（Python 字串為 \\[ \\]）
+"""
+
+import re
+from playwright.sync_api import Page, expect, TimeoutError as PlaywrightTimeoutError
+from utils.screenshot_helper import get_screenshotter
+
+
+class HomePage:
+
+    def __init__(self, page: Page):
+        self.page = page
+
+        # 已登入信號：餘額文字（登入後才渲染，locale-agnostic CSS class）
+        self.balance = page.locator(".nav-bg .balance-color")
+        # nav 容器（用於 to_contain_text(username) 驗證帳號顯示）
+        self.nav_bar = page.locator(".nav-bg")
+
+        # 未登入信號：nav 登入 CTA（border-white 無背景）
+        self.login_cta = page.locator("button.h-\\[30px\\].w-\\[90px\\]")
+
+        # avatar 圓圈容器（click 觸發 dropdown）
+        self.avatar_trigger = page.locator(
+            ".nav-bg div.rounded-full.cursor-pointer"
+        ).first
+        # dropdown 內滑入 panel（translate-x-0 開 / translate-x-full 關）
+        self.dropdown_panel = page.locator(".w-\\[280px\\].absolute").first
+        # 登出按鈕（div，非 button）
+        self.logout_btn = page.locator(
+            "div.h-10.cursor-pointer.rounded-\\[10px\\].border"
+        )
+
+        # 進站公告彈窗關閉 X
+        self.announce_close = page.locator(".dialog-container.w-full .close-wrap")
+
+    # ------------------------------------------------------------------
+    # 登入狀態驗證
+    # ------------------------------------------------------------------
+
+    def is_logged_in(self) -> bool:
+        """判斷目前是否已登入（餘額元素可見）"""
+        try:
+            return self.balance.is_visible(timeout=3000)
+        except Exception:
+            return False
+
+    def verify_logged_in(self):
+        """輕量驗證：餘額元素可見即代表已登入。無副作用。"""
+        sh = get_screenshotter(self.page)
+        expect(self.balance).to_be_visible(timeout=10000)
+        self.balance.scroll_into_view_if_needed()
+        if sh: sh.capture(self.balance, "verify_已登入_餘額顯示")
+
+    def verify_login_success(self, username: str):
+        """驗證登入成功：餘額元素可見 + nav 區塊文字含登入帳號。
+
+        斷言策略：
+        - .balance-color 可見（登入後才渲染，明確的已登入信號）
+        - .nav-bg 整體文字含 username（robust，不對特定 p 斷言，避免 strict mode
+          violation 與 fragile 的顏色 class）
+        """
+        sh = get_screenshotter(self.page)
+
+        expect(self.balance).to_be_visible(timeout=15000)
+        self.balance.scroll_into_view_if_needed()
+        if sh: sh.capture(self.balance, "verify_餘額顯示")
+
+        if sh: sh.capture(self.nav_bar, f"verify_帳號顯示_{username}")
+        expect(self.nav_bar).to_contain_text(username, timeout=5000)
+
+    def verify_logged_out(self):
+        """驗證已登出：首頁登入 CTA 重新出現。"""
+        sh = get_screenshotter(self.page)
+        expect(self.login_cta).to_be_visible(timeout=10000)
+        self.login_cta.scroll_into_view_if_needed()
+        if sh: sh.capture(self.login_cta, "verify_已登出_登入按鈕出現")
+
+    # ------------------------------------------------------------------
+    # 彈窗清理
+    # ------------------------------------------------------------------
+
+    def dismiss_any_popups(self):
+        """清除首頁進站公告彈窗（.dialog-container.w-full + .close-wrap）。
+
+        LG 本帳號登入後無 TOTP/安全中心彈窗，故僅處理進站公告。
+        loop 最多 3 輪，直到公告 mask 消失或 timeout。
+        """
+        for _ in range(3):
+            try:
+                self.announce_close.wait_for(state="visible", timeout=1500)
+                self.announce_close.dispatch_event("click")
+            except PlaywrightTimeoutError:
+                pass
+            try:
+                self.page.locator(".dialog-container.w-full").first.wait_for(
+                    state="hidden", timeout=1000
+                )
+                break
+            except PlaywrightTimeoutError:
+                continue
+
+    # ------------------------------------------------------------------
+    # 登出
+    # ------------------------------------------------------------------
+
+    def logout(self):
+        """登出：click avatar 圓圈 → 右側 dropdown 滑入 → click 登出 div → 驗證登出。
+
+        LG dropdown 由 click toggle（非 QW 的 hover）。登出按鈕是 div，
+        用 dispatch_event("click") 直觸 DOM event（避開滑入動畫與 overlay 攔截）。
+        """
+        sh = get_screenshotter(self.page)
+
+        # 登出前再清一次公告，避免 mask 擋 avatar
+        self.dismiss_any_popups()
+
+        # 展開 dropdown
+        if sh: sh.capture(self.avatar_trigger, "click_avatar開dropdown")
+        self.avatar_trigger.dispatch_event("click")
+
+        # 等右側 panel 滑入（class 出現 translate-x-0）
+        expect(self.dropdown_panel).to_have_class(
+            re.compile(r"translate-x-0"), timeout=5000
+        )
+        if sh: sh.capture(self.dropdown_panel, "verify_dropdown_opened")
+
+        # 點登出（div，用 dispatch_event）
+        if sh: sh.capture(self.logout_btn, "click_登出")
+        self.logout_btn.dispatch_event("click")
+
+        # 驗證登出成功：登入 CTA 重現
+        expect(self.login_cta).to_be_visible(timeout=10000)
+        self.login_cta.scroll_into_view_if_needed()
+        if sh: sh.capture(self.login_cta, "verify_登出成功")
