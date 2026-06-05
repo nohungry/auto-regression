@@ -90,6 +90,7 @@ pages/re/                   — re site Page Objects (LoginPage, HomePage) — B
 pages/rd/                   — rd site Page Objects (LoginPage, HomePage) — 狗狗娛樂城
 pages/qw/                   — qw site Page Objects (LoginPage, HomePage) — LM來財娛樂城（Nuxt/Vue，多語系）
 pages/lg/                   — lg site Page Objects (LoginPage, HomePage) — 大撈家娛樂城（Nuxt/Vue，modal 登入）
+pages/lu/                   — lu site Page Objects (LoginPage, HomePage) — Dlgbet（Nuxt/Vue，雙層彈窗 + 左側 sidebar 登出）
 pages/dashboard/<site_id>/   — backend dashboard page objects (DashboardLoginPage, ManagementPage); per dashboard factory registry
 tests/api/<site_id>/         — API-layer tests (requests only, no browser, no pages/* import); per-site conftest
 tests/dashboard/<site_id>/   — backend dashboard tests; state-mutating tests should be reversible (rollback / teardown compensation)
@@ -105,6 +106,8 @@ tests/qw/                   — qw site tests (test_p0_smoke.py p0, feature/visu
 tests/qw/conftest.py        — qw-specific overrides: site_config=qw, go_home (+ dismiss popup-mask)
 tests/lg/                   — lg site tests (test_p0_smoke.py p0: login/logout/home; modal 登入)
 tests/lg/conftest.py        — lg-specific overrides: site_config=lg, go_home (+ dismiss 進站公告)
+tests/lu/                   — lu site tests (test_p0_smoke.py p0: login/logout/home; 雙層彈窗)
+tests/lu/conftest.py        — lu-specific overrides: site_config=lu, go_home (+ dismiss 雙層彈窗)
 utils/locale_helper.py       — set_locale(): injects i18n_locale cookie for lt site
 utils/dialog_helper.py       — helpers: dismiss server error popups, wait for loading animation
 utils/screenshot_helper.py   — element-highlight screenshot system, auto README.md generation
@@ -125,7 +128,7 @@ dev-notes/                   — personal developer notes (gitignored except REA
 - `auto_screenshot` (autouse) — attaches `ScreenshotHelper` to page; auto-categorizes tests into `smoke/` or `feature/` subfolder; generates `screenshots/<site_id>/<timestamp>/<category>/<test_name>/README.md` after each test
 - `auto_logout_after_test` (autouse) — logs out after each smoke test (`page` fixture only)
 
-**Markers** (pytest.ini): `p0`, `p1`, `p2`, `login`, `home`, `member`, `wallet`, `i18n`, `language`, `copy`, `visual`, `visual_regression`, `locale_layout`, `docker_only`, `api`, `dashboard`, `game`, `flaky`, `lt`, `rc`, `re`, `rd`, `qw`, `lg`
+**Markers** (pytest.ini): `p0`, `p1`, `p2`, `login`, `home`, `member`, `wallet`, `i18n`, `language`, `copy`, `visual`, `visual_regression`, `locale_layout`, `docker_only`, `api`, `dashboard`, `game`, `flaky`, `lt`, `rc`, `re`, `rd`, `qw`, `lg`, `lu`
 
 ## Multi-site Factory Pattern
 
