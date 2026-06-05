@@ -24,7 +24,7 @@ def go_home(class_logged_in_page, site_config):
     使用 HomePage.dismiss_any_popups() 清除 .dialog-container.w-full 公告。
     """
     pg = class_logged_in_page
-    pg.goto(site_config.url, wait_until="domcontentloaded")
+    pg.goto(site_config.url, wait_until="domcontentloaded", timeout=60000)
 
     HomeCls = get_home_page_class("lg")
     home = HomeCls(pg)
