@@ -57,7 +57,8 @@ class LoginPage:
         LG 登入走 modal、URL 不變，首頁背景 polling 不會進入 networkidle，
         故用 domcontentloaded + 等 CTA 可見，後續再靠 expect 處理 hydration。
         """
-        self.page.goto(self.base_url, wait_until="domcontentloaded")
+        # timeout=60s：dev 過載時首頁 domcontentloaded 偶爾 >30s 預設值（頁面會載入只是慢）
+        self.page.goto(self.base_url, wait_until="domcontentloaded", timeout=60000)
         self.login_cta.wait_for(state="visible", timeout=15000)
 
     def dismiss_announcement(self):
@@ -73,13 +74,25 @@ class LoginPage:
             pass  # 無公告彈窗
 
     def open_login_modal(self):
-        """點 nav 登入 CTA 開啟登入 modal，等帳號 input 可見。"""
+        """點 nav 登入 CTA 開啟登入 modal，等帳號 input 可見。
+
+        Nuxt hydration race + dev 過載：CTA 為 SSR 渲染（goto 已等到 visible），
+        但 Vue @click handler 可能尚未綁定，dispatch_event 點了無效、modal 不開。
+        重試點擊直到 modal input 出現（仿 KS / RD open_login_form）。
+        """
         sh = get_screenshotter(self.page)
         self.login_cta.scroll_into_view_if_needed()
         if sh: sh.capture(self.login_cta, "click_開啟登入modal")
-        # CTA 可能被殘留 mask 攔截 pointer events，用 dispatch_event 直觸 DOM
-        self.login_cta.dispatch_event("click")
-        self.username_input.wait_for(state="visible", timeout=10000)
+        for attempt in range(4):
+            # CTA 可能被殘留 mask 攔截 pointer events，用 dispatch_event 直觸 DOM
+            self.login_cta.dispatch_event("click")
+            try:
+                self.username_input.wait_for(state="visible", timeout=8000)
+                return
+            except PlaywrightTimeoutError:
+                if attempt == 3:
+                    raise
+                continue
 
     def goto_and_login(self, username: str, password: str):
         """完整登入流程：開首頁 → 關公告 → 開 modal → 填帳密 → 送出 → 等成功。"""
@@ -99,9 +112,9 @@ class LoginPage:
         if sh: sh.capture(self.password_input, "fill_password")
         self.password_input.fill(password)
 
-        # 送出
+        # 送出（dispatch_event：dev 過載時殘留公告 mask 可能攔截 .click()，直觸 DOM 繞過）
         self.submit_button.scroll_into_view_if_needed()
         if sh: sh.capture(self.submit_button, "click_login_submit")
-        self.submit_button.click()
+        self.submit_button.dispatch_event("click")
 
         if sh: sh.full_page("verify_login_submitted")

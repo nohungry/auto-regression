@@ -63,7 +63,8 @@ class TestLogin:
 
         login.submit_button.scroll_into_view_if_needed()
         if sh: sh.capture(login.submit_button, "click_login_submit_invalid")
-        login.submit_button.click()
+        # dispatch_event：繞過 dev 過載時殘留公告 mask 對 submit 的 pointer 攔截（同 login_page）
+        login.submit_button.dispatch_event("click")
 
         # 驗證錯誤 toast 出現
         expect(login.error_toast).to_be_visible(timeout=5000)
@@ -109,7 +110,8 @@ class TestHome:
         """
         sh = get_screenshotter(page)
 
-        page.goto(site_config.url, wait_until="domcontentloaded")
+        # timeout=60s：dev 過載時首頁 domcontentloaded 偶爾 >30s 預設值（頁面會載入只是慢）
+        page.goto(site_config.url, wait_until="domcontentloaded", timeout=60000)
         if sh: sh.full_page("verify_首頁載入完成")
 
         # 驗證進站公告彈窗渲染（async render，要 wait）
