@@ -44,6 +44,8 @@ class HomePage:
         ).first
         # dropdown 內滑入 panel（translate-x-0 開 / translate-x-full 關）
         self.dropdown_panel = page.locator(".w-\\[280px\\].absolute").first
+        # user menu 容器別名（sidebar feature 用；LG 即 avatar dropdown panel）
+        self.user_menu = self.dropdown_panel
         # 登出按鈕（div，非 button）
         self.logout_btn = page.locator(
             "div.h-10.cursor-pointer.rounded-\\[10px\\].border"
@@ -183,6 +185,23 @@ class HomePage:
         self.avatar_trigger.dispatch_event("click")
         expect(self.dropdown_panel).to_have_class(
             re.compile(r"translate-x-0"), timeout=5000
+        )
+
+    def user_menu_item_texts(self) -> list:
+        """回傳已開啟 user menu 內的項目文字（葉節點短文字、去重）。
+
+        供 sidebar feature 驗證選單結構完整性（與 member 的導航驗證區隔）。
+        呼叫前須先 open_user_menu()。
+        """
+        return self.user_menu.evaluate(
+            """el => {
+                const out = [];
+                el.querySelectorAll('a,button,div,li,p').forEach(n => {
+                    const t = (n.textContent || '').trim().replace(/\\s+/g, ' ');
+                    if (t && t.length <= 12 && n.children.length <= 1) out.push(t);
+                });
+                return [...new Set(out)];
+            }"""
         )
 
     def click_member_link(self, type_key: str):
