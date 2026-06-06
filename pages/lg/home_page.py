@@ -133,6 +133,30 @@ class HomePage:
         item.click()
 
     # ------------------------------------------------------------------
+    # 會員中心 / 錢包
+    # ------------------------------------------------------------------
+
+    def open_user_menu(self):
+        """開啟 avatar dropdown（右側滑入 panel），等 panel translate-x-0。"""
+        self.dismiss_any_popups()
+        self.avatar_trigger.dispatch_event("click")
+        expect(self.dropdown_panel).to_have_class(
+            re.compile(r"translate-x-0"), timeout=5000
+        )
+
+    def click_member_link(self, type_key: str):
+        """開 user menu 後點 member-center 連結（a[href*='type=<key>']）。
+
+        LG dropdown 連結為 /member-center?type=X（MyAccount/Deposit/Withdrawal/
+        AccountDetails/MemberInbox 等）。用 dispatch_event 繞過動畫/overlay。
+        """
+        sh = get_screenshotter(self.page)
+        self.open_user_menu()
+        link = self.page.locator(f"a[href*='type={type_key}']").first
+        if sh: sh.capture(link, f"click_member_{type_key}")
+        link.dispatch_event("click")
+
+    # ------------------------------------------------------------------
     # 登出
     # ------------------------------------------------------------------
 
