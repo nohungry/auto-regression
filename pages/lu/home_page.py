@@ -124,6 +124,28 @@ class HomePage:
         self.page.locator(f"a[href='{category_path}']").first.dispatch_event("click")
 
     # ------------------------------------------------------------------
+    # 會員中心 / 錢包
+    # ------------------------------------------------------------------
+
+    def open_user_menu(self):
+        """展開左側 sidebar（hamburger），等登出 button 可見（sidebar 開啟信號）。"""
+        self.dismiss_any_popups()
+        self.nav_toggle.dispatch_event("click")
+        expect(self.logout_btn).to_be_visible(timeout=5000)
+
+    def click_member_link(self, type_key: str):
+        """開 sidebar 後點 member 連結（a[href*='type=<key>']）。
+
+        LU sidebar 的可導航會員連結為 /member?type=X（MemberMessage 信件 / AllAgent
+        全民代理）；我的帳戶/存款/提現為 in-panel JS handler（非 URL），本方法不涵蓋。
+        """
+        sh = get_screenshotter(self.page)
+        self.open_user_menu()
+        link = self.page.locator(f"a[href*='type={type_key}']").first
+        if sh: sh.capture(link, f"click_member_{type_key}")
+        link.dispatch_event("click")
+
+    # ------------------------------------------------------------------
     # 登出
     # ------------------------------------------------------------------
 

@@ -107,7 +107,7 @@ tests/qw/                   — qw site tests (test_p0_smoke.py p0, feature/visu
 tests/qw/conftest.py        — qw-specific overrides: site_config=qw, go_home (+ dismiss popup-mask)
 tests/lg/                   — lg site tests (test_p0_smoke.py p0; feature/<name>/ p1: announcement_popup, navigation, member, wallet; modal 登入)
 tests/lg/conftest.py        — lg-specific overrides: site_config=lg, go_home (+ dismiss 進站公告)
-tests/lu/                   — lu site tests (test_p0_smoke.py p0; feature/<name>/ p1: announcement_popup, navigation; 雙層彈窗)
+tests/lu/                   — lu site tests (test_p0_smoke.py p0; feature/<name>/ p1: announcement_popup, navigation, member, wallet; 雙層彈窗)
 tests/lu/conftest.py        — lu-specific overrides: site_config=lu, go_home (+ dismiss 雙層彈窗)
 tests/ks/                   — ks site tests (test_p0_smoke.py p0; feature/<name>/ p1: announcement_popup, navigation, member, wallet; 右側 drawer 登出)
 tests/ks/conftest.py        — ks-specific overrides: site_config=ks, go_home (+ dismiss 進站公告)
