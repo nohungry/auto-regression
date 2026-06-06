@@ -92,24 +92,45 @@ class HomePage:
     # ------------------------------------------------------------------
 
     def dismiss_any_popups(self):
-        """清除首頁進站公告彈窗（.dialog-container.w-full + .close-wrap）。
+        """清除**登入後**首頁進站公告（probe 2026-06-06：公告為登入態 popup）。
 
-        LG 本帳號登入後無 TOTP/安全中心彈窗，故僅處理進站公告。
-        loop 最多 3 輪，直到公告 mask 消失或 timeout。
+        公告 = `.dialog-mask` + `.dialog-container.max-w-[840px]`，opacity:1、
+        pointer-events:auto（會擋點擊）；close-wrap dispatch_event 後整個 mask 從 DOM
+        移除（count→0）。注意：
+        - close-wrap 剛出現時 boundingRect 為 0、非 "visible" → 用 `state="attached"` 等待。
+        - dev 過載下公告延遲出現 → 等待放寬至 4s。
+        - 未登入首頁不出現此公告（attached 等不到即 break，視為無公告）。
         """
         for _ in range(3):
             try:
-                self.announce_close.wait_for(state="visible", timeout=1500)
-                self.announce_close.dispatch_event("click")
+                self.announce_close.wait_for(state="attached", timeout=4000)
             except PlaywrightTimeoutError:
-                pass
+                break  # 無公告（未登入 / 已關閉）
+            self.announce_close.dispatch_event("click")
             try:
-                self.page.locator(".dialog-container.w-full").first.wait_for(
-                    state="hidden", timeout=1000
+                # close 後整個 .dialog-mask 從 DOM 移除；等 count→0 確認不再攔截點擊
+                self.page.wait_for_function(
+                    "() => document.querySelectorAll('.dialog-mask').length === 0",
+                    timeout=4000,
                 )
                 break
             except PlaywrightTimeoutError:
                 continue
+
+    # ------------------------------------------------------------------
+    # 導覽
+    # ------------------------------------------------------------------
+
+    def click_nav_item(self, category_text: str):
+        """點擊頂部 nav 主分類（ul.nav-item li，用文字過濾；每分類 count=1 無 hidden 節點）。
+
+        前置：呼叫前須已 dismiss 進站公告（go_home 會做），否則殘留 mask 擋點擊。
+        """
+        sh = get_screenshotter(self.page)
+        item = self.page.locator("ul.nav-item li").filter(has_text=category_text)
+        item.scroll_into_view_if_needed()
+        if sh: sh.capture(item, f"click_nav_{category_text}")
+        item.click()
 
     # ------------------------------------------------------------------
     # 登出
