@@ -116,6 +116,28 @@ class HomePage:
         ).first.dispatch_event("click")
 
     # ------------------------------------------------------------------
+    # 會員中心 / 錢包
+    # ------------------------------------------------------------------
+
+    def open_user_menu(self):
+        """展開右側 drawer（hamburger），等登出 button 可見（drawer 開啟信號）。"""
+        self.dismiss_any_popups()
+        self.menu_trigger.dispatch_event("click")
+        expect(self.logout_btn).to_be_visible(timeout=5000)
+
+    def click_member_link(self, type_key: str):
+        """開 drawer 後點 member-center 連結（a[href*='type=<key>']）。
+
+        KS drawer 連結為 /member-center?type=X（MyAccount/Deposit/Withdrawal/
+        AccountDetails/MemberMessages 等，與 LG 同 scheme）。dispatch_event 繞過 overlay。
+        """
+        sh = get_screenshotter(self.page)
+        self.open_user_menu()
+        link = self.page.locator(f"a[href*='type={type_key}']").first
+        if sh: sh.capture(link, f"click_member_{type_key}")
+        link.dispatch_event("click")
+
+    # ------------------------------------------------------------------
     # 登出
     # ------------------------------------------------------------------
 
