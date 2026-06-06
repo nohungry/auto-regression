@@ -14,9 +14,15 @@ probe 結果（selector-explorer 2026-06-05；與 LG 結構差異大）：
 
 from playwright.sync_api import Page, expect, TimeoutError as PlaywrightTimeoutError
 from utils.screenshot_helper import get_screenshotter
+from utils.window_helper import maximize_page
 
 
 class HomePage:
+
+    # 電子(slots)分類：href pathname（LU nav 為 href-based）
+    SLOTS_CATEGORY = "/Categories/slots"
+    # 遊戲卡 launch 目標：LU 每張遊戲卡為 div.card-item（直接點卡片啟動，無 hover overlay）
+    GAME_CARD = "div.card-item.mb-1"
 
     def __init__(self, page: Page):
         self.page = page
@@ -122,6 +128,40 @@ class HomePage:
         sh = get_screenshotter(self.page)
         if sh: sh.full_page(f"before_click_{category_path.rsplit('/', 1)[-1]}")
         self.page.locator(f"a[href='{category_path}']").first.dispatch_event("click")
+
+    # ------------------------------------------------------------------
+    # 遊戲啟動
+    # ------------------------------------------------------------------
+
+    def open_slots_category(self):
+        """導航至電子(slots)分類並等遊戲卡 grid 渲染（dev 慢，attached 等到 20s）。"""
+        self.dismiss_any_popups()
+        self.click_nav_item(self.SLOTS_CATEGORY)
+        self.page.locator(self.GAME_CARD).first.wait_for(
+            state="attached", timeout=20000
+        )
+
+    def game_card_count(self) -> int:
+        """目前分類頁遊戲卡數量（grid 渲染健康度用）。"""
+        return self.page.locator(self.GAME_CARD).count()
+
+    def launch_game(self, index: int = 0) -> Page:
+        """點第 index 張遊戲卡啟動遊戲，回傳另開的遊戲新分頁（已最大化）。
+
+        LU 流程：點 div.card-item → window.open 新分頁 → /launchLoading →
+        轉址至第三方 provider 遊戲（royalgaming777 EnterGame2 等）。
+        新分頁不繼承最大化視窗，故 maximize_page() 校正座標/截圖（[[feedback-new-tab-maximize]]）。
+        index 用於跳過個別壞掉的遊戲（部分 provider 遊戲可能在 staging 啟動失敗）。
+        """
+        sh = get_screenshotter(self.page)
+        launcher = self.page.locator(self.GAME_CARD).nth(index)
+        launcher.wait_for(state="attached", timeout=20000)
+        if sh: sh.full_page(f"click_啟動遊戲_第{index}款")
+        with self.page.context.expect_page(timeout=20000) as new_page_info:
+            launcher.dispatch_event("click")
+        game_page = new_page_info.value
+        maximize_page(game_page)
+        return game_page
 
     # ------------------------------------------------------------------
     # 會員中心 / 錢包
