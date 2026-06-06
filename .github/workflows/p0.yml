@@ -1,4 +1,4 @@
-name: P0 Smoke (5 sites)
+name: P0 Smoke (8 sites)
 
 # 觸發條件：
 # - PR 開啟 / 更新時自動跑（擋住有問題的 merge）
@@ -33,7 +33,7 @@ jobs:
       # 任一 site fail 不取消其他 site，讓所有結果可見
       fail-fast: false
       matrix:
-        site: [rc, lt, re, rd, qw]
+        site: [rc, lt, re, rd, qw, lg, lu, ks]
 
     # 同 site 帳號不能並行（會互踢 session，見 memory feedback_single_session_per_account）；
     # 不同 site 可並行（不同帳號互不影響）
@@ -63,7 +63,7 @@ jobs:
       - name: Run ${{ matrix.site }} P0 smoke
         env:
           # CI 旗標由 GH Actions 自動帶 (CI=true)；conftest.py 走 _is_ci() 分支用 headless chromium
-          # 一次帶 4 站全部 secrets：每 job 只用對應 site 的 env（其餘 unused）；
+          # 一次帶 8 站全部 secrets：每 job 只用對應 site 的 env（其餘 unused）；
           # GH Actions 不支援 secret name 動態組合（${{ secrets[matrix.X] }} 在 secrets context 受限）。
           SITE_RC_URL: ${{ secrets.SITE_RC_URL }}
           SITE_RC_USERNAME: ${{ secrets.SITE_RC_USERNAME }}
@@ -80,6 +80,15 @@ jobs:
           SITE_QW_URL: ${{ secrets.SITE_QW_URL }}
           SITE_QW_USERNAME: ${{ secrets.SITE_QW_USERNAME }}
           SITE_QW_PASSWORD: ${{ secrets.SITE_QW_PASSWORD }}
+          SITE_LG_URL: ${{ secrets.SITE_LG_URL }}
+          SITE_LG_USERNAME: ${{ secrets.SITE_LG_USERNAME }}
+          SITE_LG_PASSWORD: ${{ secrets.SITE_LG_PASSWORD }}
+          SITE_LU_URL: ${{ secrets.SITE_LU_URL }}
+          SITE_LU_USERNAME: ${{ secrets.SITE_LU_USERNAME }}
+          SITE_LU_PASSWORD: ${{ secrets.SITE_LU_PASSWORD }}
+          SITE_KS_URL: ${{ secrets.SITE_KS_URL }}
+          SITE_KS_USERNAME: ${{ secrets.SITE_KS_USERNAME }}
+          SITE_KS_PASSWORD: ${{ secrets.SITE_KS_PASSWORD }}
         run: |
           pytest tests/${{ matrix.site }}/test_p0_smoke.py \
             -m p0 \
