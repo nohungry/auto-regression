@@ -42,6 +42,8 @@ class HomePage:
         ).first
         # 右側 drawer
         self.drawer = page.locator(".fixed.right-0.top-\\[50px\\]").first
+        # user menu 容器別名（sidebar feature 用；KS 即右側 drawer）
+        self.user_menu = self.drawer
         # 登出 button（drawer 內，真 button，可直接 click）
         self.logout_btn = page.locator(
             ".fixed.right-0.top-\\[50px\\] button.secondary-btn"
@@ -166,6 +168,23 @@ class HomePage:
         self.dismiss_any_popups()
         self.menu_trigger.dispatch_event("click")
         expect(self.logout_btn).to_be_visible(timeout=5000)
+
+    def user_menu_item_texts(self) -> list:
+        """回傳已開啟 user menu（右 drawer）內的項目文字（葉節點短文字、去重）。
+
+        供 sidebar feature 驗證選單結構完整性（與 member 的導航驗證區隔）。
+        呼叫前須先 open_user_menu()。
+        """
+        return self.user_menu.evaluate(
+            """el => {
+                const out = [];
+                el.querySelectorAll('a,button,div,li,p').forEach(n => {
+                    const t = (n.textContent || '').trim().replace(/\\s+/g, ' ');
+                    if (t && t.length <= 12 && n.children.length <= 1) out.push(t);
+                });
+                return [...new Set(out)];
+            }"""
+        )
 
     def click_member_link(self, type_key: str):
         """開 drawer 後點 member-center 連結（a[href*='type=<key>']）。

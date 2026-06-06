@@ -39,6 +39,8 @@ class HomePage:
         # 左側 sidebar 與 hamburger
         self.nav_toggle = page.locator("button.nav-toggle-btn").first
         self.sidebar = page.locator(".fixed.left-0.z-30").first
+        # user menu 容器別名（sidebar feature 用；LU 即左側 sidebar）
+        self.user_menu = self.sidebar
         # 登出 button（sidebar 展開後唯一 button，class 含 border-shade04）
         self.logout_btn = page.locator(
             ".fixed.left-0.z-30 button[class*='border-shade04']"
@@ -172,6 +174,23 @@ class HomePage:
         self.dismiss_any_popups()
         self.nav_toggle.dispatch_event("click")
         expect(self.logout_btn).to_be_visible(timeout=5000)
+
+    def user_menu_item_texts(self) -> list:
+        """回傳已開啟 user menu（左 sidebar）內的項目文字（葉節點短文字、去重）。
+
+        供 sidebar feature 驗證選單結構完整性（與 member 的導航驗證區隔）。
+        呼叫前須先 open_user_menu()。
+        """
+        return self.user_menu.evaluate(
+            """el => {
+                const out = [];
+                el.querySelectorAll('a,button,div,li,p').forEach(n => {
+                    const t = (n.textContent || '').trim().replace(/\\s+/g, ' ');
+                    if (t && t.length <= 12 && n.children.length <= 1) out.push(t);
+                });
+                return [...new Set(out)];
+            }"""
+        )
 
     def click_member_link(self, type_key: str):
         """開 sidebar 後點 member 連結（a[href*='type=<key>']）。
