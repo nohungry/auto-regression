@@ -16,9 +16,16 @@ probe 結果（selector-explorer 2026-06-05）：
 import re
 from playwright.sync_api import Page, expect, TimeoutError as PlaywrightTimeoutError
 from utils.screenshot_helper import get_screenshotter
+from utils.window_helper import maximize_page
 
 
 class HomePage:
+
+    # 電子(slots)分類：nav 中文標籤
+    SLOTS_CATEGORY = "電子"
+    # 遊戲卡 launch 目標：LG 每張卡 hover overlay 內「開始遊戲」鈕（平時 display:none，
+    # 共 46 個 == 該分類遊戲數；dispatch_event 直觸 Vue handler，不受 hidden / sticky banner 影響）
+    GAME_CARD = "text=開始遊戲"
 
     def __init__(self, page: Page):
         self.page = page
@@ -131,6 +138,40 @@ class HomePage:
         item.scroll_into_view_if_needed()
         if sh: sh.capture(item, f"click_nav_{category_text}")
         item.click()
+
+    # ------------------------------------------------------------------
+    # 遊戲啟動
+    # ------------------------------------------------------------------
+
+    def open_slots_category(self):
+        """導航至電子(slots)分類並等遊戲卡 grid 渲染（dev 慢，attached 等到 20s）。"""
+        self.dismiss_any_popups()
+        self.click_nav_item(self.SLOTS_CATEGORY)
+        self.page.locator(self.GAME_CARD).first.wait_for(
+            state="attached", timeout=20000
+        )
+
+    def game_card_count(self) -> int:
+        """目前分類頁遊戲卡數量（grid 渲染健康度用）。"""
+        return self.page.locator(self.GAME_CARD).count()
+
+    def launch_game(self, index: int = 0) -> Page:
+        """點第 index 張遊戲卡啟動遊戲，回傳另開的遊戲新分頁（已最大化）。
+
+        LG 流程：點「開始遊戲」→ window.open 新分頁 → /launchLoading →
+        轉址至第三方 provider launcher（gamelauncher，Slotmill 等）。
+        新分頁不繼承最大化視窗，故 maximize_page() 校正座標/截圖（[[feedback-new-tab-maximize]]）。
+        index 用於跳過個別壞掉的遊戲（部分 provider 遊戲可能在 staging 啟動失敗）。
+        """
+        sh = get_screenshotter(self.page)
+        launcher = self.page.locator(self.GAME_CARD).nth(index)
+        launcher.wait_for(state="attached", timeout=20000)
+        if sh: sh.full_page(f"click_啟動遊戲_第{index}款")
+        with self.page.context.expect_page(timeout=20000) as new_page_info:
+            launcher.dispatch_event("click")
+        game_page = new_page_info.value
+        maximize_page(game_page)
+        return game_page
 
     # ------------------------------------------------------------------
     # 會員中心 / 錢包

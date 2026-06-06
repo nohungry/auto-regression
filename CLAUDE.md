@@ -105,11 +105,11 @@ tests/rd/                   — rd site tests (test_p0_smoke.py p0, feature/<nam
 tests/rd/conftest.py        — rd-specific overrides: site_config=rd, go_home
 tests/qw/                   — qw site tests (test_p0_smoke.py p0, feature/visual/ p2)
 tests/qw/conftest.py        — qw-specific overrides: site_config=qw, go_home (+ dismiss popup-mask)
-tests/lg/                   — lg site tests (test_p0_smoke.py p0; feature/<name>/ p1: announcement_popup, navigation, member, wallet, i18n; modal 登入)
+tests/lg/                   — lg site tests (test_p0_smoke.py p0; feature/<name>/ p1: announcement_popup, navigation, member, wallet, i18n, game; modal 登入)
 tests/lg/conftest.py        — lg-specific overrides: site_config=lg, go_home (+ dismiss 進站公告)
-tests/lu/                   — lu site tests (test_p0_smoke.py p0; feature/<name>/ p1: announcement_popup, navigation, member, wallet, i18n; 雙層彈窗)
+tests/lu/                   — lu site tests (test_p0_smoke.py p0; feature/<name>/ p1: announcement_popup, navigation, member, wallet, i18n, game; 雙層彈窗)
 tests/lu/conftest.py        — lu-specific overrides: site_config=lu, go_home (+ dismiss 雙層彈窗)
-tests/ks/                   — ks site tests (test_p0_smoke.py p0; feature/<name>/ p1: announcement_popup, navigation, member, wallet, i18n; 右側 drawer 登出)
+tests/ks/                   — ks site tests (test_p0_smoke.py p0; feature/<name>/ p1: announcement_popup, navigation, member, wallet, i18n, game; 右側 drawer 登出)
 tests/ks/conftest.py        — ks-specific overrides: site_config=ks, go_home (+ dismiss 進站公告)
 utils/locale_helper.py       — set_locale(): injects i18n_locale cookie for lt site
 utils/dialog_helper.py       — helpers: dismiss server error popups, wait for loading animation
