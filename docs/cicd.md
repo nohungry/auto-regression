@@ -4,8 +4,8 @@ GitHub Actions 自動跑這個 repo 的測試。當前 3 個 workflow：
 
 | Workflow | 觸發 | 跑什麼 | 預估時長 |
 |---|---|---|---|
-| `p0.yml` | PR / push to main / daily cron / 手動 | 5 站 P0 smoke matrix（rc/lt/re/rd/qw） | ~3 分（5 job 並行） |
-| `full-regression.yml` | weekly cron（週一） / 手動 | 5 站全套（P0 + feature） | ~17 分（5 job 並行） |
+| `p0.yml` | PR / push to main / daily cron / 手動 | 8 站 P0 smoke matrix（rc/lt/re/rd/qw/lg/lu/ks） | ~3 分（8 job 並行） |
+| `full-regression.yml` | weekly cron（週一） / 手動 | 8 站全套（P0 + feature） | ~17 分（8 job 並行） |
 | `docs-sync-check.yml` | PR | code 變動是否同步 docs | < 30 秒 |
 
 ## Cron 時段（台灣時區）
@@ -19,7 +19,7 @@ GitHub Actions 自動跑這個 repo 的測試。當前 3 個 workflow：
 
 ## Secrets 清單
 
-`https://github.com/<owner>/<repo>/settings/secrets/actions` 設定，共 15 個：
+`https://github.com/<owner>/<repo>/settings/secrets/actions` 設定，共 24 個：
 
 | Site | Secrets |
 |---|---|
@@ -28,11 +28,14 @@ GitHub Actions 自動跑這個 repo 的測試。當前 3 個 workflow：
 | RE | `SITE_RE_URL` / `SITE_RE_USERNAME` / `SITE_RE_PASSWORD` |
 | RD | `SITE_RD_URL` / `SITE_RD_USERNAME` / `SITE_RD_PASSWORD` |
 | QW | `SITE_QW_URL` / `SITE_QW_USERNAME` / `SITE_QW_PASSWORD` |
+| LG | `SITE_LG_URL` / `SITE_LG_USERNAME` / `SITE_LG_PASSWORD` |
+| LU | `SITE_LU_URL` / `SITE_LU_USERNAME` / `SITE_LU_PASSWORD` |
+| KS | `SITE_KS_URL` / `SITE_KS_USERNAME` / `SITE_KS_PASSWORD` |
 
 ### 用 `gh` CLI 從本機 .env 一次設好
 
 ```bash
-for site in RC LT RE RD QW; do
+for site in RC LT RE RD QW LG LU KS; do
   for k in URL USERNAME PASSWORD; do
     grep "^SITE_${site}_${k}=" .env | cut -d= -f2- | gh secret set "SITE_${site}_${k}"
   done
@@ -49,7 +52,7 @@ done
 | `full-regression-${{ github.ref }}` | 同 ref 重複手動觸發取消上一次 |
 | `<site>-account` | 同 site 帳號不能並行（避免互踢 session）；p0.yml + full-regression.yml 共用同 group |
 
-不同 site 不同帳號 → matrix 4 job 可並行。
+不同 site 不同帳號 → matrix 8 job 可並行。
 
 ## 看 workflow run
 
