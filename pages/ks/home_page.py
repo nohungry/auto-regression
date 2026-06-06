@@ -99,6 +99,23 @@ class HomePage:
             pass
 
     # ------------------------------------------------------------------
+    # 導覽
+    # ------------------------------------------------------------------
+
+    def click_nav_item(self, category_path: str):
+        """點擊頂部 nav 分類連結（ul.nav-item li a[href='/Categories/<x>']）導航。
+
+        KS nav 為 `ul.nav-item li` 內含 `<a href>`；用 dispatch_event 直觸 DOM click，
+        繞過 fresh 載入 ~12s 才出現的進站公告 mask（避免 pointer 攔截）。
+        category_path 傳完整 pathname，如 "/Categories/slots"。
+        """
+        sh = get_screenshotter(self.page)
+        if sh: sh.full_page(f"before_click_{category_path.rsplit('/', 1)[-1]}")
+        self.page.locator(
+            f"ul.nav-item li a[href='{category_path}']"
+        ).first.dispatch_event("click")
+
+    # ------------------------------------------------------------------
     # 登出
     # ------------------------------------------------------------------
 
