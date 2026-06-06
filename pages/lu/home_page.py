@@ -109,6 +109,21 @@ class HomePage:
             pass
 
     # ------------------------------------------------------------------
+    # 導覽
+    # ------------------------------------------------------------------
+
+    def click_nav_item(self, category_path: str):
+        """點擊指定遊戲分類連結（a[href='/Categories/<x>']）導航。
+
+        LU nav 為 href-based（無 ul.nav-item）；用 dispatch_event 直觸 DOM click，
+        繞過 fresh 載入 ~10s 才出現的進站公告 mask（避免 pointer 攔截）。
+        category_path 傳完整 pathname，如 "/Categories/slots"。
+        """
+        sh = get_screenshotter(self.page)
+        if sh: sh.full_page(f"before_click_{category_path.rsplit('/', 1)[-1]}")
+        self.page.locator(f"a[href='{category_path}']").first.dispatch_event("click")
+
+    # ------------------------------------------------------------------
     # 登出
     # ------------------------------------------------------------------
 
