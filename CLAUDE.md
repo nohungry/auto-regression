@@ -107,7 +107,7 @@ tests/qw/                   — qw site tests (test_p0_smoke.py p0, feature/visu
 tests/qw/conftest.py        — qw-specific overrides: site_config=qw, go_home (+ dismiss popup-mask)
 tests/lg/                   — lg site tests (test_p0_smoke.py p0; feature/<name>/ p1: announcement_popup, navigation, member, wallet, i18n, game, sidebar; copy p2; visual p2; modal 登入)
 tests/lg/conftest.py        — lg-specific overrides: site_config=lg, go_home (+ dismiss 進站公告)
-tests/lu/                   — lu site tests (test_p0_smoke.py p0; feature/<name>/ p1: announcement_popup, navigation, member, wallet, i18n, game, sidebar; copy p2; 雙層彈窗)
+tests/lu/                   — lu site tests (test_p0_smoke.py p0; feature/<name>/ p1: announcement_popup, navigation, member, wallet, i18n, game, sidebar; copy p2; visual p2; 雙層彈窗)
 tests/lu/conftest.py        — lu-specific overrides: site_config=lu, go_home (+ dismiss 雙層彈窗)
 tests/ks/                   — ks site tests (test_p0_smoke.py p0; feature/<name>/ p1: announcement_popup, navigation, member, wallet, i18n, game, sidebar; copy p2; 右側 drawer 登出)
 tests/ks/conftest.py        — ks-specific overrides: site_config=ks, go_home (+ dismiss 進站公告)
@@ -218,9 +218,9 @@ This repo has **two distinct documentation folders** with different purposes and
 
 若某份 `dev-notes/` 的筆記後來成熟並獲得團隊共識，請**升級**移到 `docs/` 並調整內容為正式文件。反之，若 `docs/` 中某份文件變成僅個人觀點的 WIP 清單，應移到 `dev-notes/`。
 
-## Visual Regression (lt / rc / qw / re / rd / lg)
+## Visual Regression (lt / rc / qw / re / rd / lg / lu)
 
-LT、RC、QW、RE、RD、LG 皆採用 **reference screenshot** 策略：存檔供人工確認，不做 pixel 比對（跨環境解析度不穩定）。
+LT、RC、QW、RE、RD、LG、LU 皆採用 **reference screenshot** 策略：存檔供人工確認，不做 pixel 比對（跨環境解析度不穩定）。
 
 ```bash
 # VR reference 截圖（輸出至 screenshots/<site_id>/vr_reference/）
@@ -230,6 +230,7 @@ LT、RC、QW、RE、RD、LG 皆採用 **reference screenshot** 策略：存檔�
 .venv/bin/pytest tests/re/feature/visual/test_visual_regression.py -m visual_regression
 .venv/bin/pytest tests/rd/feature/visual/test_visual_regression.py -m visual_regression
 .venv/bin/pytest tests/lg/feature/visual/test_visual_regression.py -m visual_regression
+.venv/bin/pytest tests/lu/feature/visual/test_visual_regression.py -m visual_regression
 
 # DOM 層視覺健康度（非截圖）
 .venv/bin/pytest -m visual
