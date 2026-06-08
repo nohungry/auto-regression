@@ -62,8 +62,11 @@ class TestLogin:
         login.submit_button.click()
 
         # 驗證錯誤 toast 出現
+        # timeout=10000：CI runner（US）連線台灣 dev 站，光連線 ~4.7s + memberLogin API
+        # 響應疊加後 toast DOM 出現可能超過 5s（probe 2026-06-08 三次實測 + curl 驗證），
+        # 原 5000ms 在 CI 偶發 flaky。selector / toast 機制 / 後端皆正常，純放寬等待窗口。
         error_toast = page.locator('.toast-msg--error').first
-        expect(error_toast).to_be_visible(timeout=5000)
+        expect(error_toast).to_be_visible(timeout=10000)
         if sh: sh.capture(error_toast, "verify_error_toast_visible")
 
         # URL 應停留在 /auth（登入失敗未跳轉）
