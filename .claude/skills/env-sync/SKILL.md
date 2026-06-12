@@ -34,13 +34,16 @@ description: 維持 `.env` 與 `.env.example` 結構同步，並處理同事發�
 
 # 結構契約（Structure contract）
 
-## 每站 12 keys（必齊全）
+## 每站 13 keys（必齊全）
 
 | 群組 | Keys | 數量 |
 |------|------|------|
 | 前台 | `URL`, `USERNAME`, `PASSWORD` | 3 |
-| 後台 | `DASHBOARD_URL`, `DASHBOARD_USER`, `DASHBOARD_PASS`, `DASHBOARD_TOTP`, `DASHBOARD_AGENT_USER`, `DASHBOARD_AGENT_PASS` | 6 |
+| 後台 | `DASHBOARD_URL`, `DASHBOARD_AGENT_URL`, `DASHBOARD_USER`, `DASHBOARD_PASS`, `DASHBOARD_TOTP`, `DASHBOARD_AGENT_USER`, `DASHBOARD_AGENT_PASS` | 7 |
 | API | `API_URL`, `API_DOMAIN`, `COMPANYCODE` | 3 |
+
+> `DASHBOARD_URL` = 站長入口（網址含 `-admin`，如 `dev-XX-admin-dashboard`）；
+> `DASHBOARD_AGENT_URL` = 代理入口（網址不含 `-admin`，如 `dev-XX-dashboard`），搭配 `DASHBOARD_AGENT_*` 帳號。
 
 每 key 名稱固定為 `SITE_<ID>_<NAME>`，`<ID>` 全大寫站台代號（rc → RC、lt → LT）。
 
@@ -54,9 +57,10 @@ description: 維持 `.env` 與 `.env.example` 結構同步，並處理同事發�
 SITE_<ID>_URL=...
 SITE_<ID>_USERNAME=...
 SITE_<ID>_PASSWORD=...
-# 後台（總代帳號 / 站長+代理皆可登入）
+# 後台（站長入口，網址含 -admin）
 SITE_<ID>_DASHBOARD_URL=...
-# 後台（僅代理）：<備註 URL>
+# 後台（代理入口，網址不含 -admin）
+SITE_<ID>_DASHBOARD_AGENT_URL=...
 SITE_<ID>_DASHBOARD_USER=...
 SITE_<ID>_DASHBOARD_PASS=...
 SITE_<ID>_DASHBOARD_TOTP=...
@@ -86,7 +90,8 @@ SITE_<ID>_COMPANYCODE=...
 | Key 類型 | 占位符 |
 |----------|--------|
 | URL | `https://<your-<site>-domain>/` |
-| Dashboard URL | `https://<your-<site>-admin-dashboard-domain>/` |
+| Dashboard URL（站長，-admin）| `https://<your-<site>-admin-dashboard-domain>/` |
+| Agent Dashboard URL（代理，無 -admin）| `https://<your-<site>-dashboard-domain>/` |
 | API URL | `https://<your-api-domain>` |
 | API DOMAIN | `<your-<site>-api-domain>` |
 | 一般 user / pass | `your_username` / `your_password` |
@@ -136,8 +141,8 @@ ip route show default | awk '{print $3}'
 
 1. 確認 site_id 與 companycode（多半相同，但有歷史例外，如 RC site_id=`rc` companycode=`drc`）。
 2. 判斷信用版／現金版（影響放在哪個分隔區塊之下）。
-3. **`.env`**：在對應分隔區塊下加完整 12 keys，填真實 credentials。
-4. **`.env.example`**：在相同位置加 12 keys，全部以 `# ` 註解 起來，value 一律占位符。
+3. **`.env`**：在對應分隔區塊下加完整 13 keys，填真實 credentials。
+4. **`.env.example`**：在相同位置加 13 keys，全部以 `# ` 註解 起來，value 一律占位符。
 5. 執行 key 對齊驗證（見「驗證指令」）。
 6. 提醒使用者：code 端尚未接（`pages/factory.py` registry、`pages/<site>/`、`tests/<site>/` 均未建），跑該站會 raise ValueError。如需 onboard，引導去 `ui-test-author`。
 
