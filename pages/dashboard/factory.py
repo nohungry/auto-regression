@@ -30,6 +30,7 @@ _DASHBOARD_MANAGEMENT_REGISTRY = {
     'rc': ('pages.dashboard.rc.management_page', 'ManagementPage'),
     'lt': ('pages.dashboard.lt.management_page', 'ManagementPage'),
     're': ('pages.dashboard.re.management_page', 'ManagementPage'),
+    'lu': ('pages.dashboard.lu.management_page', 'ManagementPage'),
 }
 
 
