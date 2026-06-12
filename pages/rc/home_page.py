@@ -30,8 +30,8 @@ class HomePage:
         對齊 LT 版 API；適合 fixture 與單純確認登入狀態時使用。
         """
         sh = get_screenshotter(self.page)
-        expect(self.avatar).to_be_visible(timeout=10000)
         if sh: sh.capture(self.avatar, "verify_已登入_頭像")
+        expect(self.avatar).to_be_visible(timeout=10000)
 
     def verify_login_success(self, username: str):
         """驗證登入成功：右上角應顯示帳號名稱。
@@ -39,8 +39,8 @@ class HomePage:
         """
         sh = get_screenshotter(self.page)
         username_el = self.page.locator(f"text={username}")
-        expect(username_el).to_be_visible(timeout=10000)
         if sh: sh.capture(username_el, f"verify_帳號顯示_{username}")
+        expect(username_el).to_be_visible(timeout=10000)
 
     def dismiss_any_popups(self):
         """進首頁後清除可能出現的彈窗（伺服器錯誤 / 老吉公告）"""
@@ -76,6 +76,6 @@ class HomePage:
         self.logout_btn.scroll_into_view_if_needed()
         if sh: sh.capture(self.logout_btn, "click_登出")
         self.logout_btn.click()
-        # 驗證登出成功：右上角出現「登入」按鈕
-        expect(self.login_btn).to_be_visible(timeout=5000)
+        # 驗證登出成功：右上角出現「登入」按鈕（先截圖再斷言，失敗時保留佐證）
         if sh: sh.capture(self.login_btn, "verify_登出成功")
+        expect(self.login_btn).to_be_visible(timeout=5000)

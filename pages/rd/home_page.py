@@ -45,7 +45,9 @@ class HomePage:
         """
         sh = get_screenshotter(self.page)
         expect(self.login_btn).not_to_be_visible(timeout=10000)
-        if sh: sh.capture(self.personal_info_menu, "verify_已登入_navbar")
+        # 「已登入」信號是「登錄」按鈕消失（無法框已消失的元素），改用全頁截圖佐證，
+        # 與 verify_login_success 一致；避免框到非斷言對象的 sidebar「個人資訊」div。
+        if sh: sh.full_page("verify_已登入")
 
     def verify_login_success(self, username: str):
         """驗證登入成功：navbar「登錄」按鈕消失。

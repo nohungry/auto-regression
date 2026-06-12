@@ -56,8 +56,10 @@ class TestHomePageSections:
         page = class_logged_in_page
         # 用容器而非 span：餘額為小數時會被拆成「整數」+「.小數」兩個 span
         balance = page.locator(".coin-wrap-bg")
-        expect(balance).to_be_visible()
-        balance_text = (balance.text_content() or "").strip()
         sh = get_screenshotter(page)
+        # 先截圖再斷言：text_content() 會等元素 attached，故仍安全；
+        # 若 balance 不可見，失敗前已留下截圖佐證。
+        balance_text = (balance.text_content() or "").strip()
         if sh: sh.capture(balance, f"verify_餘額非空_{balance_text}")
+        expect(balance).to_be_visible()
         assert balance_text != "", "餘額欄位不應為空字串"
