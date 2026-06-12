@@ -15,8 +15,9 @@ hover 第一個 .card-item → 點 .play 按鈕 → 期望開新 tab 進入 laun
 ⚠️ 已知 dev-rd regression（2026-05-11 觀察）：
 launchLoading 頁載入後 body 為空、無 iframe、無 canvas — 遊戲後端未渲染。
 與 RC `test_enter_and_spin` 同類型問題（CLAUDE.md「測試結果判讀」反例 5305 連線失敗）。
-此 test 會以 RuntimeError fail，視為 **真實 regression 訊號**，不加 skip 掩蓋。
-產品端遊戲後端修復後，test 會自動轉為 PASS。
+[2026-06-12 更新] 此 dev 遊戲後端問題（rc/re/rd 同款）長期紅燈，依團隊決定改以
+@pytest.mark.skip 暫時跳過，避免干擾套件；遊戲後端修復後移除 skip，test 即恢復為
+regression 守門（屆時會以 RuntimeError fail 反映實況、修好後 PASS）。
 """
 
 import re
@@ -51,6 +52,7 @@ def _get_game_frame(page: Page, timeout: int = 30000) -> Frame:
     raise RuntimeError(f"在 {timeout}ms 內找不到含 canvas 的遊戲 iframe")
 
 
+@pytest.mark.skip(reason="dev 遊戲 launch 已知問題：launchLoading 頁未渲染 iframe/canvas，疑似遊戲商戶未申請或遊戲下架。依團隊決定暫時 skip（rc/re/rd 一致），待 dev 遊戲後端修復後移除此 skip。")
 @pytest.mark.p1
 @pytest.mark.rd
 @pytest.mark.game

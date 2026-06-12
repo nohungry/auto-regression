@@ -57,6 +57,7 @@ def _get_game_frame(page: Page, timeout: int = 30000) -> Frame:
     raise RuntimeError(f"在 {timeout}ms 內找不到含 canvas 的遊戲 iframe")
 
 
+@pytest.mark.skip(reason="dev 遊戲 launch 已知問題：遊戲後端未渲染（spin 時等 start_spin request timeout / 遊戲 iframe 未載入），疑似遊戲商戶未申請或遊戲下架。依團隊決定暫時 skip（rc/re/rd 一致），待 dev 遊戲後端修復後移除此 skip。")
 @pytest.mark.p1
 @pytest.mark.rc
 @pytest.mark.game

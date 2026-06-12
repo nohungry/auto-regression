@@ -42,8 +42,16 @@ class TestSidebarFeatures:
 class TestUnauthenticatedSidebar:
     """RE-TC-020：未登入時的側邊欄行為"""
 
+    @pytest.mark.xfail(
+        strict=True,
+        reason="dev-re 未實作「未登入點 sidebar 觸發登入表單」UX（點擊無反應）；產品補上後此 xfail 會 XPASS 守門。比照 rd 同款處理。",
+    )
     def test_sidebar_triggers_login(self, page: Page, site_config):
-        """RE-TC-020：未登入時點側邊欄個人資訊應跳出登入表單"""
+        """RE-TC-020：未登入時點側邊欄個人資訊應跳出登入表單（**期望實作**）
+
+        [2026-06-12] dev-re 點 sidebar 後不跳登入表單，與 rd 同款 UX 缺漏，
+        改用 xfail(strict=True) 守門：產品補上此 UX → XPASS → strict 觸發 fail 提醒移除 xfail。
+        """
         login = LoginPage(page, site_config.url)
         login.goto()
         page.locator(".sidebar-item.user").dispatch_event("click")

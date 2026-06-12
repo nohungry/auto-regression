@@ -73,7 +73,13 @@ class LoginPage:
         self.username_input.wait_for(state="visible", timeout=5000)
 
     def login(self, username: str, password: str):
-        """填入帳號密碼並登入"""
+        """填入帳號密碼並送出登入。
+
+        SPA hydration race 強化（dev-rc 偶發「submit 後卡 /login、avatar 不出現」）：
+        送出按鈕的 click handler 與 open_login_form 的 trigger 同樣有 hydration dead zone，
+        click 可能靜默無效、SPA 不離開登入表單。改為「submit → 等登入表單消失 → 沒消失就重 submit」，
+        最多 3 次。成功信號＝用戶名 input 變 hidden（登入生效、表單關閉 / 離開登入頁）。
+        """
         sh = get_screenshotter(self.page)
 
         self.username_input.scroll_into_view_if_needed()
@@ -84,19 +90,37 @@ class LoginPage:
         if sh: sh.capture(self.password_input, "fill_密碼")
         self.password_input.fill(password)
 
-        self.login_btn.scroll_into_view_if_needed()
-        if sh: sh.capture(self.login_btn, "click_送出登入")
-        self.login_btn.click()
+        max_attempts = 3
+        for attempt in range(1, max_attempts + 1):
+            try:
+                self.login_btn.scroll_into_view_if_needed()
+                if sh and (attempt == 1 or attempt == max_attempts):
+                    label = "click_送出登入" if attempt == 1 else f"click_送出登入_retry{attempt}"
+                    sh.capture(self.login_btn, label)
+                self.login_btn.click(timeout=5000)
+            except PlaywrightTimeoutError:
+                pass  # 送出按鈕已消失 → 可能已登入成功（表單關閉），交給下方成功檢查
 
-        # 等待 loading 狗動畫（ALL_Loading.gif）出現後消失
-        # 登入 API 回應期間會顯示此動畫，需等它消失才代表登入完成
-        self._wait_for_loading()
+            # 登入 API 回應期間會顯示 loading 狗動畫（ALL_Loading.gif），等它出現後消失
+            self._wait_for_loading()
+            dismiss_server_error_if_present(self.page)
+            self._handle_user_agreement()
 
-        # 登入後可能出現伺服器錯誤彈窗
-        dismiss_server_error_if_present(self.page)
-
-        # 處理「用戶協議」彈窗（首次登入才會出現）
-        self._handle_user_agreement()
+            # 成功信號：登入表單（用戶名 input）消失即代表登入生效、離開登入頁
+            try:
+                self.username_input.wait_for(state="hidden", timeout=5000)
+                return
+            except PlaywrightTimeoutError:
+                # 表單仍在 → submit 落在 hydration dead zone、沒生效。重填欄位後重試 submit。
+                if attempt < max_attempts:
+                    try:
+                        self.username_input.fill(username)
+                        self.password_input.fill(password)
+                    except PlaywrightTimeoutError:
+                        pass  # 欄位已不在（慢速成功）→ 下一輪 click 的 except 會處理
+                    continue
+        # 3 次仍未離開登入表單 → 不在此拋錯，維持原行為（login() 不自行斷言），
+        # 交由下游 verify_logged_in / verify_login_success 給出含截圖的明確失敗。
 
     def _wait_for_loading(self):
         """
