@@ -1,49 +1,59 @@
 # 後台 Dashboard 測試技術注意事項
 
-> 最後更新：2026-04-14
+> 最後更新：2026-06-12
 > 適用範圍：所有後台（dashboard）自動化測試
 
 本文件整理後台測試撰寫時容易踩坑的技術規則。功能地圖請見 `docs/lt-dashboard-sitemap.md`。
 
 ---
 
-## TOTP 登入流程
+## TOTP 2FA 登入流程
 
-### 規則 1：OTP input 必須用 native value setter
+> **實作現況（2026-06-12）**：RC / RE / LT 後台目前皆為純帳密登入（LT login_page 只是
+> re-export RC，無 TOTP）。**LU（Dlu測試站）是第一個真正把 TOTP 2FA 寫進登入流程的站**，
+> 共用碼集中在 `utils/totp_helper.py`（pyotp 產碼），站台實作在 `pages/dashboard/lu/login_page.py`。
 
-後台登入的 TOTP 驗證 input（`input.otp-hidden-input`）是自訂 React component。
-一般 `page.fill()` / `page.type()` **無法觸發 React state 更新**，會導致登入卡在 OTP modal。
+### 規則 1：OTP input 結構因站而異，先 probe 再決定填法
 
-#### 正確做法
+TOTP modal 的 OTP input 並非各站相同，**寫 code 前必先實機 probe**，再選填法：
+
+| Pattern | 站台 | OTP 結構 | 填法 |
+|---------|------|---------|------|
+| **A — 多格獨立 box** | **LU**（已實作） | 6 個 `input.otp-box`（`maxlength=1`），彈窗 `.dialog-container`「Two-Factor Authentication」，送出 `button.confirm-btn`「Confirm」 | 逐格 `locator.nth(i).fill(code[i])`；Vue 元件自動推進焦點。每格重新 query locator 避免 re-render detached |
+| **B — 單一 hidden input** | LT 舊探勘記錄（**尚未實作於 code**） | 自訂 React component `input.otp-hidden-input`，一般 `fill()`/`type()` 不觸發 state 更新 | native value setter + `dispatchEvent('input')`（見下方） |
+
+#### Pattern A（LU 實際做法）
 
 ```python
-import pyotp
+from utils.totp_helper import get_totp_code
 
-totp_code = pyotp.TOTP(site_config.dashboard_totp).now()
+code = get_totp_code(site_config.dashboard_totp)  # 含過期緩衝
+boxes = page.locator("input.otp-box")
+for i, digit in enumerate(code):
+    boxes.nth(i).fill(digit)
+page.locator("button.confirm-btn", has_text="Confirm").click()
+```
+
+#### Pattern B（若遇到單一 hidden input 自訂 component）
+
+```python
 page.evaluate("""(code) => {
     const input = document.querySelector('input.otp-hidden-input');
     const setter = Object.getOwnPropertyDescriptor(
         window.HTMLInputElement.prototype, 'value').set;
     setter.call(input, code);
     input.dispatchEvent(new Event('input', { bubbles: true }));
-}""", totp_code)
+}""", code)
 ```
 
 ### 規則 2：TOTP 30 秒輪轉必須預留緩衝
 
-TOTP 每 30 秒輪轉一次，若 code 在提交瞬間過期會驗證失敗。
-
-#### 建議做法
+TOTP 每 30 秒輪轉一次，若 code 在提交瞬間過期會驗證失敗。**統一用 `utils/totp_helper.get_totp_code()`**
+（modal 出現後才產碼，剩餘秒數不足會自動等下一窗口）：
 
 ```python
-def get_totp_with_buffer(secret: str, min_remaining: int = 5) -> str:
-    """確保 OTP 至少還有 min_remaining 秒有效期"""
-    import pyotp, time
-    totp = pyotp.TOTP(secret)
-    remaining = totp.interval - (time.time() % totp.interval)
-    if remaining < min_remaining:
-        time.sleep(remaining + 1)  # 等到下一個週期
-    return totp.now()
+from utils.totp_helper import get_totp_code
+code = get_totp_code(site_config.dashboard_totp, min_remaining=5)
 ```
 
 ---

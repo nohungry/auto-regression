@@ -23,6 +23,7 @@ _DASHBOARD_LOGIN_REGISTRY = {
     'rc': ('pages.dashboard.rc.login_page', 'DashboardLoginPage'),
     'lt': ('pages.dashboard.lt.login_page', 'DashboardLoginPage'),
     're': ('pages.dashboard.re.login_page', 'DashboardLoginPage'),
+    'lu': ('pages.dashboard.lu.login_page', 'DashboardLoginPage'),
 }
 
 _DASHBOARD_MANAGEMENT_REGISTRY = {

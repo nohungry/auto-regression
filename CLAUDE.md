@@ -94,7 +94,7 @@ pages/lu/                   — lu site Page Objects (LoginPage, HomePage) — D
 pages/ks/                   — ks site Page Objects (LoginPage, HomePage) — Super9娛樂城（Nuxt/Vue，金色英文主題 + 右側 drawer 登出）
 pages/dashboard/<site_id>/   — backend dashboard page objects (DashboardLoginPage, ManagementPage); per dashboard factory registry
 tests/api/<site_id>/         — API-layer tests (requests only, no browser, no pages/* import); per-site conftest
-tests/dashboard/<site_id>/   — backend dashboard tests; state-mutating tests should be reversible (rollback / teardown compensation)
+tests/dashboard/<site_id>/   — backend dashboard tests (rc/re top_up; lt re-export; lu login+TOTP 2FA smoke); state-mutating tests should be reversible (rollback / teardown compensation)
 tests/rc/                   — rc site tests (test_p0_smoke.py p0, feature/<name>/ p1: announcement_popup, i18n, navigation, wallet)
 tests/rc/conftest.py        — rc-specific overrides: site_config=rc, go_home (+ dismiss announcement popup)
 tests/lt/                   — lt site tests (test_p0_smoke.py p0, test_locale_visual_matrix.py p2 [skipped], feature/<name>/ p1: auth, copy, i18n, member, public, visual, wallet)
@@ -114,6 +114,7 @@ tests/ks/conftest.py        — ks-specific overrides: site_config=ks, go_home (
 utils/locale_helper.py       — set_locale(): injects i18n_locale cookie for lt site
 utils/dialog_helper.py       — helpers: dismiss server error popups, wait for loading animation
 utils/screenshot_helper.py   — element-highlight screenshot system, auto README.md generation
+utils/totp_helper.py         — get_totp_code(): pyotp TOTP 產碼 + 30s 窗口過期緩衝（後台 2FA，首用於 lu dashboard）
 screenshots/<site_id>/<timestamp>/<smoke|feature>/<test_name>/  — per-test screenshot folders, auto-categorized (in .gitignore)
 screenshots/lt/vr_reference/                    — VR reference screenshots (no comparison, manual review only)
 docs/                        — team-shared documentation (tracked in git)
