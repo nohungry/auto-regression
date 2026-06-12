@@ -56,6 +56,33 @@ from utils.totp_helper import get_totp_code
 code = get_totp_code(site_config.dashboard_totp, min_remaining=5)
 ```
 
+### 規則 2b：避免短時間多次 2FA 登入（rate-limit / lockout）
+
+實戰教訓（2026-06-12）：短時間內對同一後台帳號反覆登入（probe 多輪 + session fixture
+登入失敗被每個 test 重試 + `--reruns`）會觸發後端 **2FA 鎖定 / 登入頻率限制**，之後每次
+TOTP 都被拒（OTP 元件填滿自動送出 → 清空 → 停在 `#/login`）。對策：
+- session-scoped `dashboard_page` 全套只登入一次；probe 期間節制登入次數。
+- 連續兩次登入間隔 > 30s（避免同 TOTP 窗口重放被拒）。
+- 疑似鎖定時**停手等冷卻 ~20-30 分鐘**再跑，不要繼續重試（會延長鎖定）。
+
+---
+
+## LU（Dlu測試站）後台導航 / logout selector
+
+實機 probe（2026-06-12，站長 autolu001）。LU 後台 Vue hash SPA，與 RC/RE 不同框架：
+
+- **側欄 `.sidebar.hide`（收合/移出畫面）** → 所有側欄連結在 viewport 外，**必須
+  `dispatch_event("click")`**（仿 RC CSS-hidden sidebar，見本檔「元素互動例外」精神）。
+- 頂層選單 `.sidebar-nav li.parent-li`（站長 18 項）；父項錨點 `a.memberSpan` 帶
+  `id`=route（如 `id="/member"`），**locale-agnostic 穩定 selector**。
+- 葉節點 `a[href^='#/...']`（如 `#/member/member-registration`）即使側欄收合仍在 DOM，
+  可直接 dispatch 導航。導航判定：URL hash 變化 + `.app-main-content` 可見（不綁文案，
+  後台 locale 混雜英文 + 未翻譯 i18n key）。
+- **logout**：點右上 `.user-account`（顯示帳號）開下拉選單 → `Reset Password / Wallet /
+  Agent Information / Logout` → 點 `Logout`（`get_by_role("link", name="Logout")`）→ 回 `#/login`。
+- ⚠️ **帳號層級**：目前以站長帳號驗證（可見 18 項選單）；後續下級代理帳號
+  （`SITE_LU_DASHBOARD_AGENT_USER`）權限不同，需另立代理層級測試。
+
 ---
 
 ## Browser Context 分離

@@ -69,3 +69,17 @@ def dashboard_page(browser, site_config):
 
     yield page
     context.close()
+
+
+@pytest.fixture
+def go_dashboard(dashboard_page, site_config):
+    """導航測試前回到後台儀表板首頁，確保各測試起點一致。
+    非 autouse：只有導航測試請求；logout 測試不需要（從任何頁皆可登出）。
+    Vue 後台 SPA 有 websocket 長連線，不能用 networkidle。
+    """
+    dashboard_page.goto(
+        f"{site_config.dashboard_url}#/dashboard/index",
+        wait_until="domcontentloaded",
+    )
+    dashboard_page.locator(".sidebar-nav").first.wait_for(state="attached", timeout=15000)
+    return dashboard_page
