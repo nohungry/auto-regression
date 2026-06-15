@@ -128,22 +128,34 @@ class TestI18NHome:
 
 ---
 
-## 現況盤點（2026-04-14）
+## 現況盤點（2026-06-15）
 
-| 站點 | Smoke (P0) | Feature (P1) | API | 合計 |
-|------|-----------|--------------|-----|------|
-| RC   | 8         | 49 (含 skip) | 2   | 59   |
-| LT   | 18        | 90           | 14  | 122  |
-| **合計** | **26** | **139** | **16** | **181** |
+涵蓋 **8 個前台站**（RC / LT / RE / RD / QW / LG / LU / KS）+ 8 站 API + 後台 dashboard 層。
+數量為 `pytest --collect-only` collected 數（**含 skip**，會隨 parametrize 展開）：
 
-執行時間（WSL + Chrome CDP 實測）：
+| 站點 | 前台 UI | API | 後台 | 小計 |
+|------|--------|-----|------|------|
+| RC   | 63     | 11  | 1    | 75   |
+| LT   | 109    | 14  | 1    | 124  |
+| RE   | 63     | 11  | 1    | 75   |
+| RD   | 58     | 11  | 0    | 69   |
+| QW   | 7      | 11  | 0    | 18   |
+| LG   | 35     | 11  | 0    | 46   |
+| LU   | 31     | 11  | 6    | 48   |
+| KS   | 34     | 11  | 0    | 45   |
+| **合計** | **400** | **91** | **9** | **500** |
 
-| 範圍 | 耗時 |
+- **後台覆蓋**：RC / RE / LT 為充值（top_up）；**LU 為 login + TOTP 2FA + 導航 + logout**（唯一含真實 2FA）。LG / KS / RD / QW 後台尚未 onboard。詳見 `docs/dashboard-technical-notes.md`。
+- **API**：8 站結構齊備，各站 11 case（LT 14）。
+
+執行時間（量級參考；實際以 CI artifact 為準）：
+
+| 範圍 | 量級 |
 |------|------|
-| RC 全站 UI | ~32 分鐘 |
-| LT 全站 UI | ~32 分鐘（smoke + feature）|
+| 單站 P0 smoke | 數分鐘 |
+| 單站全套 UI（smoke + feature） | ~30 分鐘量級（站別而異） |
 | API 全部 | < 1 分鐘 |
-| 全套 UI + API | ~56 分鐘 |
+| 8 站全套 regression | 每週一經 `full-regression.yml` matrix 並行跑（見 `docs/cicd.md`） |
 
 ---
 

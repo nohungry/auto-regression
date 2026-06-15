@@ -1,6 +1,6 @@
 # 後台 Dashboard 測試技術注意事項
 
-> 最後更新：2026-06-12
+> 最後更新：2026-06-15
 > 適用範圍：所有後台（dashboard）自動化測試
 
 本文件整理後台測試撰寫時容易踩坑的技術規則。功能地圖請見 `docs/lt-dashboard-sitemap.md`。
@@ -80,8 +80,35 @@ TOTP 都被拒（OTP 元件填滿自動送出 → 清空 → 停在 `#/login`）
   後台 locale 混雜英文 + 未翻譯 i18n key）。
 - **logout**：點右上 `.user-account`（顯示帳號）開下拉選單 → `Reset Password / Wallet /
   Agent Information / Logout` → 點 `Logout`（`get_by_role("link", name="Logout")`）→ 回 `#/login`。
-- ⚠️ **帳號層級**：目前以站長帳號驗證（可見 18 項選單）；後續下級代理帳號
-  （`SITE_LU_DASHBOARD_AGENT_USER`）權限不同，需另立代理層級測試。
+- ⚠️ **帳號層級**：目前以站長帳號驗證（可見 18 項選單）；下級代理帳號權限/選單不同，
+  需另立代理層級測試 —— 入口 URL 與帳號欄位差異見下節「後台站台覆蓋現況 + 代理 vs 站長入口」。
+
+---
+
+## 後台站台覆蓋現況 + 代理 vs 站長入口
+
+### 已覆蓋後台站台（2026-06-15）
+
+| 站台 | 後台覆蓋 | 備註 |
+|------|---------|------|
+| RC / RE | 充值（top_up） | 純帳密登入 |
+| LT | 充值（top_up） | `login_page` 為 re-export RC，純帳密 |
+| **LU**（Dlu測試站） | **login + TOTP 2FA + 導航 + logout** | **唯一含真實 2FA**（PR #96/#97），共用碼 `utils/totp_helper.py` |
+| LG / KS / RD / QW | 尚未 onboard | 各站 2FA 機制 / URL / 側欄結構未知，待 probe |
+
+### 入口 URL 後綴：站長 vs 代理
+
+後台同站有兩個入口，以 `-admin` 後綴區分**帳號層級**：
+
+| 入口 | URL 形態 | 對應 config | 帳號層級 |
+|------|---------|------------|---------|
+| 站長 | `dev-<site>-**admin**-dashboard.t9platform.com` | `SITE_<X>_DASHBOARD_URL` | 站長（LU autolu001：∞ 額度、18 項頂層選單） |
+| 代理 | `dev-<site>-dashboard.t9platform.com`（**無 -admin**） | `SITE_<X>_DASHBOARD_AGENT_URL` | 下級代理（LU `SITE_LU_DASHBOARD_AGENT_USER`，權限/選單較少） |
+
+- **config 欄位**：`SiteConfig.dashboard_agent_url`（讀 `SITE_<X>_DASHBOARD_AGENT_URL`，PR #98 新增）。
+  8 站 `.env.example` 已備欄位；**本機 `.env` 的代理 URL 待填**（站長 URL 去掉 `-admin` 即是）。
+- ⚠️ dev 環境目前 `-admin` 站長入口**代理帳號也進得去**（站點端存取控制鬆動，屬 product/backend 問題，非測試碼）；代理層級測試仍應走「無 -admin」正規代理入口。
+- **代理層級測試為已知下一步**：代理可見選單與站長不同，**另立代理層級斷言，不沿用站長**；代理後台是否有 2FA 需先 probe（有則仿 PR #98 加 `dashboard_agent_totp` 欄位）。
 
 ---
 
