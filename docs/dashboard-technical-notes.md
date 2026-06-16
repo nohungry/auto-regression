@@ -93,7 +93,8 @@ TOTP 都被拒（OTP 元件填滿自動送出 → 清空 → 停在 `#/login`）
 |------|---------|------|
 | RC / RE | 充值（top_up） | 純帳密登入 |
 | LT | 充值（top_up） | `login_page` 為 re-export RC，純帳密 |
-| **LU**（Dlu測試站） | **login + TOTP 2FA + 導航 + logout** | **唯一含真實 2FA**（PR #96/#97），共用碼 `utils/totp_helper.py` |
+| **LU 站長**（autolu001） | **login + TOTP 2FA + 導航 + logout** | **唯一含真實 2FA**（PR #96/#97），共用碼 `utils/totp_helper.py` |
+| **LU 代理**（norauto001） | **login（無 2FA）+ 導航 + logout** | 無 -admin 入口；另立斷言（5 項選單）；存提待測資 |
 | LG / KS / RD / QW | 尚未 onboard | 各站 2FA 機制 / URL / 側欄結構未知，待 probe |
 
 ### 入口 URL 後綴：站長 vs 代理
@@ -108,7 +109,27 @@ TOTP 都被拒（OTP 元件填滿自動送出 → 清空 → 停在 `#/login`）
 - **config 欄位**：`SiteConfig.dashboard_agent_url`（讀 `SITE_<X>_DASHBOARD_AGENT_URL`，PR #98 新增）。
   8 站 `.env.example` 已備欄位；**本機 `.env` 的代理 URL 待填**（站長 URL 去掉 `-admin` 即是）。
 - ⚠️ dev 環境目前 `-admin` 站長入口**代理帳號也進得去**（站點端存取控制鬆動，屬 product/backend 問題，非測試碼）；代理層級測試仍應走「無 -admin」正規代理入口。
-- **代理層級測試為已知下一步**：代理可見選單與站長不同，**另立代理層級斷言，不沿用站長**；代理後台是否有 2FA 需先 probe（有則仿 PR #98 加 `dashboard_agent_totp` 欄位）。
+
+### LU 代理層級實作（2026-06-15 probe + 測試）
+
+實機 probe 確認的代理（norauto001）與站長差異 → 已落地 `test_dashboard_agent.py`：
+
+| 面向 | 站長 autolu001 | 代理 norauto001 |
+|------|---------------|----------------|
+| 2FA | 有 modal（TOTP） | **無**，帳密直接進 |
+| 登入落點 | `#/dashboard/index` | `#/member/member-management` |
+| 頂層選單 | 18 項 | **5 項**：`/member`、`/agent`、`/report`、`/report-bet-count`、`/statistical-report` |
+| 側欄 | `.sidebar hide`（收合、viewport 外） | `.sidebar`（可見、子選單需展開） |
+| 葉節點 | `a[href^='#/...']`（DOM 常駐） | **無 href**（`div.collapse-li-text`，Vue @click）|
+
+- **登入碼共用、條件式分流**：`DashboardLoginPage._fill_totp` 改為**短 timeout（4s）偵測 `.dialog-container`**，沒出現即跳過 → 同一 `login()` 同時支援站長（有 2FA）與代理（無 2FA，`totp_secret` 不傳）。`verify_login_success` 改以「側欄出現」為共同成功信號（不綁落點 URL）。
+- **導航分兩法**：站長用 `ManagementPage.navigate(route_substr)`（href + dispatch）；代理用 `navigate_agent(parent_id)`（展開父選單 → 結構定位無 href 葉節點 → dispatch）。
+- **fixture 隔離**：`agent_dashboard_page` / `go_agent_dashboard`（讀 `dashboard_agent_url/user/pass`，獨立 context）；站長 `dashboard_page` / `go_dashboard` 不動。兩帳號不同、同 session 並存不互踢。
+- **存提仍 defer**：norauto001 為空帳號（0 會員 / 0 餘額 / 0 銀行卡、提款鈕灰掉），無法做可逆對稱 balance 驗證（同 ∞ 站長卡點的另一面）；待有測資的代理帳號再補 deposit/withdraw。
+- 代理錢包頁 `#/userInfo/agent-wallet`（在右上 user 下拉的 Wallet，非側欄）含 BalanceAdjustment Add/Reduce + Credit limit 操作，未來存提實作的入口參考。
+
+### 其餘待辦
+- **其餘站台代理層級**：代理可見選單與站長不同，**另立斷言不沿用站長**；各站代理是否有 2FA 需先 probe（有則仿 PR #98 加 `dashboard_agent_totp` 欄位）。
 
 ---
 
