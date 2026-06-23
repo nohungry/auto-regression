@@ -44,8 +44,9 @@ def dashboard_page(browser, site_config):
         pass
 
     # 登入後台（自動化代理帳號，從 .env 讀取，不需 TOTP）
+    # 代理走「無 -admin」代理入口 dashboard_agent_url（canonical：-admin=站長 / 無-admin=代理）
     DashboardLoginPage = get_dashboard_login_page_class(site_config.site_id)
-    login = DashboardLoginPage(page, site_config.dashboard_url)
+    login = DashboardLoginPage(page, site_config.dashboard_agent_url)
     login.goto_and_login(
         site_config.dashboard_agent_user,
         site_config.dashboard_agent_pass,
@@ -62,7 +63,7 @@ def go_management(dashboard_page, site_config):
     改用 domcontentloaded + 等主內容區 tab 出現。
     """
     dashboard_page.goto(
-        f"{site_config.dashboard_url}#/management/all-management",
+        f"{site_config.dashboard_agent_url}#/management/all-management",
         wait_until="domcontentloaded",
     )
     # 等任一 tab-btn 出現（代表 SPA hydration 完成），不依賴數量或順序
