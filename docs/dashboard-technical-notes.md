@@ -9,9 +9,15 @@
 
 ## TOTP 2FA 登入流程
 
-> **實作現況（2026-06-12）**：RC / RE / LT 後台目前皆為純帳密登入（LT login_page 只是
-> re-export RC，無 TOTP）。**LU（Dlu測試站）是第一個真正把 TOTP 2FA 寫進登入流程的站**，
-> 共用碼集中在 `utils/totp_helper.py`（pyotp 產碼），站台實作在 `pages/dashboard/lu/login_page.py`。
+> **實作現況（2026-06-23 更新）**：信用版 `/management` 後台（RC，LT/RE re-export RC）
+> 目前帳密實際無 2FA，但 `DashboardLoginPage` 已內建**條件式 2FA**：`login()` 收選用
+> `totp_secret`，僅當有 secret 時才偵測 modal 並填碼，無 secret 則零延遲跳過
+> → 未來任一信用版站長/代理啟用 2FA，只要 `.env` 填對應 TOTP 即自動生效，不需改 code。
+> **設計原則：所有站長預設都應有 2FA**，登入處理一律條件式支援（RE 站長目前為無 2FA 的暫時例外）。
+> **LU（Dlu測試站）是第一個真正把 TOTP 2FA 寫進登入流程的站**（Vue admin 結構），
+> 共用碼集中在 `utils/totp_helper.py`（pyotp 產碼）。
+> ⚠️ 信用版 2FA modal 填碼路徑尚未實機驗證（目前無啟用 2FA 的信用版帳號），
+> selector 暫沿用 LU Vue admin（`.dialog-container`/`input.otp-box`），待實際啟用時 probe 校正。
 
 ### 規則 1：OTP input 結構因站而異，先 probe 再決定填法
 

@@ -50,6 +50,7 @@ def dashboard_page(browser, site_config):
     login.goto_and_login(
         site_config.dashboard_agent_user,
         site_config.dashboard_agent_pass,
+        site_config.dashboard_agent_totp,  # 代理 2FA（LT 代理目前無；條件式自動跳過）
     )
 
     yield page
