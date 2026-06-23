@@ -27,6 +27,7 @@ _DASHBOARD_LOGIN_REGISTRY = {
     'lu': ('pages.dashboard.lu.login_page', 'DashboardLoginPage'),
     'lg': ('pages.dashboard.lg.login_page', 'DashboardLoginPage'),
     'ks': ('pages.dashboard.ks.login_page', 'DashboardLoginPage'),
+    'qw': ('pages.dashboard.qw.login_page', 'DashboardLoginPage'),
 }
 
 _DASHBOARD_MANAGEMENT_REGISTRY = {
@@ -37,6 +38,7 @@ _DASHBOARD_MANAGEMENT_REGISTRY = {
     'lu': ('pages.dashboard.lu.management_page', 'ManagementPage'),
     'lg': ('pages.dashboard.lg.management_page', 'ManagementPage'),
     'ks': ('pages.dashboard.ks.management_page', 'ManagementPage'),
+    'qw': ('pages.dashboard.qw.management_page', 'ManagementPage'),
 }
 
 
