@@ -23,6 +23,7 @@ class SiteConfig:
     dashboard_totp: str = ""
     dashboard_agent_user: str = ""
     dashboard_agent_pass: str = ""
+    dashboard_agent_totp: str = ""     # 代理 2FA（多數站代理無 2FA；QW 代理需）
 
 
 def get_site_config(site_id: str = None) -> SiteConfig:
@@ -46,6 +47,7 @@ def get_site_config(site_id: str = None) -> SiteConfig:
     dashboard_totp = os.getenv(f"SITE_{site_id}_DASHBOARD_TOTP", "")
     dashboard_agent_user = os.getenv(f"SITE_{site_id}_DASHBOARD_AGENT_USER", "")
     dashboard_agent_pass = os.getenv(f"SITE_{site_id}_DASHBOARD_AGENT_PASS", "")
+    dashboard_agent_totp = os.getenv(f"SITE_{site_id}_DASHBOARD_AGENT_TOTP", "")
 
     if not url:
         raise ValueError(
@@ -64,4 +66,5 @@ def get_site_config(site_id: str = None) -> SiteConfig:
         dashboard_totp=dashboard_totp,
         dashboard_agent_user=dashboard_agent_user,
         dashboard_agent_pass=dashboard_agent_pass,
+        dashboard_agent_totp=dashboard_agent_totp,
     )
