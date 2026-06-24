@@ -313,3 +313,84 @@ class HomePage:
         first_item = panel.locator('.avatar-menu__item').first
         if sh: sh.capture(first_item, "click_帳戶管理")
         first_item.click()
+
+    # ------------------------------------------------------------------
+    # 錢包 / 存提 — wallet feature 用
+    # ------------------------------------------------------------------
+
+    def wallet_shortcut_tiles(self):
+        """回傳首頁 shortcut-tile 連結清單（locator list）。
+
+        QW 首頁 nav 區右側有 3 個 a.shortcut-tile：
+          存款 → /member-center?type=Deposit
+          轉帳 → /member-center?type=GameWallets
+          取款 → /member-center?type=Withdrawal
+        probe 確認（2026-06-25）：真實 <a href> 連結，非 JS handler。
+        """
+        return self.page.locator('a.shortcut-tile')
+
+    def click_shortcut_tile(self, type_key: str):
+        """點首頁 shortcut-tile（存款/轉帳/取款）並等待 URL 跳轉至 /member-center?type=<key>。
+
+        type_key 對應 URL query：Deposit / GameWallets / Withdrawal。
+        tile 為 <a href='/member-center?type=<key>'> 真實連結，直接 click 觸發導航。
+        呼叫端需自行等待 URL 確認後截圖。
+        """
+        sh = get_screenshotter(self.page)
+        tile = self.page.locator(f"a.shortcut-tile[href*='type={type_key}']").first
+        tile.scroll_into_view_if_needed()
+        if sh: sh.capture(tile, f"click_shortcut_{type_key}")
+        tile.click()
+
+    # ------------------------------------------------------------------
+    # 遊戲 — game feature 用
+    # ------------------------------------------------------------------
+
+    # 首頁遊戲分類 intro-tab（6 個：電子/真人/捕魚/棋牌/體育/彩票）
+    # active 狀態含 .intro-tab--active class（probe 2026-06-25）
+    INTRO_TAB = ".intro-tab"
+    # 提供商 tiles（首頁遊戲 intro 區，DIV，click 後 Nuxt SPA 路由跳轉至分類頁）
+    INTRO_PLATFORM = ".intro-platform.group"
+    # 遊戲卡（/Categories/slots?gamePlatformId=XXX 頁）
+    # probe 確認：grid.grid-cols-8 內 div.group.relative.h-[124px].w-[124px].cursor-pointer
+    GAME_CARD = "div.group.relative.h-\\[124px\\].w-\\[124px\\].cursor-pointer"
+
+    def open_slots_category(self):
+        """點電子分類的第一個 intro-platform tile → Nuxt 路由至 /Categories/slots?gamePlatformId=XXX。
+
+        QW 不像 KS 有 nav href 直連分類頁；須先滾動到 intro-platform 區再點 tile。
+        click 後 URL 包含 /Categories/slots（SPA pushState）且遊戲 grid 渲染。
+        呼叫端需自行等 URL 確認後等待遊戲 grid。
+        """
+        sh = get_screenshotter(self.page)
+        self.dismiss_any_popups()
+        # 滾動到 intro-platform
+        platform = self.page.locator(self.INTRO_PLATFORM).first
+        platform.scroll_into_view_if_needed()
+        if sh: sh.capture(platform, "click_intro_platform_slots")
+        platform.click()
+
+    def game_card_count(self) -> int:
+        """遊戲卡 grid 目前可見的卡片數量（進入分類頁後使用）。"""
+        return self.page.locator(self.GAME_CARD).count()
+
+    def launch_game(self, index: int = 0):
+        """點第 index 張遊戲卡啟動遊戲，回傳另開的遊戲新分頁（已最大化）。
+
+        QW 流程（probe 2026-06-25）：點遊戲卡 → window.open 新分頁 → /launchLoading →
+        後端簽發 token 後轉址至第三方 provider。
+        dev 環境 launchLoading 未轉址（後端 provider 未完成配置），故 game launch
+        測試目前 skip（見 test_game_launch.py）。本方法保留供未來使用。
+
+        新分頁不繼承最大化視窗，故 maximize_page() 校正座標/截圖。
+        """
+        from utils.window_helper import maximize_page
+        sh = get_screenshotter(self.page)
+        launcher = self.page.locator(self.GAME_CARD).nth(index)
+        launcher.wait_for(state="attached", timeout=20000)
+        if sh: sh.full_page(f"click_啟動遊戲_第{index}款")
+        with self.page.context.expect_page(timeout=20000) as new_page_info:
+            launcher.click()
+        game_page = new_page_info.value
+        maximize_page(game_page)
+        return game_page
