@@ -4,14 +4,14 @@ RF 後台測試專用 conftest
 提供以下 fixture：
 
 session-scoped（read-only smoke 測試用）：
-- `dashboard_page`（站長 qatest03）：SITE_RF_DASHBOARD_URL/USER/PASS，**無 2FA**。
+- `dashboard_page`（站長 <RF 站長帳號>）：SITE_RF_DASHBOARD_URL/USER/PASS，**無 2FA**。
   落點 `#/management/all-management`，頂層選單 9 項。
-- `agent_dashboard_page`（代理 qaautodrf）：SITE_RF_DASHBOARD_AGENT_URL/USER/PASS，
+- `agent_dashboard_page`（代理 <RF 代理帳號>）：SITE_RF_DASHBOARD_AGENT_URL/USER/PASS，
   **無 2FA**（站長與代理皆免 TOTP，2026-06-17 probe 確認）。
   落點 `#/management/all-management`，頂層選單 4 項。
 
 function-scoped（state-mutating 測試用）：
-- `fresh_dashboard_page`（站長 qatest03，function scope）：
+- `fresh_dashboard_page`（站長 <RF 站長帳號>，function scope）：
   每個充提測試建立獨立 context，避免 session-scoped page 被 logout smoke 污染。
   測試結束後自動關閉 context。
 
@@ -38,7 +38,7 @@ def site_config():
 @pytest.fixture(scope="session")
 def dashboard_page(browser, site_config):
     """
-    Session-scoped 已登入後台 page（站長 qatest03，無 2FA）。
+    Session-scoped 已登入後台 page（站長 <RF 站長帳號>，無 2FA）。
     使用 .env 的 SITE_RF_DASHBOARD_URL/USER/PASS（站長入口，含 -admin）。
     獨立 browser context（與前台不共用），避免 cookie 衝突。
     """
@@ -96,7 +96,7 @@ def go_dashboard(dashboard_page, site_config):
 @pytest.fixture(scope="session")
 def agent_dashboard_page(browser, site_config):
     """
-    Session-scoped 已登入後台 page（代理 qaautodrf，無 2FA）。
+    Session-scoped 已登入後台 page（代理 <RF 代理帳號>，無 2FA）。
     使用 .env 的 SITE_RF_DASHBOARD_AGENT_URL/USER/PASS（代理入口，無 -admin）。
     獨立 browser context；與站長 dashboard_page 不同帳號，互不互踢。
     """
@@ -154,7 +154,7 @@ def go_agent_dashboard(agent_dashboard_page, site_config):
 @pytest.fixture
 def fresh_dashboard_page(browser, site_config):
     """
-    Function-scoped 已登入後台 page（站長 qatest03，無 2FA）。
+    Function-scoped 已登入後台 page（站長 <RF 站長帳號>，無 2FA）。
     供 state-mutating 測試（充提）使用，每次測試建立獨立 browser context，
     避免與 session-scoped dashboard_page 互踢 session、或被 logout smoke 測試污染。
     測試結束後自動關閉 context。

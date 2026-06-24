@@ -6,7 +6,7 @@ RF API 會員資料測試（金爺娛樂城，信用版）
     Response: {data: {id, account, nickname, ...}, status: "Success"}
 
 Probe 結果（2026-06-17）：
-- 有效 token → HTTP 200，status=Success，data.account=drfauto01，data.id 存在
+- 有效 token → HTTP 200，status=Success，data.account=<RF 會員帳號>，data.id 存在
 - 無 token   → HTTP 401，status=Error
 - 無效 token → HTTP 401，status=Error，errorCode=PermissionDenied
 

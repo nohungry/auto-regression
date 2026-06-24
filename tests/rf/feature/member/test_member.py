@@ -7,7 +7,7 @@ probe 結果（dev-rf，2026-06-17）：
   (div.base-modal.account-settings-modal)。
 - modal sidebar 有兩個 tab：修改密碼（index 0）/ 會員訊息（index 1）。
 - 個人資訊（帳號）：.account-settings__profile dt/dd
-  → dt「會員帳號：」, dd = 帳號名（如 drfauto01）。
+  → dt「會員帳號：」, dd = 帳號名（如 <RF 會員帳號>）。
 - 會員訊息面板：.account-settings-messages__state（無訊息時顯示「目前沒有訊息」）。
 - 信用版無存提功能，所有操作均唯讀。
 

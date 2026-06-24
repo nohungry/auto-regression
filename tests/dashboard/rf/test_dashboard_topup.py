@@ -2,18 +2,18 @@
 RF 後台會員充值測試（存入/提取）— 金爺娛樂城（信用版）
 RF-DASH-TOPUP-001
 
-使用站長帳號 SITE_RF_DASHBOARD_USER（qatest03）登入後台，
-對會員 drfauto01（上級代理 qaautodrf）進行存入與提取操作，
+使用站長帳號 SITE_RF_DASHBOARD_USER（<RF 站長帳號>）登入後台，
+對會員 <RF 會員帳號>（上級代理 <RF 代理帳號>）進行存入與提取操作，
 驗證會員額度正確增減。
 
 Rollback 設計（對稱還原 + try/finally 補償）：
 - 存入 AMOUNT → 驗額度 +AMOUNT → 提取 AMOUNT → 驗額度回初始。
 - 若存入後 assert 失敗（或 assert 前拋例外），finally 執行補償提取，
-  確保 drfauto01 額度不留殘差，下次測試可重跑。
+  確保 <RF 會員帳號> 額度不留殘差，下次測試可重跑。
 - 連跑兩次 idempotent：每次測試結束後額度應與測試前相同。
 
 技術要點：
-- 會員列表為 .tab-item 結構（非 table/tr），設 500 筆確保 drfauto01（第 40 筆）在 DOM 中。
+- 會員列表為 .tab-item 結構（非 table/tr），設 500 筆確保 <RF 會員帳號>（第 40 筆）在 DOM 中。
 - 無帳號搜尋框；用 locator filter 直接定位 .tab-item。
 - get_member_balance 透過打開存入 dialog 讀取 span.label-xs（實時值），取消後回到列表。
 - RF 後台無操作者密碼欄位（不同於 RC 站）。
@@ -50,12 +50,12 @@ class TestMemberTopUp:
         dashboard_page = fresh_dashboard_page
         ManagementPage = get_dashboard_management_page_class(site_config.site_id)
         mgmt = ManagementPage(dashboard_page)
-        member_account = site_config.username  # SITE_RF_USERNAME（= drfauto01），不寫死帳號
+        member_account = site_config.username  # SITE_RF_USERNAME（= <RF 會員帳號>），不寫死帳號
 
         # 1. 切到會員 tab
         mgmt.switch_to_member_tab()
 
-        # 2. 設每頁 500 筆，確保 drfauto01 在 DOM 中
+        # 2. 設每頁 500 筆，確保 <RF 會員帳號> 在 DOM 中
         mgmt.set_page_size(500)
 
         # 3. 記錄存入前額度（動態值，不寫死；截圖 label 標明「非空」）

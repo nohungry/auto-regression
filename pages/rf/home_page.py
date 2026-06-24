@@ -3,7 +3,7 @@
 登入成功後的首頁驗證、彈窗清理、導覽、登出
 
 probe 結果（dev-rf，2026-06-17）：
-- 已登入信號：.info_name（文字 = 帳號名，如「drfauto01」）
+- 已登入信號：.info_name（文字 = 帳號名，如「<RF 會員帳號>」）
 - 帳號區下拉觸發：.loginInBox（含 avatar + .info_name + 餘額），點後展開 .user-dropmenu
   備援：點 .loginInBox 內 avatar img（若主觸發點無效）
 - 登出鈕：button.btn-logout（在 .user-dropmenu__logout 內）

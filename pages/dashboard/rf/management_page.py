@@ -1,19 +1,19 @@
 """
 後台管理頁 Page Object — RF 站點（金爺娛樂城，信用版）
 
-範圍：read-only 導航 + logout + 存入/提取（站長帳號 qatest03 操作）。
+範圍：read-only 導航 + logout + 存入/提取（站長帳號 <RF 站長帳號> 操作）。
 同時支援站長與代理兩種帳號層級。
 
 實機 probe 關鍵事實（2026-06-17 ~ 2026-06-18）：
 
-站長層級（qatest03）：
+站長層級（<RF 站長帳號>）：
 - 登入後落點 `#/management/all-management`，側欄 class=`sidebar`（無 hide）。
 - 頂層選單 `.sidebar-nav li.parent-li` 共 9 項（含修改密碼/登出）；
   路由選單 7 項：儀表板/管理/報表/其它設定/遊戲管理/後臺權限/後臺紀錄。
 - 葉節點有 href（`a[href^='#/...']`），可 dispatch_event("click") + wait_for_url 導航。
 - 「登出」為 `li.parent-li` 內 `a.memberSpan`，`display: none`（必須 dispatch_event）。
 
-代理層級（qaautodrf）：
+代理層級（<RF 代理帳號>）：
 - 登入後落點 `#/management/all-management`，側欄 class=`sidebar`（無 hide）。
 - 頂層選單 4 項：管理/報表/修改密碼/登出。
 - 報表有 href 子項（agentRevenueSplit/quota-history/agent-history），可直接 dispatch。
@@ -26,7 +26,7 @@
 
 充提相關 probe 事實（2026-06-18）：
 - 會員列表為 `.tab-item` 結構（非 table/tr），站長帳號下顯示全站會員。
-- 設每頁 500 筆可讓 drfauto01（第 40 筆）在 DOM 中出現（不需搜尋框）。
+- 設每頁 500 筆可讓 <RF 會員帳號>（第 40 筆）在 DOM 中出現（不需搜尋框）。
 - 無帳號搜尋框；頁面僅有 multiselect 代理選擇器（不用）。
 - 每個 .tab-item 含 HTML attribute `balance="..."` 儲存額度（穩定讀法，無格式問題）。
 - 存入按鈕：`button.btn-primary.me-2`（第一個），提取：`button.btn-primary`（無 me-2）。
@@ -146,7 +146,7 @@ class ManagementPage:
     def set_page_size(self, size: int = 500):
         """設定每頁顯示筆數（select 選項含 10/20/50/100/200/500）。
 
-        RF 後台 drfauto01 為第 40 筆，設 500 確保在 DOM 中可見。
+        RF 後台 <RF 會員帳號> 為第 40 筆，設 500 確保在 DOM 中可見。
         用 JS 直接設定 select value 並 dispatch change event（Vue reactive）。
         """
         self.page.evaluate(
@@ -187,7 +187,7 @@ class ManagementPage:
         dialog HTML 結構：
           <p class="info">
             <span class="label-m">會員帳號 :</span>
-            <span class="label-m highlight">drfauto01(drfauto01)</span>
+            <span class="label-m highlight"><RF 會員帳號>(<RF 會員帳號>)</span>
             <span class="label-s highlight">剩餘餘額</span>
             <span class="label-xs">{balance}</span>
           </p>

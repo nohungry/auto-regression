@@ -1,7 +1,7 @@
 """
 RF 後台代理層級 read-only smoke（login 無 2FA + 側欄 + 導航 + 登出）
 
-帳號層級：代理 qaautodrf（SITE_RF_DASHBOARD_AGENT_USER），入口 SITE_RF_DASHBOARD_AGENT_URL（無 -admin）。
+帳號層級：代理 <RF 代理帳號>（SITE_RF_DASHBOARD_AGENT_USER），入口 SITE_RF_DASHBOARD_AGENT_URL（無 -admin）。
 RF 代理後台**無 2FA**，落點 `#/management/all-management`，頂層選單 4 項。
 
 代理層級事實（2026-06-17 probe）：

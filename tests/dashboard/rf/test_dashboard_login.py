@@ -1,7 +1,7 @@
 """
 RF 後台站長登入測試（read-only smoke）
 
-帳號層級：站長 qatest03（SITE_RF_DASHBOARD_USER），入口 SITE_RF_DASHBOARD_URL（含 -admin）。
+帳號層級：站長 <RF 站長帳號>（SITE_RF_DASHBOARD_USER），入口 SITE_RF_DASHBOARD_URL（含 -admin）。
 RF 後台無 2FA，登入後落點 `#/management/all-management`。
 
 斷言策略：
