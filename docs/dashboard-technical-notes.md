@@ -93,15 +93,31 @@ TOTP 都被拒（OTP 元件填滿自動送出 → 清空 → 停在 `#/login`）
 
 ## 後台站台覆蓋現況 + 代理 vs 站長入口
 
-### 已覆蓋後台站台（2026-06-15）
+### 已覆蓋後台站台（2026-06-24 更新，8 站皆有代理測試）
 
-| 站台 | 後台覆蓋 | 備註 |
+代理後台依 UI 分兩種結構：**信用版 `/management`**（RC/RE/LT/RD，page object re-export RC）與
+**現金版 Vue admin `/member`**（LU/LG/KS/QW，re-export LU）。
+
+| 站台（代理） | 後台覆蓋 | 結構 / 備註 |
 |------|---------|------|
-| RC / RE | 充值（top_up） | 純帳密登入 |
-| LT | 充值（top_up） | `login_page` 為 re-export RC，純帳密 |
-| **LU 站長**（autolu001） | **login + TOTP 2FA + 導航 + logout** | **唯一含真實 2FA**（PR #96/#97），共用碼 `utils/totp_helper.py` |
-| **LU 代理**（norauto001） | **login（無 2FA）+ 導航 + logout** | 無 -admin 入口；另立斷言（5 項選單）；存提待測資 |
-| LG / KS / RD / QW | 尚未 onboard | 各站 2FA 機制 / URL / 側欄結構未知，待 probe |
+| RC / RE / LT / RD | **top_up**（存入/提取 + balance 對稱驗證 + rollback） | 信用版；RD dialog 獨有「操作者密碼」欄位需傳 `operator_password`；代理額度由站長撥入 |
+| LU / LG / KS | login + 導航 + logout **smoke** | 現金版 Vue admin，代理無 2FA |
+| QW | login + 導航 + logout **smoke** | 現金版 Vue admin，**代理含 2FA**（驗證條件式 2FA 機制）|
+
+> 站長層級（`-admin` + 2FA）目前僅 LU 有 login/導航/logout；其餘站站長層級尚未涵蓋。
+
+### 後台 top_up 能力：信用版可做、現金版受限（2026-06-24 實測）
+
+代理對「下屬會員」的金額異動入口，兩種結構不同，直接決定能否做 top_up 測試：
+
+| 結構 | 入口 | top_up 可行性 |
+|------|------|--------------|
+| 信用版 `/management`（RC/RE/LT/RD） | 會員列「存入 / 提取」dialog | ✅ 站長撥額度給代理後即可；已落地對稱 top_up（RD 為範例）|
+| 現金版 Vue admin（LU/LG/KS/QW） | 會員列「**Send points**」按鈕 | 🛑 **代理無點數時按鈕 `disabled`**；需站長「派點」給代理才解禁 |
+
+- **現金版 top_up 目前 DEFERRED**：2026-06-24 實測 4 站（各已建 1 名測試會員）「Send points」**全部 disabled**，因代理帳號自身點數為 0。要啟用需站長階層派點給代理，屬額外測資前置，團隊評估暫不投入，故現金版維持 smoke。
+- 未來要補現金版 top_up：站長派點給代理 → probe「Send points」dialog 結構 → 寫「代理→會員派點」對稱驗證（代理為 finite，可對稱驗 balance，不受站長 ∞ 額度影響）。
+- 與「規則 7/8/9」（充值 cleanup、固定帳號、UI+API 雙驗）一致：現金版補做時同樣須可逆、雙重確認。
 
 ### 入口 URL 後綴：站長 vs 代理
 
@@ -135,7 +151,8 @@ TOTP 都被拒（OTP 元件填滿自動送出 → 清空 → 停在 `#/login`）
 - 代理錢包頁 `#/userInfo/agent-wallet`（在右上 user 下拉的 Wallet，非側欄）含 BalanceAdjustment Add/Reduce + Credit limit 操作，未來存提實作的入口參考。
 
 ### 其餘待辦
-- **其餘站台代理層級**：代理可見選單與站長不同，**另立斷言不沿用站長**；各站代理是否有 2FA 需先 probe（有則仿 PR #98 加 `dashboard_agent_totp` 欄位）。
+- **現金版 top_up**（LU/LG/KS/QW）：DEFERRED，見上「後台 top_up 能力」節。
+- **站長層級**：除 LU 外其餘站站長層級（`-admin` + 2FA）尚未做；RE 站長目前無 2FA、KS 站長有「首次 2FA 送出被丟棄、需重送一次」的站點 quirk（onboard 時 login 要加一次性重試）。
 
 ---
 
