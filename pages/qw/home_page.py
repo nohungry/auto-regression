@@ -127,6 +127,65 @@ class HomePage:
                 break
 
     # ------------------------------------------------------------------
+    # 導覽
+    # ------------------------------------------------------------------
+
+    def click_nav_category(self, data_id: int):
+        """點擊頂部 nav 分類（ul.nav-item li[data-id='<N>'] span）。
+
+        QW nav 分類為 span 而非 <a>，點擊後 URL 不變，僅切換 active class
+        （li class 從 text-white 變成 text-[#FFC227]）。
+        使用 data-id 屬性定位，避免綁死文案（probe 2026-06-24）：
+          data-id=1 電子、2 真人、3 捕魚、4 棋牌、5 體育、6 彩票、7 鬥雞
+
+        注意（probe 確認）：
+        - dispatch_event("click") 不觸發 Vue click handler，active class 不切換。
+          必須使用真實 Playwright .click()。
+        - popup-mask 攔截 pointer events → 點前先 dismiss_any_popups()。
+        """
+        sh = get_screenshotter(self.page)
+        self.dismiss_any_popups()
+        li = self.page.locator(f"ul.nav-item li[data-id='{data_id}']").first
+        if sh: sh.full_page(f"before_click_nav_{data_id}")
+        li.click()
+
+    def click_promotions_link(self):
+        """點擊「優惠」連結（<a href='/promotions'>）並等待 URL 跳轉。
+
+        優惠是 QW nav 中少數有真實 <a href> 的連結（其他分類為 span）。
+        dispatch_event 繞過可能存在的 popup-mask overlay。
+        不需先 dismiss popup（dispatch_event 直接觸發 DOM，不受 pointer events 影響）。
+        """
+        sh = get_screenshotter(self.page)
+        self.dismiss_any_popups()
+        link = self.page.locator("ul.nav-item li a[href='/promotions']").first
+        if sh: sh.full_page("before_click_promotions")
+        link.dispatch_event("click")
+
+    def get_active_nav_category_text(self) -> str:
+        """回傳目前 active 分類（li[data-id]）的文字。
+
+        用於驗證 nav 點擊後 active 狀態切換。
+        QW active li class：「text-[#FFC227] text-center hover:text-[#FFC227] ...」
+        非 active li class：「text-white text-center hover:text-[#FFC227] ...」
+        關鍵差異：active li 有無前綴的 text-[#FFC227]（非 hover:text-[...]）。
+        透過 CSS class split 精準比對，避免與 hover: 前綴混淆。
+        只看 li[data-id]（有 data-id = 分類 span，排除「首頁」<a>）。
+        """
+        result = self.page.evaluate(r"""() => {
+            const items = document.querySelectorAll('ul.nav-item li[data-id]');
+            for (const li of items) {
+                // active li has 'text-[#FFC227]' WITHOUT 'hover:' prefix
+                const classes = li.className.split(/\s+/);
+                if (classes.includes('text-[#FFC227]')) {
+                    return li.textContent.trim();
+                }
+            }
+            return '';
+        }""")
+        return result or ""
+
+    # ------------------------------------------------------------------
     # 登出
     # ------------------------------------------------------------------
 
