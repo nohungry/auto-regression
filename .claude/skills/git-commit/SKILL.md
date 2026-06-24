@@ -75,7 +75,20 @@ description: 針對 auto-regression repo 的測試變更，執行提交前檢查
    - 建議的修復方式：移到 `.env`（並更新 `.env.example` 的 key，不含值）+ 透過 `config/settings.py` 的 `SiteConfig` 讀取 + 測試中透過 fixture 取用。
    - 若是既有硬寫值要移除，提醒使用者**git history 可能仍殘留**，若密碼已洩漏需要實際更換而非僅移除程式碼。
 
-8. 若掃描乾淨，才進入 Step 1。
+8. **Repo-wide 既有內容掃描（每次 commit 觸及 docs/ 或 .claude/skills/ 時必做）**：
+   diff-only 掃描會漏掉「過去 PR 已混入、本次未動」的真實憑證。當本次變更含 `docs/**` 或
+   `.claude/skills/**` 時，額外對**全 tracked 檔**（排除 `.env`、`*.png`）跑一次：
+   ```bash
+   # 真實密碼 / TOTP secret（最危險）
+   git grep -nE '[Aa]b[0-9]{6}' -- ':!.env' ':!*.png'
+   git grep -nE '[A-Z2-7]{26,}' -- ':!.env' ':!*.png' | grep -vE 'http|README|[a-z]'
+   # 真實測試帳號名（docs/skill/註解禁寫，見 feedback_no_real_credentials_in_docs）
+   git grep -nE '<已知測試帳號樣式，如 站碼auto[0-9]+ / qaauto站碼>' -- ':!.env'
+   ```
+   命中既有真實值 → 一併清理（改佔位 + 指向 `.env`），不因「不是本次加的」而放行。
+   密碼/secret 命中時提醒：**git history 已殘留，需實際更換憑證**而非僅改文字。
+
+9. 若掃描乾淨，才進入 Step 1。
 
 ## Step 1 — 變更分類
 
