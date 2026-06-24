@@ -69,7 +69,7 @@
 
 | 類型 | 現況 | 規範 |
 |------|------|------|
-| 測試帳號 | RC: `drcauto01` / LT: `dltauto01` / RE: `dreauto01` / RD: `drdauto01` | 固定帳號，密碼在 `.env` 管理 |
+| 測試帳號 | 各站固定測試帳號（實際帳密見 `.env` 的 `SITE_<X>_USERNAME` / `SITE_<X>_PASSWORD`） | 固定帳號，帳密一律由 `.env` 管理，不寫進文件 |
 | 測試資料 | 依賴 dev 站台現有資料 | 需跨測試隔離時，每個 test 自行 cleanup（例：充值後提取歸零）|
 | 環境 | 僅 dev 環境 | 禁止在 staging / prod 執行自動化 |
 | `.env` | 開發者本機管理 | 禁止 commit；CI 用 Secrets |

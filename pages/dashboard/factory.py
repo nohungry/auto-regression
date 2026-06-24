@@ -23,7 +23,11 @@ _DASHBOARD_LOGIN_REGISTRY = {
     'rc': ('pages.dashboard.rc.login_page', 'DashboardLoginPage'),
     'lt': ('pages.dashboard.lt.login_page', 'DashboardLoginPage'),
     're': ('pages.dashboard.re.login_page', 'DashboardLoginPage'),
+    'rd': ('pages.dashboard.rd.login_page', 'DashboardLoginPage'),
     'lu': ('pages.dashboard.lu.login_page', 'DashboardLoginPage'),
+    'lg': ('pages.dashboard.lg.login_page', 'DashboardLoginPage'),
+    'ks': ('pages.dashboard.ks.login_page', 'DashboardLoginPage'),
+    'qw': ('pages.dashboard.qw.login_page', 'DashboardLoginPage'),
     'rf': ('pages.dashboard.rf.login_page', 'DashboardLoginPage'),
 }
 
@@ -31,7 +35,11 @@ _DASHBOARD_MANAGEMENT_REGISTRY = {
     'rc': ('pages.dashboard.rc.management_page', 'ManagementPage'),
     'lt': ('pages.dashboard.lt.management_page', 'ManagementPage'),
     're': ('pages.dashboard.re.management_page', 'ManagementPage'),
+    'rd': ('pages.dashboard.rd.management_page', 'ManagementPage'),
     'lu': ('pages.dashboard.lu.management_page', 'ManagementPage'),
+    'lg': ('pages.dashboard.lg.management_page', 'ManagementPage'),
+    'ks': ('pages.dashboard.ks.management_page', 'ManagementPage'),
+    'qw': ('pages.dashboard.qw.management_page', 'ManagementPage'),
     'rf': ('pages.dashboard.rf.management_page', 'ManagementPage'),
 }
 

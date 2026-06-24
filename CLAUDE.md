@@ -95,7 +95,7 @@ pages/ks/                   — ks site Page Objects (LoginPage, HomePage) — S
 pages/rf/                   — rf site Page Objects (LoginPage, HomePage) — 金爺娛樂城（Nuxt/Vue 信用版，獨立 /Login 頁 + 登入三段 base-modal 確認彈窗）
 pages/dashboard/<site_id>/   — backend dashboard page objects (DashboardLoginPage, ManagementPage); per dashboard factory registry
 tests/api/<site_id>/         — API-layer tests (requests only, no browser, no pages/* import); per-site conftest
-tests/dashboard/<site_id>/   — backend dashboard tests (rc/re top_up; lt re-export; lu 站長帳號 login+TOTP 2FA + 導航/logout read-only smoke，及代理帳號 login 無2FA + 導航/logout read-only smoke; rf 站長+代理帳號 login 皆無 2FA + 導航/logout read-only smoke); state-mutating tests should be reversible (rollback / teardown compensation)
+tests/dashboard/<site_id>/   — backend dashboard tests (rc/re/lt/rd 代理 top_up，皆信用版 re-export RC；rd dialog 獨有操作者密碼欄位需傳 operator_password；rf 信用版 站長+代理 login（皆無 2FA）+ 導航/logout + top_up；lu 站長帳號 login+TOTP 2FA + 導航/logout read-only smoke，及代理帳號 login 無2FA + 導航/logout read-only smoke；lg/ks/qw 代理 Vue admin smoke，re-export LU，空帳號故僅 smoke，其中 qw 代理需 2FA（conftest 傳 dashboard_agent_totp）); state-mutating tests should be reversible (rollback / teardown compensation)
 tests/rc/                   — rc site tests (test_p0_smoke.py p0, feature/<name>/ p1: announcement_popup, i18n, navigation, wallet)
 tests/rc/conftest.py        — rc-specific overrides: site_config=rc, go_home (+ dismiss announcement popup)
 tests/lt/                   — lt site tests (test_p0_smoke.py p0, test_locale_visual_matrix.py p2 [skipped], feature/<name>/ p1: auth, copy, i18n, member, public, visual, wallet)

@@ -10,8 +10,8 @@ LU 後台架構與 RC/RE/LT 不同，且為本 repo 第一個含 TOTP 2FA 的後
 3. OTP 為 6 個獨立 `input.otp-box`（maxlength=1），逐格填入；Vue 元件自動推進焦點
 4. 點 `.confirm-btn`「Confirm」→ 導向 `#/dashboard/index`，側欄 `.sidebar-nav` 出現
 
-**帳號層級差異（2026-06-15 probe）**：站長（autolu001）有 2FA modal；下級代理
-（norauto001 @ 無 -admin 入口）**無 2FA**，登入後直接落在 `#/member/member-management`。
+**帳號層級差異（2026-06-15 probe）**：站長（<LU 站長帳號>）有 2FA modal；下級代理
+（<LU 代理帳號> @ 無 -admin 入口）**無 2FA**，登入後直接落在 `#/member/member-management`。
 因此 `_fill_totp` 採**條件式**（短 timeout 偵測 modal，沒出現即跳過），`verify_login_success`
 以「側欄出現」為共同成功信號（不綁特定落點 URL，站長/代理皆適用）。
 

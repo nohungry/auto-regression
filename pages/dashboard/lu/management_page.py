@@ -5,14 +5,14 @@
 
 實機 probe 關鍵事實：
 
-站長層級（autolu001，2026-06-12）：
+站長層級（<LU 站長帳號>，2026-06-12）：
 - 側欄容器 class 為 `.sidebar hide`（收合/移出畫面）→ 側欄連結永遠在 viewport 外，
   **必須用 `dispatch_event("click")`**（仿 RC CSS-hidden sidebar 慣例，見 CLAUDE.md）。
 - 頂層選單 `.sidebar-nav li.parent-li`（18 項）；父項錨點 `a.memberSpan` 帶 `id`=route
   （如 `id="/member"`）。葉節點 `a[href^='#/...']`（如 `#/member/member-registration`）
   即使側欄收合仍在 DOM，可直接 dispatch 導航 → 用 `navigate(route_substr)`。
 
-代理層級（norauto001，2026-06-15）：
+代理層級（<LU 代理帳號>，2026-06-15）：
 - 側欄可見（class `sidebar`，非 `sidebar hide`）；頂層選單僅 **5 項**
   （/member、/agent、/report、/report-bet-count、/statistical-report）。
 - 子選單預設收合，需先點父項展開（`div.collapse` 加 `.show`）；

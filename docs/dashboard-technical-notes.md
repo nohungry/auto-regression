@@ -75,7 +75,7 @@ TOTP 都被拒（OTP 元件填滿自動送出 → 清空 → 停在 `#/login`）
 
 ## LU（Dlu測試站）後台導航 / logout selector
 
-實機 probe（2026-06-12，站長 autolu001）。LU 後台 Vue hash SPA，與 RC/RE 不同框架：
+實機 probe（2026-06-12，站長 <LU 站長帳號>）。LU 後台 Vue hash SPA，與 RC/RE 不同框架：
 
 - **側欄 `.sidebar.hide`（收合/移出畫面）** → 所有側欄連結在 viewport 外，**必須
   `dispatch_event("click")`**（仿 RC CSS-hidden sidebar，見本檔「元素互動例外」精神）。
@@ -93,15 +93,31 @@ TOTP 都被拒（OTP 元件填滿自動送出 → 清空 → 停在 `#/login`）
 
 ## 後台站台覆蓋現況 + 代理 vs 站長入口
 
-### 已覆蓋後台站台（2026-06-15）
+### 已覆蓋後台站台（2026-06-24 更新，8 站皆有代理測試）
 
-| 站台 | 後台覆蓋 | 備註 |
+代理後台依 UI 分兩種結構：**信用版 `/management`**（RC/RE/LT/RD，page object re-export RC）與
+**現金版 Vue admin `/member`**（LU/LG/KS/QW，re-export LU）。
+
+| 站台（代理） | 後台覆蓋 | 結構 / 備註 |
 |------|---------|------|
-| RC / RE | 充值（top_up） | 純帳密登入 |
-| LT | 充值（top_up） | `login_page` 為 re-export RC，純帳密 |
-| **LU 站長**（autolu001） | **login + TOTP 2FA + 導航 + logout** | **唯一含真實 2FA**（PR #96/#97），共用碼 `utils/totp_helper.py` |
-| **LU 代理**（norauto001） | **login（無 2FA）+ 導航 + logout** | 無 -admin 入口；另立斷言（5 項選單）；存提待測資 |
-| LG / KS / RD / QW | 尚未 onboard | 各站 2FA 機制 / URL / 側欄結構未知，待 probe |
+| RC / RE / LT / RD | **top_up**（存入/提取 + balance 對稱驗證 + rollback） | 信用版；RD dialog 獨有「操作者密碼」欄位需傳 `operator_password`；代理額度由站長撥入 |
+| LU / LG / KS | login + 導航 + logout **smoke** | 現金版 Vue admin，代理無 2FA |
+| QW | login + 導航 + logout **smoke** | 現金版 Vue admin，**代理含 2FA**（驗證條件式 2FA 機制）|
+
+> 站長層級（`-admin` + 2FA）目前僅 LU 有 login/導航/logout；其餘站站長層級尚未涵蓋。
+
+### 後台 top_up 能力：信用版可做、現金版受限（2026-06-24 實測）
+
+代理對「下屬會員」的金額異動入口，兩種結構不同，直接決定能否做 top_up 測試：
+
+| 結構 | 入口 | top_up 可行性 |
+|------|------|--------------|
+| 信用版 `/management`（RC/RE/LT/RD） | 會員列「存入 / 提取」dialog | ✅ 站長撥額度給代理後即可；已落地對稱 top_up（RD 為範例）|
+| 現金版 Vue admin（LU/LG/KS/QW） | 會員列「**Send points**」按鈕 | 🛑 **代理無點數時按鈕 `disabled`**；需站長「派點」給代理才解禁 |
+
+- **現金版 top_up 目前 DEFERRED**：2026-06-24 實測 4 站（各已建 1 名測試會員）「Send points」**全部 disabled**，因代理帳號自身點數為 0。要啟用需站長階層派點給代理，屬額外測資前置，團隊評估暫不投入，故現金版維持 smoke。
+- 未來要補現金版 top_up：站長派點給代理 → probe「Send points」dialog 結構 → 寫「代理→會員派點」對稱驗證（代理為 finite，可對稱驗 balance，不受站長 ∞ 額度影響）。
+- 與「規則 7/8/9」（充值 cleanup、固定帳號、UI+API 雙驗）一致：現金版補做時同樣須可逆、雙重確認。
 
 ### 入口 URL 後綴：站長 vs 代理
 
@@ -109,7 +125,7 @@ TOTP 都被拒（OTP 元件填滿自動送出 → 清空 → 停在 `#/login`）
 
 | 入口 | URL 形態 | 對應 config | 帳號層級 |
 |------|---------|------------|---------|
-| 站長 | `dev-<site>-**admin**-dashboard.t9platform.com` | `SITE_<X>_DASHBOARD_URL` | 站長（LU autolu001：∞ 額度、18 項頂層選單） |
+| 站長 | `dev-<site>-**admin**-dashboard.t9platform.com` | `SITE_<X>_DASHBOARD_URL` | 站長（LU <LU 站長帳號>：∞ 額度、18 項頂層選單） |
 | 代理 | `dev-<site>-dashboard.t9platform.com`（**無 -admin**） | `SITE_<X>_DASHBOARD_AGENT_URL` | 下級代理（LU `SITE_LU_DASHBOARD_AGENT_USER`，權限/選單較少） |
 
 - **config 欄位**：`SiteConfig.dashboard_agent_url`（讀 `SITE_<X>_DASHBOARD_AGENT_URL`，PR #98 新增）。
@@ -118,9 +134,9 @@ TOTP 都被拒（OTP 元件填滿自動送出 → 清空 → 停在 `#/login`）
 
 ### LU 代理層級實作（2026-06-15 probe + 測試）
 
-實機 probe 確認的代理（norauto001）與站長差異 → 已落地 `test_dashboard_agent.py`：
+實機 probe 確認的代理（<LU 代理帳號>）與站長差異 → 已落地 `test_dashboard_agent.py`：
 
-| 面向 | 站長 autolu001 | 代理 norauto001 |
+| 面向 | 站長 <LU 站長帳號> | 代理 <LU 代理帳號> |
 |------|---------------|----------------|
 | 2FA | 有 modal（TOTP） | **無**，帳密直接進 |
 | 登入落點 | `#/dashboard/index` | `#/member/member-management` |
@@ -131,11 +147,12 @@ TOTP 都被拒（OTP 元件填滿自動送出 → 清空 → 停在 `#/login`）
 - **登入碼共用、條件式分流**：`DashboardLoginPage._fill_totp` 改為**短 timeout（4s）偵測 `.dialog-container`**，沒出現即跳過 → 同一 `login()` 同時支援站長（有 2FA）與代理（無 2FA，`totp_secret` 不傳）。`verify_login_success` 改以「側欄出現」為共同成功信號（不綁落點 URL）。
 - **導航分兩法**：站長用 `ManagementPage.navigate(route_substr)`（href + dispatch）；代理用 `navigate_agent(parent_id)`（展開父選單 → 結構定位無 href 葉節點 → dispatch）。
 - **fixture 隔離**：`agent_dashboard_page` / `go_agent_dashboard`（讀 `dashboard_agent_url/user/pass`，獨立 context）；站長 `dashboard_page` / `go_dashboard` 不動。兩帳號不同、同 session 並存不互踢。
-- **存提仍 defer**：norauto001 為空帳號（0 會員 / 0 餘額 / 0 銀行卡、提款鈕灰掉），無法做可逆對稱 balance 驗證（同 ∞ 站長卡點的另一面）；待有測資的代理帳號再補 deposit/withdraw。
+- **存提仍 defer**：<LU 代理帳號> 為空帳號（0 會員 / 0 餘額 / 0 銀行卡、提款鈕灰掉），無法做可逆對稱 balance 驗證（同 ∞ 站長卡點的另一面）；待有測資的代理帳號再補 deposit/withdraw。
 - 代理錢包頁 `#/userInfo/agent-wallet`（在右上 user 下拉的 Wallet，非側欄）含 BalanceAdjustment Add/Reduce + Credit limit 操作，未來存提實作的入口參考。
 
 ### 其餘待辦
-- **其餘站台代理層級**：代理可見選單與站長不同，**另立斷言不沿用站長**；各站代理是否有 2FA 需先 probe（有則仿 PR #98 加 `dashboard_agent_totp` 欄位）。
+- **現金版 top_up**（LU/LG/KS/QW）：DEFERRED，見上「後台 top_up 能力」節。
+- **站長層級**：除 LU 外其餘站站長層級（`-admin` + 2FA）尚未做；RE 站長目前無 2FA、KS 站長有「首次 2FA 送出被丟棄、需重送一次」的站點 quirk（onboard 時 login 要加一次性重試）。
 
 ---
 

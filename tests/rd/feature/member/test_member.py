@@ -58,7 +58,7 @@ class TestPersonalInfo:
         expect(signal).to_be_visible(timeout=5000)
         if sh: sh.full_page("verify_個人資訊面板開啟")
 
-        # 帳號顯示：「會員帳戶：drdauto01」格式（在面板的 dialog-container 內）
+        # 帳號顯示：「會員帳戶：<RD 會員帳號>」格式（在面板的 dialog-container 內）
         username_row = page.locator(".dialog-container", has_text=f"會員帳戶：{site_config.username}").first
         expect(username_row).to_be_visible(timeout=5000)
         if sh: sh.capture(username_row, f"verify_帳號顯示_{site_config.username}")
