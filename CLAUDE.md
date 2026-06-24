@@ -92,9 +92,10 @@ pages/qw/                   — qw site Page Objects (LoginPage, HomePage) — L
 pages/lg/                   — lg site Page Objects (LoginPage, HomePage) — 大撈家娛樂城（Nuxt/Vue，modal 登入）
 pages/lu/                   — lu site Page Objects (LoginPage, HomePage) — Dlgbet（Nuxt/Vue，雙層彈窗 + 左側 sidebar 登出）
 pages/ks/                   — ks site Page Objects (LoginPage, HomePage) — Super9娛樂城（Nuxt/Vue，金色英文主題 + 右側 drawer 登出）
+pages/rf/                   — rf site Page Objects (LoginPage, HomePage) — 金爺娛樂城（Nuxt/Vue 信用版，獨立 /Login 頁 + 登入三段 base-modal 確認彈窗）
 pages/dashboard/<site_id>/   — backend dashboard page objects (DashboardLoginPage, ManagementPage); per dashboard factory registry
 tests/api/<site_id>/         — API-layer tests (requests only, no browser, no pages/* import); per-site conftest
-tests/dashboard/<site_id>/   — backend dashboard tests (rc/re/lt/rd 代理 top_up，皆信用版 re-export RC；rd dialog 獨有操作者密碼欄位需傳 operator_password；lu 站長帳號 login+TOTP 2FA + 導航/logout read-only smoke，及代理帳號 login 無2FA + 導航/logout read-only smoke；lg/ks/qw 代理 Vue admin smoke，re-export LU，空帳號故僅 smoke，其中 qw 代理需 2FA（conftest 傳 dashboard_agent_totp）); state-mutating tests should be reversible (rollback / teardown compensation)
+tests/dashboard/<site_id>/   — backend dashboard tests (rc/re/lt/rd 代理 top_up，皆信用版 re-export RC；rd dialog 獨有操作者密碼欄位需傳 operator_password；rf 信用版 站長+代理 login（皆無 2FA）+ 導航/logout + top_up；lu 站長帳號 login+TOTP 2FA + 導航/logout read-only smoke，及代理帳號 login 無2FA + 導航/logout read-only smoke；lg/ks/qw 代理 Vue admin smoke，re-export LU，空帳號故僅 smoke，其中 qw 代理需 2FA（conftest 傳 dashboard_agent_totp）); state-mutating tests should be reversible (rollback / teardown compensation)
 tests/rc/                   — rc site tests (test_p0_smoke.py p0, feature/<name>/ p1: announcement_popup, i18n, navigation, wallet)
 tests/rc/conftest.py        — rc-specific overrides: site_config=rc, go_home (+ dismiss announcement popup)
 tests/lt/                   — lt site tests (test_p0_smoke.py p0, test_locale_visual_matrix.py p2 [skipped], feature/<name>/ p1: auth, copy, i18n, member, public, visual, wallet)
@@ -111,6 +112,8 @@ tests/lu/                   — lu site tests (test_p0_smoke.py p0; feature/<nam
 tests/lu/conftest.py        — lu-specific overrides: site_config=lu, go_home (+ dismiss 雙層彈窗)
 tests/ks/                   — ks site tests (test_p0_smoke.py p0; feature/<name>/ p1: announcement_popup, navigation, member, wallet, i18n, game, sidebar, home_sections; copy p2; visual p2; 右側 drawer 登出)
 tests/ks/conftest.py        — ks-specific overrides: site_config=ks, go_home (+ dismiss 進站公告)
+tests/rf/                   — rf site tests (test_p0_smoke.py p0; feature/<name>/ p1: announcement_popup, navigation, member, wallet, i18n, game, sidebar, home_sections; copy p2; visual p2; 信用版 金爺娛樂城，Nuxt/Vue 三段彈窗登入)
+tests/rf/conftest.py        — rf-specific overrides: site_config=rf, go_home (+ dismiss base-modal 彈窗)
 utils/locale_helper.py       — set_locale(): injects i18n_locale cookie for lt site
 utils/dialog_helper.py       — helpers: dismiss server error popups, wait for loading animation
 utils/screenshot_helper.py   — element-highlight screenshot system, auto README.md generation
@@ -132,7 +135,7 @@ dev-notes/                   — personal developer notes (gitignored except REA
 - `auto_screenshot` (autouse) — attaches `ScreenshotHelper` to page; auto-categorizes tests into `smoke/` or `feature/` subfolder; generates `screenshots/<site_id>/<timestamp>/<category>/<test_name>/README.md` after each test
 - `auto_logout_after_test` (autouse) — logs out after each smoke test (`page` fixture only)
 
-**Markers** (pytest.ini): `p0`, `p1`, `p2`, `login`, `home`, `member`, `wallet`, `i18n`, `language`, `copy`, `visual`, `visual_regression`, `locale_layout`, `docker_only`, `api`, `dashboard`, `game`, `flaky`, `lt`, `rc`, `re`, `rd`, `qw`, `lg`, `lu`, `ks`
+**Markers** (pytest.ini): `p0`, `p1`, `p2`, `login`, `home`, `member`, `wallet`, `i18n`, `language`, `copy`, `visual`, `visual_regression`, `locale_layout`, `docker_only`, `api`, `dashboard`, `game`, `flaky`, `lt`, `rc`, `re`, `rd`, `qw`, `lg`, `lu`, `ks`, `rf`
 
 ## Multi-site Factory Pattern
 
@@ -219,9 +222,9 @@ This repo has **two distinct documentation folders** with different purposes and
 
 若某份 `dev-notes/` 的筆記後來成熟並獲得團隊共識，請**升級**移到 `docs/` 並調整內容為正式文件。反之，若 `docs/` 中某份文件變成僅個人觀點的 WIP 清單，應移到 `dev-notes/`。
 
-## Visual Regression (lt / rc / qw / re / rd / lg / lu / ks)
+## Visual Regression (lt / rc / qw / re / rd / lg / lu / ks / rf)
 
-LT、RC、QW、RE、RD、LG、LU、KS 皆採用 **reference screenshot** 策略：存檔供人工確認，不做 pixel 比對（跨環境解析度不穩定）。
+LT、RC、QW、RE、RD、LG、LU、KS、RF 皆採用 **reference screenshot** 策略：存檔供人工確認，不做 pixel 比對（跨環境解析度不穩定）。
 
 ```bash
 # VR reference 截圖（輸出至 screenshots/<site_id>/vr_reference/）
@@ -233,6 +236,7 @@ LT、RC、QW、RE、RD、LG、LU、KS 皆採用 **reference screenshot** 策略�
 .venv/bin/pytest tests/lg/feature/visual/test_visual_regression.py -m visual_regression
 .venv/bin/pytest tests/lu/feature/visual/test_visual_regression.py -m visual_regression
 .venv/bin/pytest tests/ks/feature/visual/test_visual_regression.py -m visual_regression
+.venv/bin/pytest tests/rf/feature/visual/test_visual_regression.py -m visual_regression
 
 # DOM 層視覺健康度（非截圖）
 .venv/bin/pytest -m visual
