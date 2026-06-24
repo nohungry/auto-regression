@@ -3,13 +3,13 @@ LU 後台測試專用 conftest
 
 提供兩個帳號層級的 session fixture（各自獨立 browser context，視窗最大化）：
 
-- `dashboard_page`（站長 autolu001）：SITE_LU_DASHBOARD_URL/USER/PASS + TOTP（2FA）。
+- `dashboard_page`（站長 <LU 站長帳號>）：SITE_LU_DASHBOARD_URL/USER/PASS + TOTP（2FA）。
   落點 `#/dashboard/index`，頂層選單 18 項。
-- `agent_dashboard_page`（代理 norauto001）：SITE_LU_DASHBOARD_AGENT_URL/USER/PASS，
+- `agent_dashboard_page`（代理 <LU 代理帳號>）：SITE_LU_DASHBOARD_AGENT_URL/USER/PASS，
   **無 2FA**（2026-06-15 probe 確認）。落點 `#/member/member-management`，頂層選單 5 項。
 
 兩帳號不同（不會互踢 session），同一 pytest session 內可並存。
-存提（deposit/withdraw）暫不做：代理 norauto001 為空帳號（0 會員 / 0 餘額 / 0 銀行卡），
+存提（deposit/withdraw）暫不做：代理 <LU 代理帳號> 為空帳號（0 會員 / 0 餘額 / 0 銀行卡），
 無法做可逆的對稱 balance 驗證，待有測資的代理帳號再補。
 """
 
@@ -92,7 +92,7 @@ def go_dashboard(dashboard_page, site_config):
 @pytest.fixture(scope="session")
 def agent_dashboard_page(browser, site_config):
     """
-    Session-scoped 已登入後台 page（**代理層級 norauto001，無 2FA**）。
+    Session-scoped 已登入後台 page（**代理層級 <LU 代理帳號>，無 2FA**）。
     使用 .env 的 SITE_LU_DASHBOARD_AGENT_URL/USER/PASS（無 -admin 入口）。
     獨立 browser context；與站長 dashboard_page 不同帳號，互不互踢。
     """

@@ -1,7 +1,7 @@
 """
 LU 後台導航 + 登出測試（第二波：read-only smoke）
 
-⚠️ 帳號層級：本檔以**站長帳號 autolu001**（SITE_LU_DASHBOARD_USER）登入驗證。
+⚠️ 帳號層級：本檔以**站長帳號 <LU 站長帳號>**（SITE_LU_DASHBOARD_USER）登入驗證。
    後續會有「下級代理帳號」（SITE_LU_DASHBOARD_AGENT_USER）提供，屆時權限/可見選單
    不同 → 另立代理層級測試，不沿用本檔斷言（站長可見 18 項頂層選單，代理可能較少）。
 

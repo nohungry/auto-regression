@@ -75,7 +75,7 @@ TOTP 都被拒（OTP 元件填滿自動送出 → 清空 → 停在 `#/login`）
 
 ## LU（Dlu測試站）後台導航 / logout selector
 
-實機 probe（2026-06-12，站長 autolu001）。LU 後台 Vue hash SPA，與 RC/RE 不同框架：
+實機 probe（2026-06-12，站長 <LU 站長帳號>）。LU 後台 Vue hash SPA，與 RC/RE 不同框架：
 
 - **側欄 `.sidebar.hide`（收合/移出畫面）** → 所有側欄連結在 viewport 外，**必須
   `dispatch_event("click")`**（仿 RC CSS-hidden sidebar，見本檔「元素互動例外」精神）。
@@ -125,7 +125,7 @@ TOTP 都被拒（OTP 元件填滿自動送出 → 清空 → 停在 `#/login`）
 
 | 入口 | URL 形態 | 對應 config | 帳號層級 |
 |------|---------|------------|---------|
-| 站長 | `dev-<site>-**admin**-dashboard.t9platform.com` | `SITE_<X>_DASHBOARD_URL` | 站長（LU autolu001：∞ 額度、18 項頂層選單） |
+| 站長 | `dev-<site>-**admin**-dashboard.t9platform.com` | `SITE_<X>_DASHBOARD_URL` | 站長（LU <LU 站長帳號>：∞ 額度、18 項頂層選單） |
 | 代理 | `dev-<site>-dashboard.t9platform.com`（**無 -admin**） | `SITE_<X>_DASHBOARD_AGENT_URL` | 下級代理（LU `SITE_LU_DASHBOARD_AGENT_USER`，權限/選單較少） |
 
 - **config 欄位**：`SiteConfig.dashboard_agent_url`（讀 `SITE_<X>_DASHBOARD_AGENT_URL`，PR #98 新增）。
@@ -134,9 +134,9 @@ TOTP 都被拒（OTP 元件填滿自動送出 → 清空 → 停在 `#/login`）
 
 ### LU 代理層級實作（2026-06-15 probe + 測試）
 
-實機 probe 確認的代理（norauto001）與站長差異 → 已落地 `test_dashboard_agent.py`：
+實機 probe 確認的代理（<LU 代理帳號>）與站長差異 → 已落地 `test_dashboard_agent.py`：
 
-| 面向 | 站長 autolu001 | 代理 norauto001 |
+| 面向 | 站長 <LU 站長帳號> | 代理 <LU 代理帳號> |
 |------|---------------|----------------|
 | 2FA | 有 modal（TOTP） | **無**，帳密直接進 |
 | 登入落點 | `#/dashboard/index` | `#/member/member-management` |
@@ -147,7 +147,7 @@ TOTP 都被拒（OTP 元件填滿自動送出 → 清空 → 停在 `#/login`）
 - **登入碼共用、條件式分流**：`DashboardLoginPage._fill_totp` 改為**短 timeout（4s）偵測 `.dialog-container`**，沒出現即跳過 → 同一 `login()` 同時支援站長（有 2FA）與代理（無 2FA，`totp_secret` 不傳）。`verify_login_success` 改以「側欄出現」為共同成功信號（不綁落點 URL）。
 - **導航分兩法**：站長用 `ManagementPage.navigate(route_substr)`（href + dispatch）；代理用 `navigate_agent(parent_id)`（展開父選單 → 結構定位無 href 葉節點 → dispatch）。
 - **fixture 隔離**：`agent_dashboard_page` / `go_agent_dashboard`（讀 `dashboard_agent_url/user/pass`，獨立 context）；站長 `dashboard_page` / `go_dashboard` 不動。兩帳號不同、同 session 並存不互踢。
-- **存提仍 defer**：norauto001 為空帳號（0 會員 / 0 餘額 / 0 銀行卡、提款鈕灰掉），無法做可逆對稱 balance 驗證（同 ∞ 站長卡點的另一面）；待有測資的代理帳號再補 deposit/withdraw。
+- **存提仍 defer**：<LU 代理帳號> 為空帳號（0 會員 / 0 餘額 / 0 銀行卡、提款鈕灰掉），無法做可逆對稱 balance 驗證（同 ∞ 站長卡點的另一面）；待有測資的代理帳號再補 deposit/withdraw。
 - 代理錢包頁 `#/userInfo/agent-wallet`（在右上 user 下拉的 Wallet，非側欄）含 BalanceAdjustment Add/Reduce + Credit limit 操作，未來存提實作的入口參考。
 
 ### 其餘待辦

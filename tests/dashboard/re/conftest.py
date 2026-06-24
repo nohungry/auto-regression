@@ -5,7 +5,7 @@ RE 後台測試專用 conftest (BeWin)
 - 每個測試前回到管理頁
 
 登入帳號來自 .env：
-- SITE_RE_DASHBOARD_AGENT_USER/PASS（自動化代理 dreautotes，注意少打一個 t）
+- SITE_RE_DASHBOARD_AGENT_USER/PASS（自動化代理 <RE 代理帳號>，注意少打一個 t）
 - 若未來需要測試儀表板/公告等需完整權限的功能，改用 SITE_RE_DASHBOARD_USER/PASS（總代）
 """
 

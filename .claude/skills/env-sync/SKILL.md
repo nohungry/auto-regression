@@ -83,7 +83,7 @@ SITE_<ID>_COMPANYCODE=...
 # =============================================
 ```
 
-**禁止**在分隔註解中寫密碼字面值（如 `ab123456`），只寫「規則不同」即可。
+**禁止**在分隔註解中寫密碼字面值（任何明文密碼），只寫「規則不同」即可。
 
 # 占位符規則（適用 `.env.example`）
 
@@ -111,14 +111,14 @@ SITE_<ID>_COMPANYCODE=...
    - 真實帳號、真實密碼、真實 TOTP secret、真實內網 IP、真實網域 → 一律改占位符
    - `COMPANYCODE` 例外（如 `drc`），因為它就是公開 site code
 2. **`.env` 註解中不得含密碼字面值**
-   - 例如 `# 後台密碼統一 ab123456!` 或 `# 前台密碼 ab123456`，全部改寫成「規則描述」（如「密碼首字大寫，legacy 例外」）
+   - 例如「後台密碼統一 <明文>」或「前台密碼 <明文>」這類註解，全部改寫成「規則描述」（如「密碼首字大寫，legacy 例外」），不寫明文
 3. **真實憑證禁出 `docs/` 與 skill 文件**（見 memory `feedback_no_real_credentials_in_docs.md`）
    - 範例一律用 `xxxx001` / `your_username` 類占位
 
 每次完成 .env 編輯後，跑這條檢查指令並回報結果：
 
 ```bash
-grep -nE 'ab123456|Ab123456|<actual-password-pattern>' .env | grep '^[[:digit:]]*:#' || echo "(clean: no password literal in comments)"
+grep -nE '[Aa]b[0-9]{6}' .env | grep '^[[:digit:]]*:#' || echo "(clean: no password literal in comments)"
 ```
 
 # CDP_URL 在地化（Critical）
@@ -201,8 +201,8 @@ echo "=== Common: $(comm -12 /tmp/keys_env.txt /tmp/keys_example.txt | wc -l) ==
 ## 2. 密碼字面值檢查
 
 ```bash
-grep -nE 'ab123456|Ab123456' .env | grep '^[[:digit:]]*:#' && echo "❌ password literal in comments" || echo "✅ clean"
-grep -nE 'ab123456|Ab123456' .env.example && echo "❌ real password in example" || echo "✅ clean"
+grep -nE '[Aa]b[0-9]{6}' .env | grep '^[[:digit:]]*:#' && echo "❌ password literal in comments" || echo "✅ clean"
+grep -nE '[Aa]b[0-9]{6}' .env.example && echo "❌ real password in example" || echo "✅ clean"
 ```
 
 ## 3. 站數一致
@@ -217,13 +217,15 @@ echo ".env.example 站數（含註解）: $(grep -cE '^# *SITE_[A-Z]+_URL=' .env
 
 合併或檢查時若遇到以下值，**保持原樣不要自動「修正」**：
 
-| 站 | Key | 值 | 原因 |
-|----|-----|-----|------|
-| RC | `SITE_RC_DASHBOARD_AGENT_USER` | `qadrctest` | 第一組創建，沿用 legacy 命名（不是 `qaautodrc`） |
-| RC | `SITE_RC_PASSWORD` / `SITE_RC_DASHBOARD_PASS` | `Ab123456!`（首字大寫） | Legacy 帳號平台未統一更新；其他信用版站皆小寫 `ab123456!` |
-| RE | `SITE_RE_DASHBOARD_AGENT_USER` | `dreautotes`（少一個 `t`） | 創建時 typo，**不要**自動補成 `dreautotest` |
-| LT | `SITE_LT_DASHBOARD_AGENT_USER` | `qaautodlt` | 2026-04-30 從舊 `qadlttest1` 改名統一 |
-| 其他 | `SITE_<X>_DASHBOARD_AGENT_USER` | `qaautod<site>` | 命名規則：`qaauto` + 小寫 site code |
+> ⚠️ 實際帳密值一律以本機 `.env` 為準，本表只描述「規則差異」不寫真實值（依 [[feedback-no-real-credentials-in-docs]]）。
+
+| 站 | Key | quirk（規則，非實際值） | 原因 |
+|----|-----|------------------------|------|
+| RC | `SITE_RC_DASHBOARD_AGENT_USER` | 沿用 legacy 命名，**不**符合標準 `qaauto<site>` 樣式 | 第一組創建，未跟著改名 → 不要自動「修正」成標準樣式 |
+| RC | `SITE_RC_PASSWORD` / `SITE_RC_DASHBOARD_PASS` | 密碼**首字大寫**（其他信用版站皆全小寫） | Legacy 帳號平台未統一更新 → 不要自動改成小寫 |
+| RE | `SITE_RE_DASHBOARD_AGENT_USER` | 帳號尾字少一個 `t`（typo） | 創建時 typo，**不要**自動補字 |
+| LT | `SITE_LT_DASHBOARD_AGENT_USER` | 曾於 2026-04-30 改名統一為標準樣式 | 與舊命名不同，以 .env 現值為準 |
+| 其他 | `SITE_<X>_DASHBOARD_AGENT_USER` | 標準命名樣式 `qaauto<site>`（site 小寫） | 一般規則 |
 
 # 與其他 skill 的銜接
 

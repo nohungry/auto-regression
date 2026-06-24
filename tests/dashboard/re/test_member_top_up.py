@@ -2,8 +2,8 @@
 RE 後台會員充值測試 (BeWin) — 存入/提取
 RE-DASH-001
 
-使用 .env 的 SITE_RE_DASHBOARD_AGENT_USER（dreautotes，自動化代理）登入後台，
-對其底下會員 SITE_RE_USERNAME（dreauto01）進行存入與提取操作，
+使用 .env 的 SITE_RE_DASHBOARD_AGENT_USER（<RE 代理帳號>，自動化代理）登入後台，
+對其底下會員 SITE_RE_USERNAME（<RE 會員帳號>）進行存入與提取操作，
 驗證會員餘額與代理剩餘額度正確增減。
 
 對齊 tests/dashboard/rc/test_member_top_up.py 的設計（rollback 補償、對稱金額）。
