@@ -104,7 +104,7 @@ tests/re/                   — re site tests (test_p0_smoke.py p0, feature/<nam
 tests/re/conftest.py        — re-specific overrides: site_config=re, go_home
 tests/rd/                   — rd site tests (test_p0_smoke.py p0, feature/<name>/ p1: announcement_popup, i18n, navigation)
 tests/rd/conftest.py        — rd-specific overrides: site_config=rd, go_home
-tests/qw/                   — qw site tests (test_p0_smoke.py p0, feature/<name>/ p1: navigation, announcement_popup, i18n; feature/visual/ p2)
+tests/qw/                   — qw site tests (test_p0_smoke.py p0, feature/<name>/ p1: navigation, announcement_popup, i18n, home_sections, member, sidebar; feature/copy p2 (含 title xfail：QW dev <title> 誤掛王老吉/RC 名); feature/visual/ p2)
 tests/qw/conftest.py        — qw-specific overrides: site_config=qw, go_home (+ dismiss popup-mask)
 tests/lg/                   — lg site tests (test_p0_smoke.py p0; feature/<name>/ p1: announcement_popup, navigation, member, wallet, i18n, game, sidebar, home_sections; copy p2; visual p2; modal 登入)
 tests/lg/conftest.py        — lg-specific overrides: site_config=lg, go_home (+ dismiss 進站公告)

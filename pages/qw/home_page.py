@@ -2,17 +2,23 @@
 首頁 Page Object — qw 站點（LM來財娛樂城）
 登入成功後的首頁驗證、彈窗清理、登出
 
-probe 結果（2026-05-22）：
+probe 結果（2026-05-22；2026-06-25 補 sidebar/member）：
 - Avatar：img[alt="avatar"]（與 RC 同 alt，巧合）
 - Avatar 容器：.avatar-trigger（cursor-pointer）
 - Username 顯示：.avatar-trigger p
 - Dropdown：hover 觸發（非 click！Vue/Nuxt behavior）
+  展開後 .avatar-menu__panel 顯示，內含 .avatar-menu__item（DIV，click 可 navigate）
+  menu items（繁體）：帳戶管理/VIP特權/紅利禮包/銀行卡管理/帳戶明細/投注紀錄/
+                      實時返水/全民代理/消息中心/個人信息 + button.avatar-menu__logout
+  點 帳戶管理 → /member-center?type=MyAccount
 - 登出按鈕：button.avatar-menu__logout
 - 公告彈窗：.popup-mask（全屏 mask）+ .popup-close（X 按鈕）
 - TOTP 提示：button，text 含「下次再說」（多語系：用 has_text 配合 try-except）
 
 多語系注意：QW 多語系站（LaiBetLanguage cookie），不綁文案 selector。
 登出按鈕用 CSS class（.avatar-menu__logout）而非文案。
+
+注意：QW 無 KS 式右側 drawer；sidebar = avatar-menu__panel（hover dropdown）。
 """
 
 from playwright.sync_api import Page, expect, TimeoutError as PlaywrightTimeoutError
@@ -228,3 +234,82 @@ class HomePage:
         expect(self.login_entry_btn).to_be_visible(timeout=10000)
         self.login_entry_btn.scroll_into_view_if_needed()
         if sh: sh.capture(self.login_entry_btn, "verify_登出成功")
+
+    # ------------------------------------------------------------------
+    # User Menu（avatar dropdown）— sidebar feature 用
+    # ------------------------------------------------------------------
+
+    def open_user_menu(self):
+        """展開 avatar-menu__panel（hover dropdown）。
+
+        QW 無 hamburger 右側 drawer；user menu 是 avatar-trigger hover 後出現的
+        .avatar-menu__panel。hover 以 JS dispatchEvent 觸發（mouseenter/mouseover），
+        避免 Playwright hover() 後 mouseleave 立即收起。
+        等待 .avatar-menu__panel visible 作為展開成功信號。
+        """
+        self.dismiss_any_popups()
+        self.avatar_trigger.evaluate("""el => {
+            const rect = el.getBoundingClientRect();
+            const opts = { bubbles: true, cancelable: true,
+                clientX: rect.left + rect.width / 2, clientY: rect.top + rect.height / 2 };
+            el.dispatchEvent(new MouseEvent('mouseenter', opts));
+            el.dispatchEvent(new MouseEvent('mouseover', opts));
+        }""")
+        expect(self.page.locator('.avatar-menu__panel')).to_be_visible(timeout=5000)
+
+    def user_menu_item_texts(self) -> list:
+        """回傳 avatar-menu__panel 內的項目文字（含登出按鈕）。
+
+        供 sidebar feature 驗證選單結構完整性。
+        呼叫前須先 open_user_menu()。
+        """
+        panel = self.page.locator('.avatar-menu__panel')
+        return panel.evaluate(
+            """el => {
+                const out = [];
+                el.querySelectorAll('.avatar-menu__item, button').forEach(n => {
+                    const t = (n.textContent || '').trim().replace(/\\s+/g, ' ');
+                    if (t) out.push(t);
+                });
+                return out;
+            }"""
+        )
+
+    def click_menu_item_by_text(self, text: str):
+        """在 avatar-menu__panel 中點含 text 的 .avatar-menu__item。
+
+        QW panel item 為 DIV（非 <a>），click 後 Vue handler 做 router 跳轉。
+        需先 open_user_menu() 確保 panel 可見。
+        """
+        sh = get_screenshotter(self.page)
+        panel = self.page.locator('.avatar-menu__panel')
+        item = panel.locator(f'.avatar-menu__item:has-text("{text}")').first
+        if sh: sh.capture(item, f"click_menu_{text}")
+        item.click()
+
+    # ------------------------------------------------------------------
+    # 會員中心 — member feature 用
+    # ------------------------------------------------------------------
+
+    def open_member_page(self):
+        """開啟會員中心（點 avatar panel 中「帳戶管理」→ /member-center?type=MyAccount）。
+
+        QW 會員中心入口：hover avatar-trigger → panel 展開 → 點「帳戶管理」。
+        「帳戶管理」為 .avatar-menu__item 第一項，click 後 URL → /member-center?type=MyAccount。
+        probe 確認（2026-06-25）：click（非 dispatch_event）觸發 Vue router。
+
+        注意：go_home 後 Nuxt hydration 需要時間完成；panel visible 不代表 Vue click handler
+        已綁定。加短暫 wait 讓 hydration 穩定，避免 click 後 router 不響應。
+        本方法只負責觸發動作，不等 navigation；呼叫端需自行等 URL 變更。
+        """
+        sh = get_screenshotter(self.page)
+        self.open_user_menu()
+        panel = self.page.locator('.avatar-menu__panel')
+        if sh: sh.capture(panel, "verify_panel_opened")
+        # 等待 Vue click handler 綁定（panel 可見後短暫 hydration 延遲）
+        self.page.wait_for_timeout(500)
+        # 點「帳戶管理」（第一個 item，locale 繁體下確認為此文案）
+        # 多語系保護：用 first item 定位，不寫死文案
+        first_item = panel.locator('.avatar-menu__item').first
+        if sh: sh.capture(first_item, "click_帳戶管理")
+        first_item.click()
