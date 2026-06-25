@@ -5,8 +5,9 @@ LU 後台測試專用 conftest
 
 - `dashboard_page`（站長 <LU 站長帳號>）：SITE_LU_DASHBOARD_URL/USER/PASS + TOTP（2FA）。
   落點 `#/dashboard/index`，頂層選單 18 項。
-- `agent_dashboard_page`（代理 <LU 代理帳號>）：SITE_LU_DASHBOARD_AGENT_URL/USER/PASS，
-  **無 2FA**（2026-06-15 probe 確認）。落點 `#/member/member-management`，頂層選單 5 項。
+- `agent_dashboard_page`（代理 <LU 代理帳號>）：SITE_LU_DASHBOARD_AGENT_URL/USER/PASS
+  + SITE_LU_DASHBOARD_AGENT_TOTP（**2026-06-25 起代理也強制 2FA**，原本無）。
+  落點 `#/member/member-management`，頂層選單 5 項。
 
 兩帳號不同（不會互踢 session），同一 pytest session 內可並存。
 存提（deposit/withdraw）暫不做：代理 <LU 代理帳號> 為空帳號（0 會員 / 0 餘額 / 0 銀行卡），
@@ -120,10 +121,12 @@ def agent_dashboard_page(browser, site_config):
     try:
         DashboardLoginPage = get_dashboard_login_page_class(site_config.site_id)
         login = DashboardLoginPage(page, site_config.dashboard_agent_url)
-        # 代理無 2FA：totp_secret 不傳（_fill_totp 偵測不到 modal 自動跳過）
+        # 代理現已強制 2FA（2026-06-25 站點政策變更，原本無 2FA）：帶 dashboard_agent_totp。
+        # _fill_totp 仍為條件式（偵測不到 modal 會跳過），故站點若再撤掉 2FA 也不會壞。
         login.goto_and_login(
             site_config.dashboard_agent_user,
             site_config.dashboard_agent_pass,
+            site_config.dashboard_agent_totp,
         )
         sh.generate_report()
     finally:
