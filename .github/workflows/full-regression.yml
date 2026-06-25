@@ -1,4 +1,4 @@
-name: Full Regression (8 sites)
+name: Full Regression (9 sites)
 
 # 觸發條件：
 # - 每週一 08:00 台灣（= 00:00 UTC Monday）跑完整 regression，週末產品變動週一上班看得到
@@ -28,7 +28,7 @@ jobs:
       # 任一 site fail 不取消其他 site，讓所有結果可見
       fail-fast: false
       matrix:
-        site: [rc, lt, re, rd, qw, lg, lu, ks]
+        site: [rc, lt, re, rd, qw, lg, lu, ks, rf]
 
     # 同 site 帳號不能並行（會互踢 session）；與 p0.yml 共用同一個 lock group → 若同時 PR 跑與
     # cron 跑撞在一起，後者會等前者完成（避免帳號互踢）
@@ -82,6 +82,9 @@ jobs:
           SITE_KS_URL: ${{ secrets.SITE_KS_URL }}
           SITE_KS_USERNAME: ${{ secrets.SITE_KS_USERNAME }}
           SITE_KS_PASSWORD: ${{ secrets.SITE_KS_PASSWORD }}
+          SITE_RF_URL: ${{ secrets.SITE_RF_URL }}
+          SITE_RF_USERNAME: ${{ secrets.SITE_RF_USERNAME }}
+          SITE_RF_PASSWORD: ${{ secrets.SITE_RF_PASSWORD }}
         run: |
           # 跑該 site 整個目錄（含 P0 + 全 feature）；--reruns 1 處理 flaky；--tb=short 縮短 log
           pytest tests/${{ matrix.site }}/ \
