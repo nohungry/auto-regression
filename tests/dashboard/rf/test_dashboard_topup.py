@@ -22,7 +22,6 @@ Rollback 設計（對稱還原 + try/finally 補償）：
 """
 
 import pytest
-from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
 from pages.dashboard.factory import get_dashboard_management_page_class
 
 
@@ -107,5 +106,5 @@ class TestMemberTopUp:
                     mgmt.switch_to_member_tab()
                     mgmt.set_page_size(500)
                     mgmt.withdraw(member_account, AMOUNT)
-                except PlaywrightTimeoutError:
-                    pass  # best-effort，不遮蔽原始測試錯誤
+                except Exception as e:  # noqa: BLE001 — 補償 best-effort，僅警告不遮蔽原始測試失敗
+                    print(f"[rollback warning] 補償提取未完成：{type(e).__name__}: {e}")

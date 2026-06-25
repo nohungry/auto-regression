@@ -109,35 +109,24 @@ class ManagementPage:
     # -----------------------------------------------
 
     def switch_to_member_tab(self):
-        """切換到 container-management 的「會員」tab。
+        """切換到主內容區（.container-management）的「會員」tab。
 
-        頁面共有 6 個 button.tab-btn（代理/會員/子帳號 × 2 組）。
-        前 3 個屬於 .tabs-search（左側代理搜尋），後 3 個屬於 .container-management（主內容）。
-        找所有 visible button.tab-btn，第 5 個（index 4，0-based）為主內容區的「會員」tab。
+        頁面有 6 個 button.tab-btn：.tabs-search（左側代理搜尋）與 .container-management
+        （主內容）各一組「代理/會員/子帳號」。以 .container-management 範圍 + 文字「會員」
+        穩定鎖定主內容區的會員 tab（取代舊版脆弱的 visible index 4：DOM 順序變動會靜默命中錯項）。
+        selector 命中唯一（probe 2026-06-25 確認）；RF 信用版後台單一中文，tab 文案穩定。
         """
         sh = get_screenshotter(self.page)
-        tab_btns = self.page.locator("button.tab-btn")
-
-        # 等待 tab 渲染完成
-        tab_btns.first.wait_for(state="visible", timeout=15000)
-
-        # 取所有 visible tab，選 index 4（主內容區的會員 tab）
-        visible_handles = [
-            tab_btns.nth(i).element_handle()
-            for i in range(tab_btns.count())
-            if tab_btns.nth(i).is_visible()
-        ]
-
-        if len(visible_handles) < 5:
-            raise RuntimeError(
-                f"找不到足夠的 tab-btn（預期 ≥5 個 visible，實際 {len(visible_handles)} 個）"
-            )
+        member_tab = self.page.locator(
+            ".container-management button.tab-btn", has_text="會員"
+        ).first
+        member_tab.wait_for(state="visible", timeout=15000)
 
         if sh:
             sh.full_page("click_切換會員Tab_before")
 
-        # JS click 觸發 Vue event handler（index 4 = 主內容區的「會員」tab）
-        self.page.evaluate("(el) => el.click()", visible_handles[4])
+        # JS click 觸發 Vue event handler（沿用既有慣例，避免祖先 overflow 誤判 actionability）
+        self.page.evaluate("(el) => el.click()", member_tab.element_handle())
         self._wait_for_list_loaded()
 
         if sh:
@@ -368,13 +357,25 @@ class ManagementPage:
 
         submit_btn.click(force=True)
 
-        # 等送出後 dialog 消失（primary-button 被移除）
+        # 等送出後 dialog 消失（primary-button 被移除）= 操作送出成功的信號
+        dialog_closed = True
         try:
             submit_btn_global.wait_for(state="hidden", timeout=15000)
         except PlaywrightTimeoutError:
-            pass
+            dialog_closed = False
 
         self._wait_for_list_loaded()
+
+        if not dialog_closed:
+            # dialog 未如期關閉：操作很可能未成功（前端驗證錯誤 / 餘額不足 / 後端拒絕）。
+            # 不可靜默 pass（會讓後續 balance 驗證誤判，且截圖 label「已關閉」會誤導）；
+            # 截一張反映真實狀態的圖並拋錯，讓失敗顯性。
+            if sh:
+                sh.full_page(f"verify_{operation}_dialog未關閉_疑送出失敗")
+            raise RuntimeError(
+                f"{operation} 送出後 dialog 未於 15s 內關閉，疑操作未成功"
+                f"（前端驗證錯誤 / 餘額不足 / 後端拒絕），請查截圖確認"
+            )
 
         if sh:
             sh.full_page(f"verify_{operation}_dialog已關閉")
