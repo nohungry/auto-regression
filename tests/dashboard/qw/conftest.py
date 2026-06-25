@@ -8,8 +8,9 @@ QW 後台測試專用 conftest（LM來財娛樂城，Vue admin 代理後台）
 ⚠️ QW 代理**需要 2FA**（與 LU/LG/KS 代理不同）：傳入 SITE_QW_DASHBOARD_AGENT_TOTP，
    LU 的條件式 _fill_totp 會偵測 modal 並填碼。
 
-QW 代理為空帳號（0 會員）→ 不做存提，僅 login + 導航 + logout smoke。
-站長層級（-admin + 2FA）本檔暫不涵蓋。
+站長層級（-admin + 2FA，2026-06-25 新增，供主錢包 top_up）：
+- dashboard_page：以站長帳號 SITE_QW_DASHBOARD_USER + TOTP 登入（-admin 入口）
+QW 代理為空帳號（0 會員）→ 代理不做存提；站長層級對前台測試帳號做主錢包額度調整。
 """
 
 import pytest
@@ -86,3 +87,45 @@ def go_agent_dashboard(agent_dashboard_page, site_config):
         state="attached", timeout=15000
     )
     return agent_dashboard_page
+
+
+@pytest.fixture(scope="session")
+def dashboard_page(browser, site_config):
+    """Session-scoped 已登入後台 page（站長層級，含 TOTP 2FA）。
+    使用 .env SITE_QW_DASHBOARD_USER/PASS（-admin 入口）+ SITE_QW_DASHBOARD_TOTP。
+    與代理 agent_dashboard_page 不同帳號，互不互踢；整 session 只登入一次（2FA 避免 rate-limit）。
+    """
+    context = browser.new_context(no_viewport=True)
+    page = context.new_page()
+
+    # 視窗最大化（CDP 指令，WSL 連 Windows Chrome 時才會成功；失敗不影響測試）
+    try:
+        cdp = context.new_cdp_session(page)
+        window_id = cdp.send("Browser.getWindowForTarget")["windowId"]
+        cdp.send("Browser.setWindowBounds", {
+            "windowId": window_id,
+            "bounds": {"windowState": "maximized"},
+        })
+        cdp.detach()
+    except Exception:
+        pass
+
+    sh = ScreenshotHelper(
+        page, "dashboard_login_2fa", "QW 後台站長登入（含 TOTP 2FA）",
+        site_id=site_config.site_id, category="feature",
+    )
+    attach_screenshotter(page, sh)
+    try:
+        DashboardLoginPage = get_dashboard_login_page_class(site_config.site_id)
+        login = DashboardLoginPage(page, site_config.dashboard_url)
+        login.goto_and_login(
+            site_config.dashboard_user,
+            site_config.dashboard_pass,
+            site_config.dashboard_totp,
+        )
+        sh.generate_report()
+    finally:
+        detach_screenshotter(page)
+
+    yield page
+    context.close()
