@@ -8,7 +8,7 @@
 
 | # | 站 | 問題 | 證據 / 實況 | 測試守門 | 嚴重度 |
 |---|----|------|------------|---------|--------|
-| 1 | **LT** | **首頁底部中央 footer tab 破損**：5 個 tab `[維護, 公告, (空), 排行榜, 個人]` 的**中間第 3 個 tab 圖示與文字都是空的** | probe 2026-06-26：該 tab icon 為 `<img src="" h=0>`（無 src/data-src），label 也空。應為中央主入口（如「遊戲大廳」）渲染壞掉 | `tests/lt/.../test_visual.py::test_home_no_broken_images`、`test_i18n_hydration.py::test_home_images_no_empty_src`（deterministic FAIL） | 中（首頁主導覽缺一個入口） |
+| 1 | **LT** | **首頁底部中央 footer tab 破損**：5 個 tab `[維護, 公告, (空), 排行榜, 個人]` 的**中間第 3 個 tab 圖示與文字都是空的** | probe 2026-06-26/27：該 tab icon 為 `<img src="" h=0>`（無 src/data-src），label 也空。應為中央主入口（如「遊戲大廳」）渲染壞掉 | `tests/lt/feature/i18n/test_i18n_hydration.py::test_home_images_no_empty_src`（**xfail(strict)** 守門，修好自動 XPASS）；`test_visual.py::test_home_no_broken_images` 已排除空 src、專守真破圖 | 中（首頁主導覽缺一個入口） |
 | 2 | **LT** | **登入頁帳號欄 placeholder 文案錯**：顯示「請填寫8-20位的字母或數字」，應為帳號規則（4-10 位）。疑與密碼欄（8-20）複製錯誤 | probe 2026-06-26：username & password 兩欄 placeholder 完全相同 | `tests/lt/feature/copy/test_copy.py::test_login_username_placeholder`（xfail strict） | 低（文案） |
 | 3 | **QW** | **首頁 `<title>` 誤掛「王老吉娛樂城」**（RC 站名），正確應為「LM來財娛樂城」。疑 RC 模板複製未改 | dev-qw 前台實測 | `tests/qw/feature/copy/test_copy.py::test_home_title`（xfail strict） | 中（SEO/品牌） |
 | 4 | **RD** | **未登入點 sidebar 不會自動彈出登入 modal**（其他站有此 UX） | 實測未觸發登入彈窗 | `tests/rd/feature/sidebar/test_sidebar.py::test_sidebar_triggers_login`（xfail strict） | 低（UX 缺漏） |

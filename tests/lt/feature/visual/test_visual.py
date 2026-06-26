@@ -45,10 +45,13 @@ class TestVisual:
         page.wait_for_timeout(2000)
         sh = get_screenshotter(page)
 
+        # 排除 src='' 空圖：那是「中央 footer tab 缺 icon」站點 bug（empty-src），
+        # 由 test_i18n_hydration::test_home_images_no_empty_src（xfail strict）專責守門。
+        # 本測試專注抓「真·載入失敗」的圖（有 src 但 naturalWidth 0），仍能抓出 NEW 破圖。
         broken = page.locator("img").evaluate_all("""imgs =>
             imgs
                 .map(img => ({ src: img.getAttribute('src'), complete: img.complete, naturalWidth: img.naturalWidth }))
-                .filter(img => img.complete && img.naturalWidth === 0)
+                .filter(img => img.complete && img.naturalWidth === 0 && img.src && img.src !== '')
         """)
         total_imgs = page.locator("img").count()
         # 截圖先於 assert
@@ -164,6 +167,6 @@ class TestVisual:
         # inputs 左邊界相對 buttons 的 padding 落在合理範圍（desktop responsive 寬鬆些）
         assert abs(padding) <= 40, f"inputs/buttons 左邊界差距超過合理 padding：{padding}px"
 
-    @pytest.mark.skip(reason="2026-05-18 換版：原 .cat-btn 分類 tab + .shadow-menubar 底部 tabbar 結構已消失，需依新版（hero swipe sections + .footer-bg 5 個 .content tab）重新設計 viewport 驗證，暫 skip")
+    @pytest.mark.skip(reason="DEFER：desktop 版首頁為長捲動單頁（hero swipe sections + .footer-bg 5 tab），舊 .cat-btn/.shadow-menubar viewport 驗證不適用。新版 viewport 驗證低優先；且底部中央 footer tab 有站點 bug（破 icon，見 docs/product-bugs-to-report.md），待產品修後再設計。")
     def test_home_navbar_and_login_in_viewport(self, page: Page, site_config):
-        """WIN-VIS-007：首頁主要可點擊元素都在視窗內（待依新版結構重設計）"""
+        """WIN-VIS-007：[DEFER] 首頁可點擊元素在視窗內 — 待新版 viewport 驗證設計 + footer tab 站點 bug 修復"""

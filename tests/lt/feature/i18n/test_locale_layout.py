@@ -32,9 +32,9 @@ from ._locale_helpers import (
 )
 
 pytestmark = pytest.mark.skip(
-    reason="LT 2026-04-19 改版：home_shell/login_page/member_menu/betting_record/member_info/maintenance "
-           "結構與 fingerprint baseline 失配，待整輪 rebuild + 重建 baseline。"
-           "見 memory: project_lt_site_redesign.md"
+    reason="DEFER：LT 2026-05-18 desktop 換版後 home_shell/login_page/member_menu/betting_record/member_info/"
+           "maintenance 結構與舊 fingerprint baseline 全失配，需重建 baseline。低優先（locale_layout fingerprint "
+           "比對屬輔助驗證，i18n 文案守門已由 login_locale/home_locale 涵蓋）。待有需要再重建 baseline + un-skip。"
 )
 
 

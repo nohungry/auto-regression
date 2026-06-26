@@ -17,8 +17,9 @@ from utils.locale_helper import set_locale
 from utils.screenshot_helper import get_screenshotter
 
 pytestmark = pytest.mark.skip(
-    reason="WAP 首頁 nav（.cat-btn + 底部 tabbar）尚未套 i18n，所有語系都固定繁中。"
-           "待產品端實作首頁 nav 多語系後再 un-skip。現況見檔頭 docstring。"
+    reason="產品缺口：desktop 版首頁 swipe sections（來財獨家/爆分精選/活動專區）與部分 nav 尚未套 i18n，"
+           "所有語系固定繁中（probe 2026-06-27；footer 維護/公告/排行榜 tab 其實有翻譯，但 section 標題等未翻）。"
+           "待產品端補首頁多語系後 un-skip。見 docs/product-bugs-to-report.md（LT i18n）。"
 )
 
 

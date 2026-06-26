@@ -84,8 +84,8 @@ class TestI18NLangSwitcher:
 
     @pytest.mark.xfail(
         strict=True,
-        reason="WAP 產品端尚未實作 span.lang-text i18n（所有語系固定繁中）；"
-               "此 xfail 在產品修正後會 XPASS 並觸發失敗，提醒拿掉 xfail。"
+        reason="產品缺口：登入頁 span.lang-text i18n 未實作，所有語系固定繁中（probe 2026-06-27 確認）。"
+               "見 docs/product-bugs-to-report.md。產品修正後本 xfail(strict) 會 XPASS 觸發失敗，提醒拿掉 xfail。"
     )
     def test_lang_text_reflects_locale(self, page: Page, site_config):
         """切換 5 語系後，左上角 span.lang-text 應顯示對應語系名稱（至少與 tw 不同）"""

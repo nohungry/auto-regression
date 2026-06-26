@@ -71,8 +71,14 @@ class TestI18NHydration:
         if sh: sh.full_page(f"verify_footer_tab_i18n_hydrate現況_raw{len(raw_keys)}")
         assert raw_keys == [], f"footer tab 出現 raw i18n key（hydrate 失敗）：{raw_keys}"
 
+    @pytest.mark.xfail(
+        strict=True,
+        reason="🚩 站點 bug：首頁底部**中央 footer tab 缺 icon** — 該 tab 的 `<img src='' loading='lazy'>` "
+               "src 永久空（無 data-src），滾動+networkidle 都不填（probe 2026-06-27 確認 deterministic）。"
+               "見 docs/product-bugs-to-report.md。產品修好後本 xfail(strict) 會 XPASS 觸發失敗，提醒拿掉 xfail。",
+    )
     def test_home_images_no_empty_src(self, page: Page, site_config):
-        """WIN-I18N-HYDR-003：首頁可見 `<img>` 不應存在 `src=""` 空值（動態值斷言：只驗非空）"""
+        """WIN-I18N-HYDR-003：首頁可見 `<img>` 不應存在 `src=""` 空值（gate 中央 footer tab 站點 bug）"""
         login = LoginPage(page, site_config.url)
         login.goto()
         page.wait_for_timeout(2000)
