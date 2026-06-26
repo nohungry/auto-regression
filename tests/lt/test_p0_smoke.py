@@ -183,9 +183,9 @@ class TestHomePage:
         if sh: sh.capture(home.navbar_balance, f"verify_navbar_信用額度非空_{balance_text}")
         assert balance_text != "", "navbar 信用額度欄位不應為空"
 
-    @pytest.mark.skip(reason="WAP 版首頁已無公告跑馬燈（原 img[alt='Annt'] 不存在）；desktop 版亦未確認，需 probe")
+    @pytest.mark.skip(reason="desktop 版首頁無公告跑馬燈（probe 2026-06-26 確認）；公告已改隸右側 sidebar（.sidebar-item.announce），改由 feature/sidebar 涵蓋。此 marquee 測試永久不適用。")
     def test_announcement_marquee(self, page: Page, site_config):
-        """TC-011：首頁公告跑馬燈有內容顯示（待 probe 確認新版位置）"""
+        """TC-011：[OBSOLETE] 首頁公告跑馬燈 — desktop 已移除，公告移入 sidebar（見 feature/sidebar）"""
 
     def test_hot_games_section(self, page: Page, site_config):
         """TC-012：首頁顯示 hero section 標題與遊戲卡片。
@@ -269,7 +269,7 @@ class TestNavigation:
     `.cat-btn--selected` 切換機制不存在。整組 skip 待產品決定新版分類互動模式後重寫。
     """
 
-    @pytest.mark.skip(reason="2026-05-18 換版：.cat-btn 與 .cat-btn--selected 機制已消失，改為 swipe sections（span.category-title），無 selected 狀態切換")
+    @pytest.mark.skip(reason="desktop 版分類 tab 切換機制（.cat-btn--selected）已由產品移除（probe 2026-06-26 確認），改為單頁 3 個 swipe sections（span.category-title：來財獨家/爆分精選/活動專區），無 tab 切換互動。section 存在性已由 TestHome::test_hot_games_section 涵蓋。此測試永久不適用。")
     @pytest.mark.parametrize("nav_item", [
         "我的最愛",
         "台灣真人",

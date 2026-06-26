@@ -53,10 +53,18 @@ class LoginPage:
         self.error_confirm_btn = page.locator("button.toast-confirm-btn").first
 
     def goto(self, locale: str = "tw"):
-        """開啟首頁，並預先設定語系 cookie"""
+        """開啟首頁，並預先設定語系 cookie。
+
+        Nuxt SPA 'load' event 偶爾 30s 內不觸發（goto timeout）→ 改 domcontentloaded。
+        但首頁有 lazy-load 圖片，domcontentloaded 時 src 尚未被 JS 賦值（破圖測試會誤判）→
+        再等 networkidle（圖片請求 settle），有 timeout fallback，flaky 時不致卡死。
+        """
         set_locale(self.page, self.base_url, locale)
-        self.page.goto(self.base_url)
-        self.page.wait_for_load_state("domcontentloaded")
+        self.page.goto(self.base_url, wait_until="domcontentloaded")
+        try:
+            self.page.wait_for_load_state("networkidle", timeout=12000)
+        except PlaywrightTimeoutError:
+            pass
 
     def goto_login(self, locale: str = "tw"):
         """直接導向 /login（Nuxt SPA：hydrate 完前 form 觸發會失效）"""

@@ -2,17 +2,17 @@
 LT 文案一致性驗證（職責：預設語系繁中的品牌/結構文案）
 WIN-COPY-001~005
 
-本檔僅驗證預設語系（繁中）下的文案是否符合產品定義：
-- 首頁 title、頁尾版權
-- 登入頁 placeholder / CTA / 欄位標籤 / 免責聲明（**綁死繁中為刻意設計**）
-- 首頁分類排序（語系無關，以 href/src 識別）
+2026-05-18 desktop 改版後重寫（probe 2026-06-26 確認）：
+desktop 版精簡了登入/首頁，下列元素**產品端已移除**，對應測試改為 skip（永久不適用）：
+- 首頁頁尾版權文案（無 Copyright 節點）
+- 登入頁欄位標籤「會員帳號/登入密碼」（改為圖片化 header「登入帳號」，DOM 無文字）
+- 登入頁免責聲明
+- 首頁 `a[href^="/Categories/"]` 分類 nav（改單頁 swipe sections，見 test_p0_smoke / test_hot_games_section）
 
-多語系切換後的文案驗證請見：
-- `tests/lt/feature/i18n/test_login_locale.py`（登入頁欄位）
-- `tests/lt/feature/i18n/test_home_locale.py`（首頁 nav）
-- `tests/lt/feature/i18n/test_drawer_locale.py`（會員 drawer）
+仍有效並重寫：首頁 title、登入頁 CTA（會員登入/先去逛逛）、密碼 placeholder。
+🚩 帳號欄 placeholder 疑似產品 bug（顯示 8-20，應為 4-10）→ xfail(strict) 守門，修正後 XPASS。
 
-兩邊職責互補、不重疊：本檔守門繁中文案是否變更，i18n 套件守門語系切換是否完整覆蓋。
+多語系切換文案見 `tests/lt/feature/i18n/`（職責互補，本檔守繁中文案）。
 """
 
 import pytest
@@ -20,79 +20,66 @@ from playwright.sync_api import Page, expect
 from pages.lt.login_page import LoginPage
 from utils.screenshot_helper import get_screenshotter
 
-pytestmark = pytest.mark.skip(
-    reason="LT 2026-04-19 改版：首頁 title/頁尾/分類排序與登入頁欄位結構改變，待整輪 rebuild。"
-           "見 memory: project_lt_site_redesign.md"
-)
-
 
 @pytest.mark.p2
 @pytest.mark.lt
 @pytest.mark.copy
 class TestCopy:
-    """WIN-COPY-001~005：文案一致性驗證"""
+    """WIN-COPY-001~005：文案一致性驗證（desktop 版）"""
 
-    def test_home_title_and_footer(self, page: Page, site_config):
-        """WIN-COPY-001：首頁標題與頁尾版權文案一致"""
+    def test_home_title(self, page: Page, site_config):
+        """WIN-COPY-001：首頁 <title> 文案一致（LM來財信用網）"""
         login = LoginPage(page, site_config.url)
         login.goto()
         sh = get_screenshotter(page)
         expect(page).to_have_title("LM來財信用網")
-        copyright_el = page.get_by_text("Copyright © 2025 LaiCai All rights reserved.").first
-        expect(copyright_el).to_be_visible()
-        if sh: sh.capture(copyright_el, "verify_版權文案")
+        if sh: sh.full_page("verify_首頁title")
 
-    def test_login_page_placeholder_and_cta(self, page: Page, site_config):
-        """WIN-COPY-002：登入頁 placeholder 與 CTA 文案正確"""
+    def test_login_cta_buttons(self, page: Page, site_config):
+        """WIN-COPY-002：登入頁 CTA 文案正確（會員登入 / 先去逛逛）。
+        用 POM 結構性 selector（type1/type2，locale-agnostic）+ 繁中文案斷言。
+        """
         login = LoginPage(page, site_config.url)
         login.goto_login()
         sh = get_screenshotter(page)
+        expect(login.login_btn).to_have_text("會員登入", timeout=8000)
+        expect(login.browse_btn).to_have_text("先去逛逛")
+        if sh: sh.capture(login.login_btn, "verify_登入CTA")
 
-        username_input = page.get_by_placeholder("請填寫4-10位的字母或數字")
-        password_input = page.get_by_placeholder("請填寫 8-20 位的字母或數字")
-
-        expect(username_input).to_be_visible()
-        expect(password_input).to_be_visible()
-        expect(page.get_by_role("button", name="登入")).to_contain_text("登入")
-        expect(page.get_by_role("button", name="先去逛逛")).to_contain_text("先去逛逛")
-        if sh: sh.capture(username_input, "verify_帳號placeholder")
-        if sh: sh.capture(password_input, "verify_密碼placeholder")
-
-    def test_login_page_field_labels(self, page: Page, site_config):
-        """WIN-COPY-003：登入頁欄位標籤文案正確（會員登入/會員帳號/登入密碼）"""
+    def test_login_password_placeholder(self, page: Page, site_config):
+        """WIN-COPY-003：登入頁密碼欄 placeholder 文案正確（請填寫8-20位的字母或數字）"""
         login = LoginPage(page, site_config.url)
         login.goto_login()
-
-        body = page.locator("body")
-        for text in ["會員登入", "會員帳號", "登入密碼"]:
-            expect(body).to_contain_text(text)
         sh = get_screenshotter(page)
-        if sh: sh.full_page("verify_登入頁欄位標籤")
-
-    def test_login_page_disclaimer(self, page: Page, site_config):
-        """WIN-COPY-004：登入頁免責聲明文案存在"""
-        login = LoginPage(page, site_config.url)
-        login.goto_login()
-
-        body = page.locator("body")
-        expect(body).to_contain_text("登入即表示您已閱讀並同意本平台之")
-        expect(body).to_contain_text("免責聲明")
-        expect(body).to_contain_text("如不同意請勿使用本服務")
-        sh = get_screenshotter(page)
-        if sh: sh.full_page("verify_免責聲明文案")
-
-    def test_home_category_order(self, page: Page, site_config):
-        """WIN-COPY-005：首頁四個主分類文案順序一致（熱門/真人/電子/捕魚）"""
-        login = LoginPage(page, site_config.url)
-        login.goto()
-
-        nav_texts = page.locator('a[href^="/Categories/"]').evaluate_all(
-            """links => links
-                .map(link => (link.textContent || '').trim())
-                .filter(Boolean)
-                .slice(0, 4)"""
+        expect(login.password_input).to_have_attribute(
+            "placeholder", "請填寫8-20位的字母或數字"
         )
-        assert nav_texts == ["熱門", "真人", "電子", "捕魚"], \
-            f"分類順序不符，實際：{nav_texts}"
-        sh = get_screenshotter(page)
-        if sh: sh.full_page("verify_分類文案順序")
+        if sh: sh.capture(login.password_input, "verify_密碼placeholder")
+
+    @pytest.mark.xfail(
+        strict=True,
+        reason="🚩 產品 copy bug：帳號欄 placeholder 顯示「請填寫8-20位的字母或數字」，"
+               "應為帳號規則（4-10 位，同 password 8-20 疑為複製錯誤）。修正後本測試 XPASS。",
+    )
+    def test_login_username_placeholder(self, page: Page, site_config):
+        """WIN-COPY-004：登入頁帳號欄 placeholder 應反映帳號規則（4-10 位），非密碼的 8-20。"""
+        login = LoginPage(page, site_config.url)
+        login.goto_login()
+        ph = login.username_input.get_attribute("placeholder") or ""
+        assert "4-10" in ph, f"帳號 placeholder 應含 4-10 帳號規則，實際：{ph!r}"
+
+    @pytest.mark.skip(reason="desktop 版首頁已移除頁尾版權文案（probe 2026-06-26：DOM 無 Copyright/版權 節點）。永久不適用。")
+    def test_home_footer_copyright(self, page: Page, site_config):
+        """WIN-COPY-005a：[OBSOLETE] 首頁頁尾版權 — desktop 已移除"""
+
+    @pytest.mark.skip(reason="desktop 版登入頁無欄位標籤文字「會員帳號/登入密碼」；header「登入帳號」為圖片（DOM 無文字）。永久不適用。")
+    def test_login_field_labels(self, page: Page, site_config):
+        """WIN-COPY-005b：[OBSOLETE] 登入頁欄位標籤 — desktop 改圖片化 header"""
+
+    @pytest.mark.skip(reason="desktop 版登入頁已移除免責聲明文案（probe 2026-06-26）。永久不適用。")
+    def test_login_disclaimer(self, page: Page, site_config):
+        """WIN-COPY-005c：[OBSOLETE] 登入頁免責聲明 — desktop 已移除"""
+
+    @pytest.mark.skip(reason="desktop 版首頁已移除 a[href^='/Categories/'] 分類 nav，改單頁 swipe sections（來財獨家/爆分精選/活動專區）。section 由 test_hot_games_section 涵蓋。永久不適用。")
+    def test_home_category_order(self, page: Page, site_config):
+        """WIN-COPY-005d：[OBSOLETE] 首頁分類順序 — desktop 改 swipe sections"""
