@@ -21,20 +21,17 @@ from utils.screenshot_helper import get_screenshotter
 class TestPublicFeatures:
     """WIN-PUB-004~006, 010~011：公開頁延伸功能"""
 
-    @pytest.mark.skip(
-        reason="WAP iPhone 13 UA 下 img[alt='CS'] 浮動未 mount（CDP desktop UA 下可見）；"
-               "bottom tabbar 亦無客服 tab。待確認 WAP mobile 版客服入口實際位置後再補。"
-    )
+    @pytest.mark.skip(reason="[OBSOLETE] 客服入口已由 WIN-PUB-010 test_customer_service_link_exists（active）涵蓋（驗 a.fixed-telegram href 指向 IM 平台）。本 WAP 時代的 img[alt='CS'] 浮動已不存在，永久不適用。")
     def test_customer_service_visible(self, page: Page, site_config):
-        """WIN-PUB-004：客服入口顯示（待 mobile 版客服入口位置確認）"""
+        """WIN-PUB-004：[OBSOLETE] 客服入口顯示 — 改由 WIN-PUB-010 涵蓋"""
 
-    @pytest.mark.skip(reason="WAP 版未登入首頁已無語系 icon；語系切換改為登入頁 span.lang-text，i18n PR 一併驗證")
+    @pytest.mark.skip(reason="[OBSOLETE] desktop 版未登入首頁無語系切換 icon（probe 2026-06-27 確認）；語系切換移至登入頁頂部 locale dropdown。首頁語系 icon 永久不適用。")
     def test_language_icon_visible(self, page: Page, site_config):
-        """WIN-PUB-005：語系切換 icon 存在（WAP 不適用）"""
+        """WIN-PUB-005：[OBSOLETE] 首頁語系 icon — desktop 已移除（移至登入頁）"""
 
-    @pytest.mark.skip(reason="WAP 版首頁已移除版權 footer；DOM 已無 Copyright 文案節點")
+    @pytest.mark.skip(reason="[OBSOLETE] desktop 版首頁已移除版權 footer（probe 2026-06-27 確認 DOM 無 Copyright/版權 節點）。永久不適用。")
     def test_copyright_visible(self, page: Page, site_config):
-        """WIN-PUB-006：版權資訊顯示（WAP 不適用）"""
+        """WIN-PUB-006：[OBSOLETE] 首頁版權 footer — desktop 已移除"""
 
     def test_customer_service_link_exists(self, page: Page, site_config):
         """WIN-PUB-010：客服浮動按鈕存在且 href 指向支援的 IM 平台。

@@ -48,6 +48,6 @@ class TestAuthFeatures:
             if sh: sh.capture(el, f"verify_會員功能_{text}")
             expect(el).to_be_visible()
 
-    @pytest.mark.skip(reason="2026-05-18 換版：.cat-btn 分類 tab 與 .cat-btn--selected 切換機制已消失（改為 hero swipe sections，無 selected 狀態）；待產品新版分類互動模式定型後重新設計")
+    @pytest.mark.skip(reason="[OBSOLETE] desktop 版分類 tab 切換機制（.cat-btn--selected）已由產品移除（probe 2026-06-27），改單頁 swipe sections（無 tab 切換互動）。section 存在性已由 test_p0_smoke test_navigation_visible/test_hot_games_section 涵蓋。永久不適用。")
     def test_category_navigation_after_login(self, logged_in_page: Page, site_config):
-        """WIN-AUTH-004：登入後可切換多個分類，帳號 pill 仍顯示（待依新版分類互動重新設計）"""
+        """WIN-AUTH-004：[OBSOLETE] 登入後分類切換 — desktop 改 swipe sections，無 tab 切換"""
