@@ -1,201 +1,62 @@
 """
-LT 前台遊戲進入與下注測試
+LT 前台遊戲進入測試（desktop 版，2026-06-27 rewrite）
 LT-GAME-001
 
-使用 .env 的 SITE_LT_USERNAME 登入前台，
-導覽至電子分類 → 選擇 T9電子 → 點擊關老爺 →
-遊戲在新分頁開啟 → 開始 → 確定機台 → 減注(8→4) → Spin →
-遊戲內查注單 → 關閉遊戲回主站查投注紀錄。
+2026-05-18 desktop 換版後遊戲入口流程改變（probe 2026-06-27 確認）：
+- 舊 `.cat-btn` 分類入口（電子→T9電子→關老爺）已消失；首頁改為遊戲卡 grid（83 張，
+  `.grid > .relative.cursor-pointer`）+ 3 個 swipe sections（來財獨家/爆分精選/活動專區）。
+- **遊戲改「同分頁原地啟動」**（非舊版新分頁）：點遊戲卡 → 同頁載入遊戲 wrapper
+  （2 個 iframe + 「回到大廳」按鈕），URL 維持 `/`。
+- 「回到大廳」(`p.tip-single` 文字) 返回首頁。
 
-與 RC 站差異：
-- LT 只有一個 T9電子（直接點 provider tile）
-- 遊戲卡片無文字標籤（用 img src 定位）
-- 點擊遊戲後開啟新分頁（非 iframe）
-- Canvas 高度 826 vs RC 762，Y 座標偏低 2-3%
-- LT 用 hamburger drawer 查投注紀錄（非 sidebar-item）
+職責定位（見 docs：網站優先於遊戲）：本測試驗**平台職責 = 遊戲能啟動 + 能返回大廳**，
+不驗第三方遊戲內 spin/下注（舊版 canvas 座標 CDP 點擊脆弱且屬 provider 品質，已移除）。
 """
 
-import re
-import time
 import pytest
-from playwright.sync_api import Page, Frame, expect, TimeoutError as PlaywrightTimeoutError
+from playwright.sync_api import Page, expect
 from pages.lt.login_page import LoginPage
 from pages.lt.home_page import HomePage
 from utils.screenshot_helper import get_screenshotter
 
-
-# 會員帳號從 .env 的 SITE_LT_USERNAME / SITE_LT_PASSWORD 讀取（透過 site_config）
-
-# 遊戲路徑
-CATEGORY_NAV = "電子"
-PROVIDER_NAME = "T9電子"
-GAME_NAME = "關老爺"
-
-# LT canvas=826高，座標經 grid search/截圖實測驗證
-GAME_BTN = {
-    "開始":    (0.50, 0.92),
-    "確定":    (0.78, 0.86),   # grid search 驗證
-    "spin":   (0.90, 0.85),   # start_spin API 驗證
-    "選單":    (0.93, 0.60),   # 截圖驗證（側邊欄成功展開）
-    "紀錄":    (0.88, 0.47),   # 從展開側邊欄截圖量測
-}
-
-# 減注候選位置（grid search 有效但單點不穩，快速連點 3 位確保命中）
-REDUCE_BET_CANDIDATES = [
-    (0.59, 0.95), (0.61, 0.95), (0.59, 0.97),
-]
+GAME_CARD = ".grid > .relative.cursor-pointer"
+BACK_TO_LOBBY = "回到大廳"  # 遊戲 wrapper 內返回鈕（tw locale；LT i18n 目前固定繁中）
 
 
 @pytest.mark.p1
 @pytest.mark.lt
 @pytest.mark.game
 class TestGameEntry:
-    """LT-GAME-001：前台遊戲進入與下注流程"""
+    """LT-GAME-001：前台遊戲啟動與返回大廳（平台職責）"""
 
-    @pytest.mark.skip(reason="2026-05-18 換版：.cat-btn 分類入口消失（home.click_nav_item 已 NotImplementedError）、provider/遊戲卡片 selector 全變、open_betting_history_dialog 未對應新版 panel；需重新 probe 遊戲入口流程後整段重寫")
-    def test_enter_and_spin(self, page: Page, site_config):
-        """LT-GAME-001：登入 → 電子 → T9電子 → 關老爺(新分頁) → 開始 → 確定 → 減注 → Spin → 注單驗證"""
+    def test_game_launch_and_return(self, page: Page, site_config):
+        """登入 → 點首頁遊戲卡 → 遊戲原地啟動（回到大廳出現）→ 回到大廳 → 返回首頁"""
         sh = get_screenshotter(page)
-
-        # ===== Phase 1: 前台導覽至遊戲 =====
 
         login = LoginPage(page, site_config.url)
         login.goto_and_login(site_config.username, site_config.password)
-
         home = HomePage(page)
         home.verify_login_success(site_config.username)
-        page.wait_for_timeout(2000)
 
-        # 電子分類
-        home.click_nav_item(CATEGORY_NAV)
-        page.wait_for_timeout(3000)
+        # 1) 首頁遊戲卡存在
+        cards = page.locator(GAME_CARD)
+        first_card = cards.first
+        first_card.scroll_into_view_if_needed()
+        expect(first_card).to_be_visible(timeout=15000)
+        if sh: sh.capture(first_card, "verify_首頁遊戲卡")
 
-        # 選 T9電子（LT 用 provider tile 直接點擊）
-        provider = page.locator("div.group", has_text=PROVIDER_NAME).first
-        provider.wait_for(state="visible", timeout=5000)
-        provider.click(force=True)
+        # 2) 點遊戲卡 → 遊戲同分頁啟動
+        if sh: sh.capture(first_card, "click_遊戲卡")
+        first_card.click(force=True)
 
-        # 點關老爺（用圖片 src 定位，LT 遊戲卡片無文字）
-        # 遊戲卡片由 API 拉回才渲染，wait_for 取代固定 5 秒
-        game_img = page.locator('img[src*="GuanGong"], img[src*="SL2570"]').first
-        game_img.wait_for(state="visible", timeout=15000)
-        game_card = game_img.locator("xpath=ancestor::div[contains(@class,'cursor-pointer')][1]")
+        # 3) 驗遊戲啟動：wrapper 的「回到大廳」按鈕出現（遊戲載入慢，timeout 放寬）
+        back_btn = page.get_by_text(BACK_TO_LOBBY, exact=True).first
+        back_btn.wait_for(state="visible", timeout=30000)
+        # 遊戲內容載入於 iframe（平台啟動成功信號）
+        expect(page.locator("iframe").first).to_be_attached(timeout=10000)
+        if sh: sh.full_page("verify_遊戲已啟動_回到大廳出現")
 
-        # 用 expect_page 捕捉新分頁
-        with page.context.expect_page(timeout=30000) as new_page_info:
-            game_card.click(force=True)
-        game_page = new_page_info.value
-
-        # 等待遊戲 canvas 載入
-        game_page.locator("canvas").first.wait_for(state="attached", timeout=30000)
-        game_page.wait_for_timeout(10000)
-
-        # ===== Phase 2: 遊戲內操作（CDP）=====
-
-        cdp = game_page.context.new_cdp_session(game_page)
-
-        try:
-            canvas_box = game_page.locator("canvas").first.bounding_box()
-            assert canvas_box, "找不到遊戲 canvas"
-
-            def game_click(btn_name: str, wait_after: int = 2000):
-                x_pct, y_pct = GAME_BTN[btn_name]
-                abs_x = canvas_box["x"] + canvas_box["width"] * x_pct
-                abs_y = canvas_box["y"] + canvas_box["height"] * y_pct
-
-                cdp.send("Input.dispatchMouseEvent", {
-                    "type": "mousePressed",
-                    "x": abs_x, "y": abs_y,
-                    "button": "left", "clickCount": 1
-                })
-                cdp.send("Input.dispatchMouseEvent", {
-                    "type": "mouseReleased",
-                    "x": abs_x, "y": abs_y,
-                    "button": "left", "clickCount": 1
-                })
-                game_page.wait_for_timeout(wait_after)
-
-            # 開始 → 機台選擇
-            game_click("開始", wait_after=10000)
-
-            # 確定機台 → 進入遊戲
-            game_click("確定", wait_after=12000)
-
-            # 減注（8→4）：LT 座標不穩定，快速嘗試多個候選位置
-            for xp, yp in REDUCE_BET_CANDIDATES:
-                abs_x = canvas_box["x"] + canvas_box["width"] * xp
-                abs_y = canvas_box["y"] + canvas_box["height"] * yp
-                cdp.send("Input.dispatchMouseEvent", {
-                    "type": "mousePressed",
-                    "x": abs_x, "y": abs_y,
-                    "button": "left", "clickCount": 1
-                })
-                cdp.send("Input.dispatchMouseEvent", {
-                    "type": "mouseReleased",
-                    "x": abs_x, "y": abs_y,
-                    "button": "left", "clickCount": 1
-                })
-                game_page.wait_for_timeout(300)
-
-            # Spin 下注：用 expect_request 保證 listener 在 click 前啟動，
-            # 並把 start_spin API 呼叫作為硬性 assertion（未觸發會 timeout）
-            with game_page.expect_request("**/start_spin**", timeout=20000) as spin_req:
-                game_click("spin", wait_after=10000)
-            spin_request_url = spin_req.value.url
-
-            # ===== Phase 3: 遊戲內查注單紀錄 =====
-
-            # 點漢堡選單展開側邊欄
-            game_click("選單", wait_after=2000)
-
-            # 點紀錄
-            game_click("紀錄", wait_after=3000)
-
-            # 截圖記錄遊戲內注單（game_page 是新分頁，用 sh 指定 page 參數即可
-            # 輸出到 screenshots/<site>/<ts>/.../，不要硬編碼路徑）
-            if sh:
-                sh.full_page("verify_遊戲內注單紀錄", page=game_page)
-
-        finally:
-            cdp.detach()
-
-        # expect_request 已於 spin click 時硬性保證 start_spin 被觸發，
-        # 這裡做一個 trace 用的輸出即可
-        assert spin_request_url, "start_spin API URL 為空"
-
-        # ===== Phase 4: 關閉遊戲，回主站查投注紀錄 =====
-
-        game_page.close()
-        page.bring_to_front()
-        page.wait_for_timeout(2000)
-
-        # 用 LT 的 hamburger drawer 查投注紀錄
-        home.open_betting_history_dialog()
-
-        # 等待投注紀錄 dialog 載入
-        dialog = page.locator(".dialog-container")
-        dialog.wait_for(state="visible", timeout=5000)
-        page.wait_for_timeout(1000)
-
-        if sh:
-            sh.full_page("verify_投注紀錄_dialog打開")
-
-        # 點擊「今日」快捷篩選
-        today_btn = dialog.locator("text=今日").first
-        today_btn.scroll_into_view_if_needed()
-        today_btn.click(force=True)
-        page.wait_for_timeout(1000)
-
-        # 點擊「搜尋」按鈕
-        search_btn = dialog.locator("text=搜尋").first
-        search_btn.scroll_into_view_if_needed()
-        search_btn.click(force=True)
-        page.wait_for_timeout(3000)
-
-        if sh:
-            sh.full_page("verify_投注紀錄_注單結果")
-
-        # 驗證注單紀錄存在
-        no_data = dialog.locator("text=尚無任何資料")
-        has_data = not no_data.is_visible()
-        assert has_data, "投注紀錄應有注單，但顯示「尚無任何資料」"
+        # 4) 回到大廳 → 返回首頁（遊戲卡再現）
+        back_btn.click(force=True)
+        expect(cards.first).to_be_visible(timeout=15000)
+        if sh: sh.full_page("verify_返回首頁_遊戲卡再現")
