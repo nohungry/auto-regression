@@ -171,15 +171,26 @@ class ManagementPage:
     def _member_row(self, username: str):
         return self.page.locator(f"table tbody tr:has-text('{username}')").first
 
+    def _wallet_amount_locator(self, username: str):
+        """主錢包金額元素 = 該會員列中「含 Game wallet 按鈕的 td」內的 div.bold。
+
+        用內容定位而非欄位 index：KS 後台 Main wallet 在 td index 4、LU/LG/QW 在 5，
+        且 KS tbody/thead 欄位未對齊（Convenience Store 的 Create cell 會誤命中固定 index）。
+        含「Game wallet」按鈕的 cell 是跨站一致的主錢包欄特徵（與旁邊 Send points 同組）。
+        （英文後台文案；與既有 get_by_role button "Search"/"Login" 一致採英文定位。）
+        """
+        return self._member_row(username).locator(
+            "td:has(button:has-text('Game wallet')) div.bold"
+        ).first
+
     def get_member_wallet_amount(self, username: str) -> float:
-        """讀取會員列 Main wallet 欄顯示金額（td[5] 內 div.bold）。"""
-        cell = self._member_row(username).locator("td").nth(5)
-        return _parse_amount(cell.locator("div.bold").first.inner_text())
+        """讀取會員列 Main wallet 欄顯示金額（內容定位的 div.bold）。"""
+        return _parse_amount(self._wallet_amount_locator(username).inner_text())
 
     def open_main_wallet_dialog(self, username: str):
         """點該會員 Main wallet 金額 → 開「Main wallet」彈窗。"""
         sh = get_screenshotter(self.page)
-        amount = self._member_row(username).locator("td").nth(5).locator("div.bold").first
+        amount = self._wallet_amount_locator(username)
         amount.scroll_into_view_if_needed()
         if sh:
             sh.capture(amount, "click_主錢包金額")
