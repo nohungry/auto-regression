@@ -56,6 +56,39 @@ def dashboard_page(browser, site_config):
     context.close()
 
 
+@pytest.fixture(scope="session")
+def master_dashboard_page(browser, site_config):
+    """
+    Session-scoped 已登入後台 page（**總代/站長 SITE_RC_DASHBOARD_USER**，無 2FA）。
+    供「總代 → 代理 派點」站長層級測試使用；與代理 dashboard_page 不同帳號，互不互踢。
+    """
+    context = browser.new_context(no_viewport=True)
+    page = context.new_page()
+
+    try:
+        cdp = context.new_cdp_session(page)
+        window_id = cdp.send("Browser.getWindowForTarget")["windowId"]
+        cdp.send("Browser.setWindowBounds", {
+            "windowId": window_id,
+            "bounds": {"windowState": "maximized"},
+        })
+        cdp.detach()
+    except Exception:
+        pass
+
+    DashboardLoginPage = get_dashboard_login_page_class(site_config.site_id)
+    login = DashboardLoginPage(page, site_config.dashboard_url)
+    # 總代帳號（DASHBOARD_USER）；RC 總代無 2FA，dashboard_totp 空 → 條件式 _fill_totp 自動跳過
+    login.goto_and_login(
+        site_config.dashboard_user,
+        site_config.dashboard_pass,
+        site_config.dashboard_totp,
+    )
+
+    yield page
+    context.close()
+
+
 @pytest.fixture(autouse=True)
 def go_management(dashboard_page, site_config):
     """每個 test 前回到管理頁面。
