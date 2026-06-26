@@ -222,6 +222,110 @@ class ManagementPage:
             sh.full_page(f"verify_提取完成_{member_account}_{amount}")
 
     # -----------------------------------------------
+    # 總代 → 代理 派點（站長層級，2026-06-26）
+    # RE 自有 POM（非 re-export RC），故同套方法在此複製一份。
+    # 代理 tab 每個下線代理為 .tab-item 卡片：存入 button.btn-primary.me-2、提取 :not(.me-2)。
+    # 金額 dialog 與會員存提相同 → 複用 _fill_amount_dialog。總代額度 ∞ → 只驗代理側餘額。
+    # -----------------------------------------------
+
+    def set_agent_page_size(self, size: int = 500):
+        """把代理列表每頁筆數開到最大，確保目標代理（可能在後面頁）進 DOM。
+        找含目標 size 選項（10/20/50/100/200/500）的 select 設定。"""
+        self.page.evaluate(
+            """(size) => {
+                for (const s of document.querySelectorAll('select')) {
+                    const opts = [...s.options].map(o => o.value);
+                    if (opts.includes(String(size))) {
+                        s.value = String(size);
+                        s.dispatchEvent(new Event('change', { bubbles: true }));
+                        return;
+                    }
+                }
+            }""",
+            size,
+        )
+        self._wait_for_list_loaded()
+
+    def _agent_card(self, agent_account: str) -> Locator:
+        """精準鎖定代理卡片：含「文字恰為帳號」元素的 .tab-item（tag-agnostic，相容 <a>/<span>）。
+        呼叫前建議先 set_agent_page_size() 把全部代理載入 DOM（目標可能在後面頁）。"""
+        card = self.page.locator(".tab-item").filter(
+            has=self.page.locator(f':text-is("{agent_account}")')
+        )
+        card.first.wait_for(state="attached", timeout=15000)
+        return card.first
+
+    def _read_dialog_target_balance(self) -> float:
+        """讀存提 dialog 內目標代理剩餘額度（最後一個數值型『剩餘額度 N』）。"""
+        text = self.page.evaluate(
+            """() => {
+                const sub = [...document.querySelectorAll('button.primary-button')]
+                    .find(b => /送出/.test(b.textContent));
+                if (!sub) return null;
+                let dlg = sub;
+                while (dlg && !(dlg.className||'').includes('dialog-container')) dlg = dlg.parentElement;
+                if (!dlg) return null;
+                const m = dlg.innerText.match(/剩餘額度\\s*([\\d,]+)/g);
+                if (!m || !m.length) return null;
+                return m[m.length-1].replace(/[^\\d,]/g, '');
+            }"""
+        )
+        if text is None:
+            raise ValueError("無法從存提 dialog 讀取目標代理剩餘額度")
+        return float(text.replace(",", ""))
+
+    def _cancel_dialog(self):
+        """點 dialog 取消鈕關閉（讀餘額用，不送出）。"""
+        self.page.evaluate(
+            """() => {
+                const c = [...document.querySelectorAll('button.secondary-button, button')]
+                    .find(b => /取消/.test(b.textContent));
+                if (c) c.click();
+            }"""
+        )
+        self.page.wait_for_timeout(500)
+
+    def get_agent_balance(self, agent_account: str) -> float:
+        """開存入 dialog 讀目標代理當前剩餘額度 → 取消關閉（不動餘額）。"""
+        sh = get_screenshotter(self.page)
+        card = self._agent_card(agent_account)
+        dep_btn = card.locator("button.btn-primary.me-2").first
+        dep_btn.wait_for(state="attached", timeout=5000)
+        self.page.evaluate("(el) => el.click()", dep_btn.element_handle())
+        self.page.wait_for_timeout(800)
+        balance = self._read_dialog_target_balance()
+        if sh:
+            sh.full_page(f"verify_代理餘額_{agent_account}_{balance}")
+        self._cancel_dialog()
+        return balance
+
+    def deposit_to_agent(self, agent_account: str, amount: int, operator_password: Optional[str] = None):
+        """總代對指定下線代理存入（派點）。複用會員存提 dialog。"""
+        sh = get_screenshotter(self.page)
+        card = self._agent_card(agent_account)
+        dep_btn = card.locator("button.btn-primary.me-2").first
+        dep_btn.wait_for(state="attached", timeout=5000)
+        if sh:
+            sh.capture(dep_btn, f"click_代理存入_{agent_account}_{amount}")
+        self.page.evaluate("(el) => el.click()", dep_btn.element_handle())
+        self._fill_amount_dialog(amount, operator_password, "存入")
+        if sh:
+            sh.full_page(f"verify_代理存入完成_{agent_account}_{amount}")
+
+    def withdraw_from_agent(self, agent_account: str, amount: int, operator_password: Optional[str] = None):
+        """總代對指定下線代理提取（收點）。複用會員存提 dialog。"""
+        sh = get_screenshotter(self.page)
+        card = self._agent_card(agent_account)
+        wd_btn = card.locator("button.btn-primary:not(.me-2)").first
+        wd_btn.wait_for(state="attached", timeout=5000)
+        if sh:
+            sh.capture(wd_btn, f"click_代理提取_{agent_account}_{amount}")
+        self.page.evaluate("(el) => el.click()", wd_btn.element_handle())
+        self._fill_amount_dialog(amount, operator_password, "提取")
+        if sh:
+            sh.full_page(f"verify_代理提取完成_{agent_account}_{amount}")
+
+    # -----------------------------------------------
     # 內部 helpers
     # -----------------------------------------------
     def _fill_amount_dialog(
