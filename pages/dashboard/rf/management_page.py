@@ -291,6 +291,114 @@ class ManagementPage:
         if sh:
             sh.full_page(f"verify_提取完成_{account}_{amount}")
 
+    # -----------------------------------------------
+    # 總代 → 代理 派點（站長層級，2026-06-27 probe 確認）
+    #
+    # RF 站長(DASHBOARD_USER)即總代層級，餘額 ∞。代理 tab 結構與會員 tab 同源：
+    # .tab-item + button.btn-primary.me-2（存入）/ :not(.me-2)（提取，取 .first）+
+    # .dialog-container.bottom-style dialog（_fill_topup_dialog 共用，RF 無操作者密碼）。
+    # dialog 餘額：label-xs[1]=目標代理餘額（[0]=上級總代 ∞）→ 只驗代理側（總代 ∞）。
+    # 以下方法 mirror 會員版（switch_to_member_tab / get_member_balance / deposit / withdraw），改打代理 tab。
+    # -----------------------------------------------
+
+    def switch_to_agent_tab(self):
+        """切換到主內容區（.container-management）的「代理」tab（同 switch_to_member_tab 模式）。"""
+        sh = get_screenshotter(self.page)
+        agent_tab = self.page.locator(
+            ".container-management button.tab-btn", has_text="代理"
+        ).first
+        agent_tab.wait_for(state="visible", timeout=15000)
+        if sh:
+            sh.full_page("click_切換代理Tab_before")
+        self.page.evaluate("(el) => el.click()", agent_tab.element_handle())
+        self._wait_for_list_loaded()
+        if sh:
+            sh.full_page("click_切換代理Tab_after")
+
+    def _find_agent_tab_item(self, account: str):
+        """找到含指定代理帳號的 .tab-item（需先 switch_to_agent_tab + set_page_size）。"""
+        item = self.page.locator(".tab-item").filter(has_text=account)
+        item.first.wait_for(state="attached", timeout=15000)
+        return item.first
+
+    def get_agent_balance(self, account: str) -> float:
+        """讀取指定下線代理當前額度：開存入 dialog 讀 label-xs[1]（[0]=總代∞）→ 取消關閉。"""
+        sh = get_screenshotter(self.page)
+
+        tab_item = self._find_agent_tab_item(account)
+        tab_item.scroll_into_view_if_needed()
+
+        deposit_btn = tab_item.locator("button.btn-primary.me-2").first
+        deposit_btn.wait_for(state="attached", timeout=5000)
+        self.page.evaluate("(el) => el.click()", deposit_btn.element_handle())
+        self.page.wait_for_timeout(800)
+
+        # dialog 兩個 label-xs：[0]=上級總代餘額(∞)、[1]=目標代理餘額
+        balance_text = self.page.evaluate(
+            "function() {"
+            "  var dialogs = document.querySelectorAll('.dialog-container.bottom-style');"
+            "  var dialog = dialogs[dialogs.length-1];"
+            "  if (!dialog) return null;"
+            "  var spans = dialog.querySelectorAll('.label-xs');"
+            "  return spans.length >= 2 ? spans[1].textContent.trim() : null;"
+            "}"
+        )
+
+        if sh:
+            sh.full_page(f"verify_代理額度_{account}_{balance_text}")
+
+        # 關閉 dialog（點取消）
+        self.page.evaluate(
+            "function() {"
+            "  var dialogs = document.querySelectorAll('.dialog-container.bottom-style');"
+            "  var dialog = dialogs[dialogs.length-1];"
+            "  if (!dialog) return;"
+            "  var cancelBtn = dialog.querySelector('button.secondary-button');"
+            "  if (cancelBtn) cancelBtn.click();"
+            "}"
+        )
+        self.page.wait_for_timeout(500)
+
+        if balance_text is None:
+            raise ValueError(f"無法從代理 {account} 的存入 dialog 讀取剩餘餘額")
+        return float(balance_text.replace(",", ""))
+
+    def deposit_to_agent(self, account: str, amount: int):
+        """總代對指定下線代理存入（派點）。複用 _fill_topup_dialog（RF 無操作者密碼）。"""
+        sh = get_screenshotter(self.page)
+
+        tab_item = self._find_agent_tab_item(account)
+        tab_item.scroll_into_view_if_needed()
+
+        deposit_btn = tab_item.locator("button.btn-primary.me-2").first
+        deposit_btn.wait_for(state="attached", timeout=5000)
+        if sh:
+            sh.capture(deposit_btn, f"click_代理存入_{account}_{amount}")
+
+        self.page.evaluate("(el) => el.click()", deposit_btn.element_handle())
+        self._fill_topup_dialog(amount, "存入")
+
+        if sh:
+            sh.full_page(f"verify_代理存入完成_{account}_{amount}")
+
+    def withdraw_from_agent(self, account: str, amount: int):
+        """總代對指定下線代理提取（收點）。複用 _fill_topup_dialog。"""
+        sh = get_screenshotter(self.page)
+
+        tab_item = self._find_agent_tab_item(account)
+        tab_item.scroll_into_view_if_needed()
+
+        withdraw_btn = tab_item.locator("button.btn-primary:not(.me-2)").first
+        withdraw_btn.wait_for(state="attached", timeout=5000)
+        if sh:
+            sh.capture(withdraw_btn, f"click_代理提取_{account}_{amount}")
+
+        self.page.evaluate("(el) => el.click()", withdraw_btn.element_handle())
+        self._fill_topup_dialog(amount, "提取")
+
+        if sh:
+            sh.full_page(f"verify_代理提取完成_{account}_{amount}")
+
     def reload_management_page(self, dashboard_url: str):
         """重新載入後台管理頁，讓 .tab-item 的 balance attribute 從後端刷新。
 
