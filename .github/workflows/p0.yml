@@ -159,3 +159,19 @@ jobs:
           python .github/scripts/aggregate_test_results.py \
             --junit-dir junit \
             --title "P0 Smoke (9 sites)" >> "$GITHUB_STEP_SUMMARY"
+
+      # 失敗時 Slack 通知（含 run 連結 → 點進去看跨站聚合成績單）。
+      # 未設 SLACK_WEBHOOK secret 則自動略過（不報錯）；設好即自動生效。
+      - name: Notify Slack on failure
+        if: needs.p0-smoke.result == 'failure'
+        env:
+          SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          if [ -z "$SLACK_WEBHOOK" ]; then
+            echo "SLACK_WEBHOOK 未設定，略過通知"; exit 0
+          fi
+          text="❌ *P0 Smoke 失敗* — \`${{ github.ref_name }}\`\n有站別未通過，請看跨站聚合成績單：${RUN_URL}"
+          curl -sf -X POST -H 'Content-type: application/json' \
+            --data "{\"text\":\"${text}\"}" "$SLACK_WEBHOOK" \
+            && echo "Slack 通知已送出" || echo "Slack 通知送出失敗（不影響 CI 結果）"
