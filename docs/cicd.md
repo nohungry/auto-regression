@@ -62,10 +62,14 @@ done
 run 頁面看得到：
 - 各 job ✅/❌
 - 每 step 完整 log
-- **Job Summary**：pytest 測試結果以 markdown 表格顯示（pass/fail/skip 數量 + 失敗 test 名單），不用下載 artifact 即可 review
+- **跨站聚合成績單**（👉 一眼看完全站，建議優先看）：`aggregate-summary` job 在所有 site 跑完後，把 9 站 JUnit 聚合成**單一總覽表**（`Site | Passed | Failed | Error | Skipped | Duration` + 合計）+ **失敗測試總清單（按站分組）**，寫到該 run 的總 Step Summary。不用逐一點 9 個 site 的 Job Summary。
+  - 機制：各 site job upload `junit-<site>` artifact → `aggregate-summary` job（`needs` matrix、`if: always()`）download 全部 → 跑 `.github/scripts/aggregate_test_results.py` 寫 `$GITHUB_STEP_SUMMARY`。
+  - 全綠時顯示「✅ 全 9 站全數通過 🎉」；有失敗時列出哪站哪些 test。
+- **各站 Job Summary**：個別 site 的 pytest 結果 markdown 表格（pass/fail/skip + 失敗 test 名單），看單站細節用。
 - **Artifacts**（頁面最下方）：
-  - `report-html-<site>.zip` / `full-regression-report-<site>.zip`：自包式 HTML 報告
-  - `failure-screenshots-<site>.zip`（**只有失敗時上傳**）：紅框截圖 + 自動生成 README.md
+  - `report-html-<site>.zip` / `full-regression-report-<site>.zip`：自包式 HTML 報告（保留 30 天）
+  - `failure-screenshots-<site>.zip`（**只有失敗時上傳**，保留 14 天）：紅框截圖 + 自動生成 README.md
+  - `junit-<site>.zip`：JUnit XML（聚合成績單的原始資料）
 
 ## 手動觸發
 

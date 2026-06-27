@@ -99,6 +99,16 @@ jobs:
         with:
           paths: "junit/${{ matrix.site }}.xml"
 
+      # upload JUnit XML 供 aggregate-summary job 做跨站聚合成績單
+      - name: Upload JUnit XML
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: junit-${{ matrix.site }}
+          path: junit/${{ matrix.site }}.xml
+          if-no-files-found: warn
+          retention-days: 30
+
       - name: Upload HTML report
         if: always()
         uses: actions/upload-artifact@v4
@@ -116,3 +126,27 @@ jobs:
           path: screenshots/
           if-no-files-found: warn
           retention-days: 14
+
+  # 跨站聚合成績單：所有 site job 跑完後（含失敗）downloads 全部 junit XML，
+  # 產出單一跨站總覽表 + 失敗清單，寫到本 run 的總 Step Summary（一眼看完 9 站）
+  aggregate-summary:
+    name: Aggregate cross-site summary
+    runs-on: ubuntu-latest
+    needs: full-regression
+    if: always()
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download all JUnit XML
+        uses: actions/download-artifact@v4
+        with:
+          pattern: junit-*
+          path: junit
+          merge-multiple: true
+
+      - name: Write cross-site summary
+        run: |
+          python .github/scripts/aggregate_test_results.py \
+            --junit-dir junit \
+            --title "Full Regression (9 sites)" >> "$GITHUB_STEP_SUMMARY"
