@@ -123,3 +123,11 @@ class TestHomePage:
         expect(login.username_input).to_be_visible()
         expect(login.password_input).to_be_visible()
         expect(login.login_btn).to_be_visible()
+
+
+@pytest.mark.p0
+@pytest.mark.rc
+def test_DUMMY_slack_failure_demo_REMOVE():
+    """[暫時 demo] 故意失敗以端到端驗證 CI 失敗 Slack 通知。
+    驗證後即刪（此 branch 不 merge、不碰 main）。"""
+    assert False, "intentional failure — Slack notification end-to-end demo"
