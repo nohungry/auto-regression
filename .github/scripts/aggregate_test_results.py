@@ -111,19 +111,40 @@ def build_markdown(stats, title):
     return "\n".join(lines)
 
 
+def build_slack(stats):
+    """精簡單段文字（給 Slack notify 用）：總計一行 + 失敗站別摘要。"""
+    n = len(stats)
+    passed = sum(s["passed"] for s in stats)
+    failed = sum(s["failures"] for s in stats)
+    error = sum(s["errors"] for s in stats)
+    skipped = sum(s["skipped"] for s in stats)
+    line1 = f"{n} 站總計：✅ {passed} 通過 / ❌ {failed} 失敗 / ⚠️ {error} error / ⏭ {skipped} skip"
+    fail_sites = [f"{s['site']}({s['failures'] + s['errors']})"
+                  for s in stats if s["failures"] or s["errors"]]
+    line2 = "失敗站別：" + ", ".join(fail_sites) if fail_sites else "全數通過 🎉"
+    return line1 + "\\n" + line2  # \\n → 進 Slack JSON 後成換行
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--junit-dir", default="junit", help="JUnit XML 目錄（遞迴 glob *.xml）")
     ap.add_argument("--title", default="Test Results", help="標題（如 P0 Smoke / Full Regression）")
+    ap.add_argument("--slack-file", default=None, help="另把精簡摘要寫到此檔（給 Slack notify 讀）")
     args = ap.parse_args()
 
     paths = sorted(glob.glob(os.path.join(args.junit_dir, "**", "*.xml"), recursive=True))
     if not paths:
         print(f"## 🧪 {args.title} — 跨站聚合成績單\n\n> ⚠️ 找不到任何 JUnit XML（{args.junit_dir}/**/*.xml）。")
+        if args.slack_file:
+            with open(args.slack_file, "w", encoding="utf-8") as f:
+                f.write("⚠️ 找不到任何 JUnit XML")
         return
 
     stats = [parse_one(p) for p in paths]
     print(build_markdown(stats, args.title))
+    if args.slack_file:
+        with open(args.slack_file, "w", encoding="utf-8") as f:
+            f.write(build_slack(stats))
 
 
 if __name__ == "__main__":
