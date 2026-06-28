@@ -7,11 +7,16 @@
 | 站台 ID | 中文名 | 網址 | 測試數 |
 |---------|--------|------|--------|
 | `rc` | 王老吉娛樂城 | 見 .env `SITE_RC_URL` | 63 |
-| `lt` | LT 來財 | 見 .env `SITE_LT_URL` | 109 |
+| `lt` | LT 來財 | 見 .env `SITE_LT_URL` | 112 |
 | `re` | BeWin | 見 .env `SITE_RE_URL` | 63 |
 | `rd` | 狗狗娛樂城 | 見 .env `SITE_RD_URL` | 58 |
-| API | (不限站台) | - | 16 |
-| Dashboard | (後台) | - | 3 |
+| `qw` | LM 來財娛樂城 | 見 .env `SITE_QW_URL` | 31 |
+| `lg` | 大撈家娛樂城 | 見 .env `SITE_LG_URL` | 35 |
+| `lu` | Dlgbet | 見 .env `SITE_LU_URL` | 31 |
+| `ks` | Super9 娛樂城 | 見 .env `SITE_KS_URL` | 34 |
+| `rf` | 金爺娛樂城 | 見 .env `SITE_RF_URL` | 38 |
+| API | (9 站，不啟動瀏覽器) | - | 102 |
+| Dashboard | (9 站後台) | - | 51 |
 
 > 測試數以 `.venv/bin/pytest tests/<site>/ --collect-only -q` 為準，會隨新增測試變動。
 
@@ -22,17 +27,21 @@ conftest.py                          — 全域 fixtures、環境偵測（Window
 config/settings.py                   — 多站台 SiteConfig，從 .env 讀取
 pages/factory.py                     — 前台：site_id → LoginPage/HomePage 路由（registry dict）
 pages/dashboard/factory.py           — 後台：site_id → DashboardLoginPage/ManagementPage 路由
-pages/rc/, pages/lt/, pages/re/, pages/rd/, pages/qw/   — 各站前台 Page Objects
-pages/dashboard/<site_id>/           — 各站後台 Page Objects
-tests/rc/, tests/lt/, tests/re/, tests/rd/, tests/qw/   — 各站前台測試（含 test_p0_smoke.py + feature/）
-tests/api/<site_id>/                 — API 層測試（不啟動瀏覽器，requests 直打 API）
-tests/dashboard/<site_id>/           — 後台管理介面測試
+pages/<site_id>/                     — 各站前台 Page Objects（rc/lt/re/rd/qw/lg/lu/ks/rf 共 9 站）
+pages/dashboard/<site_id>/           — 各站後台 Page Objects（9 站）
+tests/<site_id>/                     — 各站前台測試（rc/lt/re/rd/qw/lg/lu/ks/rf；含 test_p0_smoke.py + feature/）
+tests/api/<site_id>/                 — API 層測試（9 站，不啟動瀏覽器，requests 直打 API）
+tests/dashboard/<site_id>/           — 後台管理介面測試（9 站）
 utils/locale_helper.py               — set_locale()：注入 `i18n_locale` cookie（LT 用）
 utils/dialog_helper.py               — 伺服器錯誤彈窗、公告彈窗（含 MutationObserver enforce killer）、Loading 等待
 utils/screenshot_helper.py           — 截圖系統（元素高亮 + 自動產生繁中 README）
 utils/visual_helpers.py              — VR reference 截圖 + 動態元素遮蔽
+utils/totp_helper.py                 — get_totp_code()：後台 2FA TOTP 產碼（pyotp + 30s 窗口緩衝）
+utils/game_launch_helper.py          — 遊戲啟動偵測（new tab / provider 轉址判斷）
+utils/layout_fingerprint.py          — 多語系版面健康度 DOM 指紋 + overflow 偵測
+utils/window_helper.py               — 另開分頁後 CDP 最大化視窗
 .github/workflows/                   — GitHub Actions（p0 / full-regression / docs-sync-check）
-.github/scripts/                     — CI 共用 script（如 check-docs-sync.sh）
+.github/scripts/                     — CI 共用 script（check-docs-sync.sh + aggregate_test_results.py 跨站聚合成績單）
 .claude/                             — Claude Code 配置（hooks / skills / agents，團隊共用）
 docs/                                — 團隊共用文件（追蹤於 git）
 dev-notes/                           — 個人開發筆記（gitignored，僅 README 追蹤）
@@ -61,6 +70,10 @@ playwright install chromium
 .venv/bin/pytest tests/re/                                               # re 站
 .venv/bin/pytest tests/rd/                                               # rd 站
 .venv/bin/pytest tests/qw/                                               # qw 站
+.venv/bin/pytest tests/lg/                                               # lg 站
+.venv/bin/pytest tests/lu/                                               # lu 站
+.venv/bin/pytest tests/ks/                                               # ks 站
+.venv/bin/pytest tests/rf/                                               # rf 站
 .venv/bin/pytest tests/api/                                              # 僅 API 測試
 .venv/bin/pytest tests/dashboard/                                        # 僅後台測試
 .venv/bin/pytest tests/lt/test_p0_smoke.py -m p0                         # lt P0 smoke
@@ -82,11 +95,13 @@ GitHub Actions 自動跑測試與 docs 同步檢查：
 
 | Workflow | 觸發 | 跑什麼 |
 |---|---|---|
-| `.github/workflows/p0.yml` | PR / push to main / daily 09:00 台灣 / 手動 | 5 站 P0 smoke matrix（rc/lt/re/rd/qw） |
-| `.github/workflows/full-regression.yml` | 週一 08:00 台灣 / 手動 | 5 站全套（P0 + feature） |
+| `.github/workflows/p0.yml` | PR / push to main / daily 09:00 台灣 / 手動 | 9 站 P0 smoke matrix（rc/lt/re/rd/qw/lg/lu/ks/rf） |
+| `.github/workflows/full-regression.yml` | 週一 08:00 台灣 / 手動 | 9 站全套（P0 + feature；不由 PR/push 觸發） |
 | `.github/workflows/docs-sync-check.yml` | PR | code 變動是否同步更新 docs |
 
-操作細節（trigger 規則、cron 時段、secrets 清單、看 run / 下載 artifact / debug、docs sync check 操作 + override）見 [`docs/cicd.md`](docs/cicd.md)。
+p0 / full-regression 跑完都會由 `aggregate-summary` job（`.github/scripts/aggregate_test_results.py`）把各站結果聚合成跨站成績單寫進 run Step Summary，並可選推 Slack（設 `SLACK_WEBHOOK` secret 才推；排程必推、PR/push 失敗才推）。
+
+操作細節（trigger 規則、cron 時段、secrets 清單、Slack 通知 + 聚合成績單、看 run / 下載 artifact / debug、docs sync check 操作 + override）見 [`docs/cicd.md`](docs/cicd.md)。
 
 ## WSL 設定
 
@@ -142,6 +157,11 @@ ip route show | grep -i default | awk '{print $3}'   # WSL 預設 gateway = Wind
 | `lt` | lt 站（LT 來財） |
 | `re` | re 站（BeWin） |
 | `rd` | rd 站（狗狗娛樂城） |
+| `qw` | qw 站（LM 來財娛樂城） |
+| `lg` | lg 站（大撈家娛樂城） |
+| `lu` | lu 站（Dlgbet） |
+| `ks` | ks 站（Super9 娛樂城） |
+| `rf` | rf 站（金爺娛樂城） |
 
 ### 功能 / 其他
 
@@ -166,8 +186,10 @@ ip route show | grep -i default | awk '{print $3}'   # WSL 預設 gateway = Wind
 | [`docs/testing-strategy.md`](docs/testing-strategy.md) | 測試分層、通過標準、flaky 處理 |
 | [`docs/i18n_locale_text_reference.md`](docs/i18n_locale_text_reference.md) | 多語系文案對照表（LT 5 + RC 6 + RD 5） |
 | [`docs/agent-skills-workflow.md`](docs/agent-skills-workflow.md) | Agent / skill / subagent 接力工作流 |
+| [`docs/new-site-onboarding-workflow.md`](docs/new-site-onboarding-workflow.md) | 新站 onboarding 完整 SOP（流程圖、subagent/skill 觸發、踩坑） |
 | [`docs/lt-dashboard-sitemap.md`](docs/lt-dashboard-sitemap.md) | LT 後台 25 頁功能地圖 |
 | [`docs/dashboard-technical-notes.md`](docs/dashboard-technical-notes.md) | 後台測試技術注意事項 |
+| [`docs/product-bugs-to-report.md`](docs/product-bugs-to-report.md) | 已確認待回報的產品/前端/後端 bug 清單 |
 | [`PORTS_AND_SETUP.md`](PORTS_AND_SETUP.md) | Port 轉發與環境設定 |
 | [`dev-notes/`](dev-notes/) | 個人開發筆記（gitignored） |
 

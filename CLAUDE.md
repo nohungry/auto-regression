@@ -44,7 +44,9 @@ GitHub Actions 自動跑測試：
 - `full-regression.yml`：每週一 08:00 台灣 / 手動 → 9 站全套（P0 + feature）
 - `docs-sync-check.yml`：PR 時檢查 code 變動是否有對應 .md 更新（hook 機制 + CI 雙保險）
 
-詳細的 trigger 規則、cron 時段、secrets 清單、如何看 run / 下載 artifact / 加 secret / debug fail → 見 [`docs/cicd.md`](docs/cicd.md)。
+**觀測性**：`p0.yml` 與 `full-regression.yml` 跑完後都有 `aggregate-summary` job — `.github/scripts/aggregate_test_results.py` 解析各站 JUnit XML 聚合成跨站成績單（寫進 run 的 Step Summary），並可選推 Slack 通知（設了 `SLACK_WEBHOOK` secret 才推；排程一定推、PR/push 則失敗才推）。
+
+詳細的 trigger 規則、cron 時段、secrets 清單、Slack/聚合成績單、如何看 run / 下載 artifact / 加 secret / debug fail → 見 [`docs/cicd.md`](docs/cicd.md)。
 
 ## Docs sync check（hook + CI 雙保險）
 
@@ -56,6 +58,27 @@ GitHub Actions 自動跑測試：
 確認**不**需要更新時的 override：
 - commit message 加 sentinel `[skip-docs-check]` 並附理由
 - 或設 env var `SKIP_DOCS_CHECK=1`
+
+## 文檔維護對照表（code 變動 → 要同步的 doc）
+
+**此表為文檔同步的唯一 source of truth**：`.github/scripts/check-docs-sync.sh` 的警示、`git-commit` skill Step 3、各 authoring skill / subagent 皆對齊此表。改 mapping 只動這裡。改 code 前先比對「我這次屬於哪一列、要連帶更新哪份 doc」，**root `README.md` 是第一公民，不要漏**。
+
+| 變動類型 | 必須同步的 doc |
+|---------|--------------|
+| 新增 / 移除站點（`pages/<id>/`、`tests/<id>/`） | **README.md**（站台表 / 目錄樹 / 執行指令 / markers 表）+ **CLAUDE.md**（Architecture 樹 / 站點清單 / factory 段）+ `docs/README.md`（若新增 doc） |
+| 新增 / 改名 pytest marker | **README.md** markers 表 + **CLAUDE.md** Markers + `pytest.ini` |
+| 新增 / 改 fixture | **CLAUDE.md** Fixtures section |
+| POM public method 改名 / 簽名變動 | 該 POM docstring +（若 CLAUDE.md 有提及該方法）**CLAUDE.md** |
+| 新增 / 改 `utils/` helper | **CLAUDE.md** Architecture utils 區 + **README.md** utils 清單 |
+| CI workflow / `.github/scripts` 變動 | **docs/cicd.md** + **CLAUDE.md** CI/CD 段 + **README.md** CI 表 |
+| 新增 / 改名 / 刪 `.env` key | `.env.example` + **CLAUDE.md** Setup |
+| VR / 截圖流程變動 | **CLAUDE.md** Visual Regression / Screenshot 段 |
+| i18n 文案 / 站點 selector 慣例 | **docs/i18n_locale_text_reference.md** |
+| 新增 `docs/` 檔 | **docs/README.md** 索引 + **README.md** 文件資源表 |
+| 測試策略 / 覆蓋邊界 | **docs/testing-strategy.md** + **CLAUDE.md** Test Strategy |
+| skill 流程變動 | 對應 `SKILL.md` + 其 frontmatter `description` |
+
+> 自動關卡（`check-docs-sync.sh`）對其中最高訊號的兩列加了 deterministic 硬規則：**新前台站點**、**marker 變動** 若沒同步 README + CLAUDE.md 會直接 block / PR 紅。其餘列靠本表 + skill/subagent 紀律 + reviewer 把關。
 
 ## Test Strategy
 
@@ -118,6 +141,12 @@ utils/locale_helper.py       — set_locale(): injects i18n_locale cookie for lt
 utils/dialog_helper.py       — helpers: dismiss server error popups, wait for loading animation
 utils/screenshot_helper.py   — element-highlight screenshot system, auto README.md generation
 utils/totp_helper.py         — get_totp_code(): pyotp TOTP 產碼 + 30s 窗口過期緩衝（後台 2FA，首用於 lu dashboard）
+utils/game_launch_helper.py  — 遊戲啟動偵測（new tab / provider 轉址判斷）共用 helper
+utils/layout_fingerprint.py  — 多語系版面健康度 DOM 指紋 + overflow 偵測（locale_layout / visual 用）
+utils/visual_helpers.py      — VR 共用邏輯：save_vr_screenshot() / screenshot_with_mask()（詳見 Visual Regression 段）
+utils/window_helper.py       — 另開分頁（遊戲 launch new tab）後 CDP 最大化視窗
+.github/scripts/aggregate_test_results.py  — 跨站 JUnit 聚合成績單（p0/full-regression 的 aggregate-summary job 共用）
+.github/scripts/check-docs-sync.sh         — docs sync check（hook + CI 共用）
 screenshots/<site_id>/<timestamp>/<smoke|feature>/<test_name>/  — per-test screenshot folders, auto-categorized (in .gitignore)
 screenshots/lt/vr_reference/                    — VR reference screenshots (no comparison, manual review only)
 docs/                        — team-shared documentation (tracked in git)

@@ -45,12 +45,14 @@
 
 | 檔名 | 用途 |
 |------|------|
-| [`i18n_locale_text_reference.md`](./i18n_locale_text_reference.md) | 多語系文案對照表（LT 5 語系 + RC 6 語系），`tests/**/feature/i18n/` 測試斷言的 source of truth |
+| [`i18n_locale_text_reference.md`](./i18n_locale_text_reference.md) | 多語系文案對照表（LT 5 語系 + RC 6 語系 + RD 5 語系），`tests/**/feature/i18n/` 測試斷言的 source of truth |
 | [`testing-strategy.md`](./testing-strategy.md) | 測試分層（L0~L3）、通過標準、flaky 處理、並行限制、marker 規範 |
 | [`lt-dashboard-sitemap.md`](./lt-dashboard-sitemap.md) | LT 後台完整功能地圖（25 頁 × 8 分類），後台測試撰寫的事實參考 |
 | [`dashboard-technical-notes.md`](./dashboard-technical-notes.md) | 後台測試技術注意事項（TOTP、browser context 分離、session 管理、fixture scope 策略） |
-| [`cicd.md`](./cicd.md) | GitHub Actions 操作指南（trigger 規則 / cron / secrets / 看 run / 下載 artifact / docs sync check） |
-| [`agent-skills-workflow.md`](./agent-skills-workflow.md) | Agent / skill / subagent 6+3 接力工作流（已存在但漏在表中，補入） |
+| [`cicd.md`](./cicd.md) | GitHub Actions 操作指南（trigger 規則 / cron / secrets / Slack 通知 + 聚合成績單 / 看 run / 下載 artifact / docs sync check） |
+| [`agent-skills-workflow.md`](./agent-skills-workflow.md) | Agent / skill / subagent 6+3 接力工作流 |
+| [`new-site-onboarding-workflow.md`](./new-site-onboarding-workflow.md) | 新站 onboarding 完整 SOP（mermaid 流程圖、subagent/skill 觸發條件、預估時間、QW 實作踩坑） |
+| [`product-bugs-to-report.md`](./product-bugs-to-report.md) | 已確認的產品/前端/後端 bug 清單（待回報廠商），與「測試端待穩定」flaky 區分 |
 
 ---
 

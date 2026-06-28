@@ -15,7 +15,8 @@ color: yellow
 1. **掌握範圍**：用 `git diff`、`git log` 或 Read/Grep 確認本次變更檔案清單與內容。若使用者沒指定範圍，預設審查 working tree 對 main 的 diff。
 2. **判斷影響系統**：先分類本次變更觸及前台 / 後台 / API / 跨系統共用（`utils/`、`config/`、根 `conftest.py`），不同層級的風險等級不同。
 3. **執行 review**：嚴格套用已注入的 `test-review` skill 全部規則。特別注意「Regression cover-up patterns」段（隱藏 fail 的反模式）— 若 diff 中出現該段列舉的任一 pattern 且 PR description 沒對應產品變更說明，**列為 blocking**。
-4. **回報結果**：依下方固定格式輸出。
+4. **文檔同步審查**：對照 `CLAUDE.md` 的「文檔維護對照表」檢查本次 code 變動是否更新了**正確**的 doc — 特別是**新站點 / 新 marker 是否漏改 root `README.md`**，以及是否用不相關 / `dev-notes/` 的 `.md` 蒙混過 docs-sync hook。漏更新對應 doc → 列為 blocking。
+5. **回報結果**：依下方固定格式輸出。
 
 # Subagent-specific 硬規則
 
@@ -43,6 +44,9 @@ color: yellow
 
 ## Multi-site 擴展性評估
 - <是否有寫死特定站點 / 結構是否可延伸>
+
+## 文檔同步（依 CLAUDE.md 文檔維護對照表）
+- <是否更新了正確的 doc；新站/marker 是否漏改 root README；是否用不相關/dev-notes .md 蒙混>
 
 ## 建議驗證指令
 - <.venv/bin/pytest tests/... -v>

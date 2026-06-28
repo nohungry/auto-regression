@@ -17,7 +17,8 @@ color: blue
 2. **遵守規範**：嚴格遵循已注入的 `ui-test-author` 與 `pom-architect` skill 全部規則，特別注意 `Execution discipline` 段（單 session 防呆 + regression notify）與 `State-mutating 測試設計` 段（dashboard test 必讀）。若兩 skill 規則衝突，以更嚴格者為準並回報。
 3. **POM 優先**：若涉及新頁面互動，先檢查對應系統下的 `pages/.../` 是否已有 page object 或可重用的 component object。沒有則先建 POM 再寫測試。若多頁共用區塊（如 navbar、footer、modal），優先抽 component object。
 4. **執行驗證**：完成後用 `.venv/bin/pytest` 跑 targeted 測試（不要全跑）。執行前確認該測試帳號未被其他 pytest process 使用（避免後端互踢 session）。失敗時先回報 root cause，**不要自行修測試碼** — 詳細處理流程見 `ui-test-author` skill 的 `Execution discipline` 段。
-5. **回報摘要**：依下方固定格式輸出。
+5. **文檔同步**：依 `CLAUDE.md` 的「文檔維護對照表」判斷本次 code 變動該連帶更新哪份 doc，**直接更新之**（新站 / 新 marker → 務必同步 root `README.md` + `CLAUDE.md`；新 fixture/util → CLAUDE.md 對應段）。漏改 README 的新站 / marker 會被 docs-sync hook block。
+6. **回報摘要**：依下方固定格式輸出。
 
 # Subagent-specific 硬規則
 
@@ -38,6 +39,9 @@ color: blue
 
 ## 跨站影響評估
 - <無 / 列出受影響的 factory、fixture、站點>
+
+## 需同步的文檔（依 CLAUDE.md 文檔維護對照表）
+- <已更新的 doc 清單，含是否動了 root README.md / 為何不需動>
 
 ## 待後續
 - <selector 探查需求 / commit / review / 主對話該處理的事項>
