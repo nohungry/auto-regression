@@ -33,7 +33,12 @@ GitHub Actions 自動跑這個 repo 的測試。當前 3 個 workflow：
 | KS | `SITE_KS_URL` / `SITE_KS_USERNAME` / `SITE_KS_PASSWORD` |
 | RF | `SITE_RF_URL` / `SITE_RF_USERNAME` / `SITE_RF_PASSWORD` |
 
-**可選 secret**：`SLACK_WEBHOOK` — Slack Incoming Webhook URL。設了之後 P0 / full-regression **失敗時**自動 post 通知到該頻道（含 run 連結）；**未設則自動略過**（不影響 CI）。
+**可選 secret**：`SLACK_WEBHOOK` — Slack Incoming Webhook URL。設了之後自動推通知到該頻道（含 run 連結 + 跨站聚合摘要）：
+- **排程跑（不論成敗都推，當定時報）**：P0 daily（每日 09:00）→ **每日報**；full-regression weekly（每週一 08:00）→ **每週報**。
+- **手動觸發（workflow_dispatch）**：不論成敗都推（方便隨時要一份摘要 / 驗證通知）。
+- **PR / push**：**僅失敗才推**（成功不吵）。
+- **未設則自動略過**（不影響 CI）。
+
 設定方式：Slack 建 App → 啟用 Incoming Webhooks → Add to Workspace 選頻道 → 拿 webhook URL → `gh secret set SLACK_WEBHOOK`（貼上 URL）。
 
 ### 用 `gh` CLI 從本機 .env 一次設好
