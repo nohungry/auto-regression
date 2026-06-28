@@ -59,6 +59,27 @@ GitHub Actions 自動跑測試：
 - commit message 加 sentinel `[skip-docs-check]` 並附理由
 - 或設 env var `SKIP_DOCS_CHECK=1`
 
+## 文檔維護對照表（code 變動 → 要同步的 doc）
+
+**此表為文檔同步的唯一 source of truth**：`.github/scripts/check-docs-sync.sh` 的警示、`git-commit` skill Step 3、各 authoring skill / subagent 皆對齊此表。改 mapping 只動這裡。改 code 前先比對「我這次屬於哪一列、要連帶更新哪份 doc」，**root `README.md` 是第一公民，不要漏**。
+
+| 變動類型 | 必須同步的 doc |
+|---------|--------------|
+| 新增 / 移除站點（`pages/<id>/`、`tests/<id>/`） | **README.md**（站台表 / 目錄樹 / 執行指令 / markers 表）+ **CLAUDE.md**（Architecture 樹 / 站點清單 / factory 段）+ `docs/README.md`（若新增 doc） |
+| 新增 / 改名 pytest marker | **README.md** markers 表 + **CLAUDE.md** Markers + `pytest.ini` |
+| 新增 / 改 fixture | **CLAUDE.md** Fixtures section |
+| POM public method 改名 / 簽名變動 | 該 POM docstring +（若 CLAUDE.md 有提及該方法）**CLAUDE.md** |
+| 新增 / 改 `utils/` helper | **CLAUDE.md** Architecture utils 區 + **README.md** utils 清單 |
+| CI workflow / `.github/scripts` 變動 | **docs/cicd.md** + **CLAUDE.md** CI/CD 段 + **README.md** CI 表 |
+| 新增 / 改名 / 刪 `.env` key | `.env.example` + **CLAUDE.md** Setup |
+| VR / 截圖流程變動 | **CLAUDE.md** Visual Regression / Screenshot 段 |
+| i18n 文案 / 站點 selector 慣例 | **docs/i18n_locale_text_reference.md** |
+| 新增 `docs/` 檔 | **docs/README.md** 索引 + **README.md** 文件資源表 |
+| 測試策略 / 覆蓋邊界 | **docs/testing-strategy.md** + **CLAUDE.md** Test Strategy |
+| skill 流程變動 | 對應 `SKILL.md` + 其 frontmatter `description` |
+
+> 自動關卡（`check-docs-sync.sh`）對其中最高訊號的兩列加了 deterministic 硬規則：**新前台站點**、**marker 變動** 若沒同步 README + CLAUDE.md 會直接 block / PR 紅。其餘列靠本表 + skill/subagent 紀律 + reviewer 把關。
+
 ## Test Strategy
 
 | 測試類型 | Fixture | Scope | 適用情境 |

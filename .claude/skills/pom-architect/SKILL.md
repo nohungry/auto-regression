@@ -131,3 +131,4 @@ POM 方法中應整合截圖系統：
 - 若涉及新站點，說明其目錄放置策略與與既有站點的關係。
 - 若變更 public API，列出所有受影響的 fixture 與 test 檔。
 - 提供最小驗證指令，優先使用受影響範圍的 targeted pytest。
+- **依 `CLAUDE.md` 的「文檔維護對照表」更新文檔**：POM 結構 / public method 改名或簽名變動 → 更新 CLAUDE.md 對應段與該 POM 的 docstring；新站目錄策略 → 同步 root `README.md` + `CLAUDE.md`。明確列出本次需動的 doc。

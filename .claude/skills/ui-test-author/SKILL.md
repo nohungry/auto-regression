@@ -56,6 +56,7 @@ description: 新增或修改 Python pytest-playwright 測試、Page Objects、�
 5. **評估是否需覆寫 `page` fixture**：全域 `conftest.py` 的 `_new_configured_page()` 會注入 `toast-confirm-btn` MutationObserver（rc 站特有的伺服器錯誤彈窗處理）。若新站不需要此行為，必須在 `tests/<site_id>/conftest.py` 覆寫 `page` fixture，移除注入邏輯。同理評估 `class_logged_in_page` 是否也需覆寫。
 6. **`pytest.ini`**：若有新 marker，在 `markers` 區塊中宣告。
 7. **`tests/<site_id>/`**：建立 `__init__.py`、`test_p0_smoke.py`。
+8. **文檔同步（必做，依 `CLAUDE.md` 文檔維護對照表）**：新站**務必**同步 root `README.md`（站台表 / 目錄樹 / 執行指令 / markers 表）與 `CLAUDE.md`（Architecture 樹 / 站點清單 / factory 段）；新增 marker 另同步 README markers 表 + CLAUDE.md Markers + `pytest.ini`。⚠️ 漏改 README 會被 docs-sync hook 直接 block（新前台站點、marker 變動皆有 deterministic 硬規則）。
 
 ## B. 後台 dashboard（代理/管理端）— 該站若有後台需測就做
 
@@ -219,3 +220,4 @@ description: 新增或修改 Python pytest-playwright 測試、Page Objects、�
 - 若有 multi-site 架構取捨，說明為何放在 site-specific 層或共用層。
 - 若涉及 conftest 覆寫或 factory 變更，明確說明影響範圍。
 - 列出建議執行的 pytest 指令。
+- **完成 code 後，依 `CLAUDE.md` 的「文檔維護對照表」逐項更新對應 docs**：新站同步 root `README.md` + `CLAUDE.md`；新 marker 同步兩處 + `pytest.ini`；新 fixture/util 同步 CLAUDE.md 對應段。明確列出本次動了哪些 doc（或為何不需動）。

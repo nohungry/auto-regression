@@ -116,6 +116,15 @@ description: 審查 auto-regression repo 中的 pytest-playwright 測試、page 
 
 判斷原則：若 diff 中有上述任一 pattern，**必須在 PR description 明確說明對應的產品變更**（issue 編號 / 設計文件 / 主管 ack 等）；無對應依據則建議補產品 ticket 確認後再合，或要求改回原 assertion 並回報 product team 確認是否為 regression。
 
+## 文檔同步問題（依 `CLAUDE.md` 文檔維護對照表）
+
+code 變動是否更新了**正確的** doc（不是隨便動一份 `.md` 過 hook）。對照 `CLAUDE.md` 的「文檔維護對照表」逐項檢查：
+
+- [ ] 新增 / 移除站點 → 是否同步 root `README.md`（站台表 / 目錄樹 / 執行指令 / markers 表）**且** `CLAUDE.md`（Architecture 樹 / 站點清單）？**漏 root README 是最常見遺漏，列為 blocking**。
+- [ ] 新增 / 改名 marker → 是否同步 `README.md` markers 表 + `CLAUDE.md` Markers + `pytest.ini` 三處？
+- [ ] 新增 / 改 `utils/` helper、fixture、CI workflow → 是否更新對照表指定的對應段？
+- [ ] 是否用**不相關的 `.md`** 或 **`dev-notes/` 個人筆記**來抵免文檔義務（hook 雖可能放行但實質未同步）？發現即標示。
+
 # High-risk change rules
 1. 下列變更需特別提高警覺：`conftest.py`、`pages/factory.py`、`pages/dashboard/factory.py`、snapshot baseline、fixture 新增/更名/行為變更、visual regression assertion 調整。
 2. 若 PR 含 snapshot 更新，需要求說明為何屬於產品預期變更。

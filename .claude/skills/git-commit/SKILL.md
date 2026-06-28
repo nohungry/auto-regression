@@ -195,17 +195,18 @@ description: 針對 auto-regression repo 的測試變更，執行提交前檢查
 
 ## Step 3 — 文件同步檢查（每次 commit 都做）
 
-**規則**：每次 commit 前，判斷此次變更是否影響任何 `.md` 文件的正確性。若有，先更新文件再 commit（或至少提醒使用者）。
+**規則**：每次 commit 前，**逐項對照 `CLAUDE.md` 的「文檔維護對照表（code 變動 → 要同步的 doc）」**（文檔同步的唯一 source of truth），判斷此次變更是否影響任何 `.md` 文件的正確性。若有，先更新文件再 commit（或至少提醒使用者）。下表為對照表的本地展開，**內容以 CLAUDE.md 為準**。
 
 ### 3.1 文件位置清單
 
 | 文件 | 覆蓋範圍 | 觸發更新條件 |
 |------|---------|-------------|
-| `CLAUDE.md`（repo 根） | 架構、fixtures、markers、慣例、站點清單 | POM 結構變、新 fixture、新 marker、新站點、慣例規則調整 |
+| **`README.md`（repo 根，第一公民）** | **對外總覽：站台表 / 測試數 / 目錄樹 / 執行指令 / markers 表 / 文件資源** | **新站點、新 marker、新 util、CI 變動、新 docs 檔 — 最容易被漏的就是這份** |
+| `CLAUDE.md`（repo 根） | 架構、fixtures、markers、慣例、站點清單、文檔維護對照表 | POM 結構變、新 fixture、新 marker、新站點、慣例規則調整 |
 | `docs/**/*.md` | 團隊共享知識 | 測試策略、文案對照、API 契約、onboarding 指南變動 |
-| `dev-notes/README.md` | 個人筆記目錄說明 | 目錄分類原則變動（其他 dev-notes 檔案 gitignored，不算 commit 對象） |
+| `dev-notes/README.md` | 個人筆記目錄說明 | 目錄分類原則變動（其他 dev-notes 檔案 gitignored，**不算可抵免文檔義務的對象**） |
 | `.claude/skills/<skill>/SKILL.md` | 對應 skill 本身的規則 | skill 涵蓋流程改變（例如 git-commit skill 新增 step） |
-| `README.md`（若存在於子目錄） | 該目錄用途說明 | 該目錄結構或用途變動 |
+| `README.md`（子目錄，如 `docs/README.md`） | 該目錄用途說明 / 索引 | 該目錄結構、用途或檔案清單變動 |
 | POM / test 模組 docstring | 該檔用途與注意事項 | 該檔 public API 變動、站點差異註記變動 |
 | `.env.example` | env 變數清單與用途 | 新增 / 改名 / 刪除 env key |
 
@@ -283,7 +284,7 @@ review diff 時注意以下紅旗：
 9. `screenshots/` 目錄下的 auto-generated 檔案被 commit（應在 .gitignore）。
 10. commit message 含 `Co-Authored-By: Claude` 行。
 11. 腳本類變更（見 Step 2.1）卻無 CDP 本地實跑紀錄 — 違反硬性規則。
-12. diff 含腳本 API / fixture / marker / 站點結構變動，但 `CLAUDE.md` / `docs/` / `.env.example` 等對應文件未同步更新。
+12. diff 含腳本 API / fixture / marker / 站點結構變動，但 `CLAUDE.md` / `docs/` / `.env.example` 等對應文件未同步更新。**特別檢查：新站點、新 marker 是否漏改 root `README.md`（最常見漏更新；docs-sync hook 對這兩類有硬規則會 block）；是否用不相關 / `dev-notes/` 的 `.md` 蒙混過檢查。**
 13. 目前分支是 `main` — 禁止在 main 上 commit / push（見 Step -1）。
 
 # Commit message rules
