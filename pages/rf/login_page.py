@@ -52,6 +52,37 @@ class LoginPage:
         self.alert_text = page.locator("p.alert-text")
 
     # ------------------------------------------------------------------
+    # base-modal 消失偵測（取代硬等，避免關閉動畫 >500ms 的 race）
+    # ------------------------------------------------------------------
+
+    # 可見 base-modal 計數：用 offsetParent 判可見（與 conftest observer 同 heuristic），
+    # 對 v-if（移出 DOM）與 v-show（display:none）皆準。
+    _VISIBLE_MODAL_COUNT_JS = (
+        "() => Array.from(document.querySelectorAll('.base-modal__container'))"
+        ".filter(e => e.offsetParent !== null).length"
+    )
+
+    def _visible_modal_count(self) -> int:
+        return self.page.evaluate(self._VISIBLE_MODAL_COUNT_JS)
+
+    def _wait_modal_dismissed(self, prev_visible: int, timeout: int = 3000):
+        """等可見 base-modal 數量降到 prev_visible 以下（即剛點的 modal 已關閉）。
+
+        取代「點完硬等 500ms 再重偵測」— 關閉動畫 >500ms 時舊寫法會誤命中同一
+        淡出中的 modal。逾時（動畫異常久 / modal 未如期關）不拋，交由外層 loop
+        下一輪的 visible 偵測兜底。
+        """
+        try:
+            self.page.wait_for_function(
+                "(prev) => Array.from(document.querySelectorAll('.base-modal__container'))"
+                ".filter(e => e.offsetParent !== null).length < prev",
+                arg=prev_visible,
+                timeout=timeout,
+            )
+        except PlaywrightTimeoutError:
+            pass
+
+    # ------------------------------------------------------------------
     # 防禦性清 base-modal（最多 N 次 loop）
     # ------------------------------------------------------------------
 
@@ -70,9 +101,10 @@ class LoginPage:
                 btn = self.modal_container.locator("button.btn-gold").first
                 btn.wait_for(state="visible", timeout=2000)
                 btn.scroll_into_view_if_needed()
+                n_before = self._visible_modal_count()
                 btn.click()
-                # 短暫等待 modal 消失後再次檢查
-                self.page.wait_for_timeout(500)
+                # 等被點的 modal 真正消失（可見數減少）再重新偵測，取代硬等 500ms
+                self._wait_modal_dismissed(n_before)
             except PlaywrightTimeoutError:
                 break
 
@@ -172,8 +204,10 @@ class LoginPage:
                 btn.scroll_into_view_if_needed()
                 if sh:
                     sh.capture(btn, f"click_確定彈窗_{attempt + 1}")
+                n_before = self._visible_modal_count()
                 btn.click()
-                self.page.wait_for_timeout(500)
+                # 等被點的 modal 真正消失（可見數減少）再重新偵測，取代硬等 500ms
+                self._wait_modal_dismissed(n_before)
             except PlaywrightTimeoutError:
                 break
 

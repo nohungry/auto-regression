@@ -35,7 +35,6 @@ class TestLogin:
         home = HomePage(page)
         home.verify_login_success(site_config.username)
 
-    @pytest.mark.flaky(reruns=1, reruns_delay=5)
     def test_login_wrong_password(self, page: Page, site_config):
         """TC-002：正確帳號 + 錯誤密碼應失敗，出現 base-modal 錯誤彈窗。
 
@@ -44,7 +43,8 @@ class TestLogin:
         - p.alert-text 文字含「密碼錯誤」（已實機驗證）
 
         注意：此 test 不呼叫 complete_login_modals()，保留錯誤彈窗供斷言。
-        Flaky 標記原因：dev 環境偶爾 base-modal 出現時序不穩，retry 1 次吸收。
+        （原標 flaky：base-modal 時序不穩；LoginPage 改「等 modal 消失」後 CDP
+        連跑 8 輪 0 flake，已移除 flaky 標記。）
         """
         login = LoginPage(page, site_config.url)
         login.goto()
@@ -58,7 +58,6 @@ class TestLogin:
         expect(alert).to_be_visible(timeout=8000)
         expect(alert).to_contain_text("密碼錯誤")
 
-    @pytest.mark.flaky(reruns=1, reruns_delay=5)
     def test_login_wrong_username(self, page: Page, site_config):
         """TC-003：不存在帳號應失敗，出現 base-modal 錯誤彈窗。
 
@@ -67,7 +66,7 @@ class TestLogin:
         - p.alert-text 文字含「帳號不存在」（已實機驗證 dev-rf 2026-06-17）
 
         注意：此 test 不呼叫 complete_login_modals()，保留錯誤彈窗供斷言。
-        Flaky 標記原因：dev 環境偶爾 base-modal 出現時序不穩，retry 1 次吸收。
+        （原標 flaky：同 test_login_wrong_password，改「等 modal 消失」後穩定，已移除。）
         """
         login = LoginPage(page, site_config.url)
         login.goto()
