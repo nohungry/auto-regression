@@ -9,9 +9,9 @@ RF P0 Smoke Test — 金爺娛樂城（rf / drf）
 - 登出：.loginInBox 下拉 → button.btn-logout
 - 導覽按鈕（真人/電子/捕魚）為 button，文字也出現在遊戲卡，用 .first 取第一個
 
-Flaky 標記（test_login_wrong_password / test_login_wrong_username）：
-- RF 沒有 RC 的 MutationObserver，不需要同樣理由；
-  但 dev 環境網路偶爾慢，base-modal 出現時序不穩，故各加 1 次 retry 吸收。
+錯誤登入 test（test_login_wrong_password / test_login_wrong_username）：
+- 曾標 flaky（base-modal 出現/關閉時序不穩）；LoginPage 的 dismiss loop 改
+  「等 base-modal 消失」後 CDP 連跑 8 輪 0 flake，已移除 flaky 標記。
 """
 
 import pytest
@@ -35,7 +35,6 @@ class TestLogin:
         home = HomePage(page)
         home.verify_login_success(site_config.username)
 
-    @pytest.mark.flaky(reruns=1, reruns_delay=5)
     def test_login_wrong_password(self, page: Page, site_config):
         """TC-002：正確帳號 + 錯誤密碼應失敗，出現 base-modal 錯誤彈窗。
 
@@ -44,7 +43,8 @@ class TestLogin:
         - p.alert-text 文字含「密碼錯誤」（已實機驗證）
 
         注意：此 test 不呼叫 complete_login_modals()，保留錯誤彈窗供斷言。
-        Flaky 標記原因：dev 環境偶爾 base-modal 出現時序不穩，retry 1 次吸收。
+        （原標 flaky：base-modal 時序不穩；LoginPage 改「等 modal 消失」後 CDP
+        連跑 8 輪 0 flake，已移除 flaky 標記。）
         """
         login = LoginPage(page, site_config.url)
         login.goto()
@@ -58,7 +58,6 @@ class TestLogin:
         expect(alert).to_be_visible(timeout=8000)
         expect(alert).to_contain_text("密碼錯誤")
 
-    @pytest.mark.flaky(reruns=1, reruns_delay=5)
     def test_login_wrong_username(self, page: Page, site_config):
         """TC-003：不存在帳號應失敗，出現 base-modal 錯誤彈窗。
 
@@ -67,7 +66,7 @@ class TestLogin:
         - p.alert-text 文字含「帳號不存在」（已實機驗證 dev-rf 2026-06-17）
 
         注意：此 test 不呼叫 complete_login_modals()，保留錯誤彈窗供斷言。
-        Flaky 標記原因：dev 環境偶爾 base-modal 出現時序不穩，retry 1 次吸收。
+        （原標 flaky：同 test_login_wrong_password，改「等 modal 消失」後穩定，已移除。）
         """
         login = LoginPage(page, site_config.url)
         login.goto()
