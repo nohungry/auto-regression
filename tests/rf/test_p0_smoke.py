@@ -9,9 +9,9 @@ RF P0 Smoke Test — 金爺娛樂城（rf / drf）
 - 登出：.loginInBox 下拉 → button.btn-logout
 - 導覽按鈕（真人/電子/捕魚）為 button，文字也出現在遊戲卡，用 .first 取第一個
 
-Flaky 標記（test_login_wrong_password / test_login_wrong_username）：
-- RF 沒有 RC 的 MutationObserver，不需要同樣理由；
-  但 dev 環境網路偶爾慢，base-modal 出現時序不穩，故各加 1 次 retry 吸收。
+錯誤登入 test（test_login_wrong_password / test_login_wrong_username）：
+- 曾標 flaky（base-modal 出現/關閉時序不穩）；LoginPage 的 dismiss loop 改
+  「等 base-modal 消失」後 CDP 連跑 8 輪 0 flake，已移除 flaky 標記。
 """
 
 import pytest
