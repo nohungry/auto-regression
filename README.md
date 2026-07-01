@@ -172,6 +172,7 @@ ip route show | grep -i default | awk '{print $3}'   # WSL 預設 gateway = Wind
 | `visual` / `visual_regression` / `locale_layout` | 視覺 |
 | `api` / `dashboard` / `game` | 測試類別 |
 | `flaky` | 已知偶發 flaky，附理由 |
+| `no_toast_observer` | 停用全域 toast auto-close observer（需斷言 toast 可見的 test） |
 | `docker_only` | 僅 Docker 環境（pixel-level snapshot） |
 
 > 完整 markers 定義與測試分層、flaky 處理原則見 [`pytest.ini`](pytest.ini) 與 [`docs/testing-strategy.md`](docs/testing-strategy.md)。

@@ -31,12 +31,12 @@ class TestLogin:
         home = HomePage(page)
         home.verify_login_success(site_config.username)
 
-    @pytest.mark.flaky(reruns=1, reruns_delay=5)
+    @pytest.mark.no_toast_observer
     def test_login_wrong_password(self, page: Page, site_config):
         """TC-002：正確帳號 + 錯誤密碼應失敗，並出現「密碼錯誤」警告彈窗
 
-        Flaky 標記原因：global MutationObserver（conftest.py 注入）會秒關所有
-        toast-confirm-btn，偶爾在 assert visible 前已關閉。retry 1 次吸收。
+        no_toast_observer：停用 conftest.py 全域 MutationObserver（它會秒關所有
+        toast-confirm-btn）。停用後 toast 保持可見，斷言確定性成立，不需 retry。
         """
         login = LoginPage(page, site_config.url)
         login.goto()
@@ -51,11 +51,11 @@ class TestLogin:
         expect(toast_btn).to_be_visible(timeout=5000)
         expect(error_msg).to_be_visible()
 
-    @pytest.mark.flaky(reruns=1, reruns_delay=5)
+    @pytest.mark.no_toast_observer
     def test_login_wrong_username(self, page: Page, site_config):
         """TC-003：不存在帳號應失敗，並出現「帳號不存在」警告彈窗
 
-        Flaky 標記原因：同 test_login_wrong_password — observer 秒關 toast race。
+        no_toast_observer：同 test_login_wrong_password — 停用 observer 讓 toast 保持可見。
         """
         login = LoginPage(page, site_config.url)
         login.goto()

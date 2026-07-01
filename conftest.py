@@ -206,12 +206,12 @@ def _start_chrome_from_wsl(cdp_url: str) -> None:
     raise RuntimeError(f'Chrome 啟動超時，無法連線到 {cdp_url}')
 
 
-def _new_configured_page(browser):
+def _new_configured_page(browser, install_toast_observer=True):
     """
     建立新的 browser context + page，並套用標準設定：
     - 視窗最大化（CDP `Browser.setWindowBounds windowState=maximized`）；
       CI 環境無 window manager 不支援，改用 explicit viewport 1920×1080
-    - 注入 MutationObserver 自動關閉伺服器錯誤彈窗
+    - 注入 MutationObserver 自動關閉伺服器錯誤彈窗（`install_toast_observer=True` 時）
     回傳 (context, page)
 
     若 setup 過程任何步驟失敗，會關閉已建立的 context 再 raise，避免 Chrome 視窗洩漏。
@@ -220,9 +220,12 @@ def _new_configured_page(browser):
     - 完全移除 → 6 fail + 5 error（伺服器錯誤 popup 擋住操作）
     - 白名單（只關「伺服器錯誤」）→ 漏其他 popup
     - 黑名單（密碼錯誤/帳號不存在不關）→ JS 掃 DOM 慢 50-100ms 仍被 popup 擋
-    結論：保留原始 aggressive observer。test_login_wrong_password /
-    test_login_wrong_username 偶發 flaky（observer 秒關 toast 在 assert 之前）
-    用 pytest-rerunfailures 重試一次處理（pytest.ini --reruns 1）。
+    結論：保留原始 aggressive observer 為**預設**，不弱化任何 test 的 popup 防護。
+
+    需斷言 toast 可見的 test（如 RC test_login_wrong_password /
+    test_login_wrong_username）改用 `@pytest.mark.no_toast_observer` marker：
+    `page` fixture 偵測到該 marker 時傳 `install_toast_observer=False`，**完全不安裝**
+    observer（而非弱化其邏輯）→ toast 不再被秒關，斷言確定性成立，不需 rerun 吸收。
     """
     if _is_ci():
         # CI 用 explicit viewport（headless 無 window manager 不支援 setWindowBounds maximize）
@@ -243,13 +246,14 @@ def _new_configured_page(browser):
             })
             cdp.detach()
 
-        page.add_init_script("""
-            new MutationObserver(() => {
-                // 自動關閉伺服器錯誤彈窗（RC 站特有）
-                const toastBtn = document.querySelector('button.toast-confirm-btn');
-                if (toastBtn && toastBtn.offsetParent !== null) toastBtn.click();
-            }).observe(document.body, { childList: true, subtree: true });
-        """)
+        if install_toast_observer:
+            page.add_init_script("""
+                new MutationObserver(() => {
+                    // 自動關閉伺服器錯誤彈窗（RC 站特有）
+                    const toastBtn = document.querySelector('button.toast-confirm-btn');
+                    if (toastBtn && toastBtn.offsetParent !== null) toastBtn.click();
+                }).observe(document.body, { childList: true, subtree: true });
+            """)
     except BaseException:
         context.close()
         raise
@@ -324,12 +328,16 @@ def site_config(request):
 
 
 @pytest.fixture(scope="function")
-def page(browser):
+def page(browser, request):
     """
     [Smoke 用] 每個測試建立獨立 context，視窗最大化。
     測試後由 auto_logout_after_test 自動登出並關閉 context。
+
+    標了 `@pytest.mark.no_toast_observer` 的 test 不安裝全域 toast auto-close
+    observer（供需斷言 toast/錯誤彈窗可見的 test 使用，避免 observer 秒關 race）。
     """
-    context, pg = _new_configured_page(browser)
+    install_observer = request.node.get_closest_marker("no_toast_observer") is None
+    context, pg = _new_configured_page(browser, install_toast_observer=install_observer)
     try:
         yield pg
     finally:
