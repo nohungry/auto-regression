@@ -4,7 +4,7 @@ pytest-playwright-snapshot
 pytest-html
 pytest-base-url
 pytest-metadata
-pytest-rerunfailures
+pytest-rerunfailures>=16,<17  # flaky-trend hook 依賴 report.outcome=='rerun'，鎖大版本避免語意漂移
 python-dotenv
 playwright
 pygments

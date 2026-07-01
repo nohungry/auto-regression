@@ -17,6 +17,7 @@ Fixture 選用指引：
 
 import os
 import sys
+import json
 import socket
 import subprocess
 import time
@@ -315,6 +316,47 @@ def pytest_addoption(parser):
         default=None,
         help="指定測試站點，例如：--site=wlj",
     )
+
+
+# -----------------------------------------------
+# flaky-on-rerun 趨勢採集（觀測性）
+# -----------------------------------------------
+# CI 用 `--reruns 1` 吸收偶發 flaky，但 JUnit XML 只記最終結果，看不出「哪些 test
+# 是重跑後才通過」。以下 hook 累積每個 nodeid 的重跑次數與最終結果，session 結束時
+# 把「重跑過且最終通過」（＝本次 flaky）的清單寫成 sidecar JSON，檔名與 --junitxml
+# 同 stem（junit/rc.xml → junit/rc-flaky.json），供 aggregate_test_results.py 聚合。
+# 僅在有 --junitxml 時寫檔（本機一般跑不寫，零負擔）。
+_flaky_rerun_counts: dict = {}   # nodeid -> 重跑次數
+_flaky_final_outcome: dict = {}  # nodeid -> 最終 call 結果（passed / failed）
+
+
+def pytest_runtest_logreport(report):
+    """記錄每個 test call 階段的重跑與最終結果（pytest-rerunfailures：中間重試 outcome='rerun'）。"""
+    if report.when != "call":
+        return
+    if report.outcome == "rerun":
+        _flaky_rerun_counts[report.nodeid] = _flaky_rerun_counts.get(report.nodeid, 0) + 1
+    else:
+        # 最終一次嘗試（passed / failed）— 重跑後仍 failed 者屬真失敗，不算 flaky-pass
+        _flaky_final_outcome[report.nodeid] = report.outcome
+
+
+def pytest_sessionfinish(session, exitstatus):
+    """把「重跑後才通過」的 test 寫成 sidecar JSON（僅當有 --junitxml）。"""
+    xmlpath = getattr(session.config.option, "xmlpath", None)
+    if not xmlpath:
+        return
+    flaky = sorted(
+        nid for nid, cnt in _flaky_rerun_counts.items()
+        if _flaky_final_outcome.get(nid) == "passed"
+    )
+    data = {"flaky": [{"nodeid": nid, "reruns": _flaky_rerun_counts[nid]} for nid in flaky]}
+    sidecar = (xmlpath[:-4] if xmlpath.endswith(".xml") else xmlpath) + "-flaky.json"
+    try:
+        with open(sidecar, "w", encoding="utf-8") as f:
+            json.dump(data, f, ensure_ascii=False, indent=2)
+    except OSError:
+        pass  # sidecar 為觀測性附加物，寫不出不應影響測試結果
 
 
 # -----------------------------------------------
