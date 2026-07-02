@@ -42,6 +42,7 @@ import re
 from playwright.sync_api import Page, TimeoutError as PlaywrightTimeoutError
 
 from utils.screenshot_helper import get_screenshotter
+from utils.wait_helpers import wait_for_nonempty_text
 
 
 class ManagementPage:
@@ -191,7 +192,13 @@ class ManagementPage:
         deposit_btn = tab_item.locator("button.btn-primary.me-2").first
         deposit_btn.wait_for(state="attached", timeout=5000)
         self.page.evaluate("(el) => el.click()", deposit_btn.element_handle())
-        self.page.wait_for_timeout(800)
+
+        # 等 dialog 的會員餘額 span（.label-xs[1]）出現且非空，取代硬等 800ms
+        member_balance_span = (
+            self.page.locator(".dialog-container.bottom-style").last
+            .locator(".label-xs").nth(1)
+        )
+        wait_for_nonempty_text(member_balance_span, timeout=8000)
 
         # 取 dialog 中的會員剩餘餘額（第二個 p.info 的 span.label-xs）
         dialog_last = self.page.locator(".dialog-container.bottom-style").last
@@ -331,7 +338,13 @@ class ManagementPage:
         deposit_btn = tab_item.locator("button.btn-primary.me-2").first
         deposit_btn.wait_for(state="attached", timeout=5000)
         self.page.evaluate("(el) => el.click()", deposit_btn.element_handle())
-        self.page.wait_for_timeout(800)
+
+        # 等 dialog 的代理餘額 span（.label-xs[1]）出現且非空，取代硬等 800ms
+        agent_balance_span = (
+            self.page.locator(".dialog-container.bottom-style").last
+            .locator(".label-xs").nth(1)
+        )
+        wait_for_nonempty_text(agent_balance_span, timeout=8000)
 
         # dialog 兩個 label-xs：[0]=上級總代餘額(∞)、[1]=目標代理餘額
         balance_text = self.page.evaluate(
