@@ -146,6 +146,7 @@ utils/layout_fingerprint.py  — 多語系版面健康度 DOM 指紋 + overflow 
 utils/visual_helpers.py      — VR 共用邏輯：save_vr_screenshot() / screenshot_with_mask()（詳見 Visual Regression 段）
 utils/window_helper.py       — 另開分頁（遊戲 launch new tab）後 CDP 最大化視窗
 utils/wait_helpers.py        — 可判定等待 helper：wait_for_text_matches()（等元素文字符合 pattern）/ wait_for_nonempty_text()（\S 特例）；讀值前取代散落硬等，用於 rf/rc/re/lt/rd dashboard 餘額讀取
+utils/api_helpers.py         — API 測試共用邏輯（純函式）：api_base_url_for / api_headers_for / login_for_token；各站 tests/api/<id>/conftest.py 的 fixture 仍 per-site（session 快取跨站隔離），只 body 呼叫這些函式
 .github/scripts/aggregate_test_results.py  — 跨站 JUnit 聚合成績單（含 🔁 flaky 欄，讀 <site>-flaky.json sidecar；p0/full-regression 的 aggregate-summary job 共用）
 .github/scripts/check-docs-sync.sh         — docs sync check（hook + CI 共用）
 screenshots/<site_id>/<timestamp>/<smoke|feature>/<test_name>/  — per-test screenshot folders, auto-categorized (in .gitignore)
