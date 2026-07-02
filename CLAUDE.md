@@ -44,7 +44,7 @@ GitHub Actions 自動跑測試：
 - `full-regression.yml`：每週一 08:00 台灣 / 手動 → 9 站全套（P0 + feature）
 - `docs-sync-check.yml`：PR 時檢查 code 變動是否有對應 .md 更新（hook 機制 + CI 雙保險）
 
-**觀測性**：`p0.yml` 與 `full-regression.yml` 跑完後都有 `aggregate-summary` job — `.github/scripts/aggregate_test_results.py` 解析各站 JUnit XML 聚合成跨站成績單（寫進 run 的 Step Summary），並可選推 Slack 通知（設了 `SLACK_WEBHOOK` secret 才推；排程一定推、PR/push 則失敗才推）。
+**觀測性**：`p0.yml` 與 `full-regression.yml` 跑完後都有 `aggregate-summary` job — `.github/scripts/aggregate_test_results.py` 解析各站 JUnit XML 聚合成跨站成績單（含 **🔁 Flaky 欄／清單**＝重跑後才通過的 test，資料來自 `conftest.py` sessionfinish hook 產出的 `junit/<site>-flaky.json` sidecar；寫進 run 的 Step Summary），並可選推 Slack 通知（設了 `SLACK_WEBHOOK` secret 才推；排程一定推、PR/push 則失敗才推）。
 
 詳細的 trigger 規則、cron 時段、secrets 清單、Slack/聚合成績單、如何看 run / 下載 artifact / 加 secret / debug fail → 見 [`docs/cicd.md`](docs/cicd.md)。
 
@@ -145,7 +145,7 @@ utils/game_launch_helper.py  — 遊戲啟動偵測（new tab / provider 轉址�
 utils/layout_fingerprint.py  — 多語系版面健康度 DOM 指紋 + overflow 偵測（locale_layout / visual 用）
 utils/visual_helpers.py      — VR 共用邏輯：save_vr_screenshot() / screenshot_with_mask()（詳見 Visual Regression 段）
 utils/window_helper.py       — 另開分頁（遊戲 launch new tab）後 CDP 最大化視窗
-.github/scripts/aggregate_test_results.py  — 跨站 JUnit 聚合成績單（p0/full-regression 的 aggregate-summary job 共用）
+.github/scripts/aggregate_test_results.py  — 跨站 JUnit 聚合成績單（含 🔁 flaky 欄，讀 <site>-flaky.json sidecar；p0/full-regression 的 aggregate-summary job 共用）
 .github/scripts/check-docs-sync.sh         — docs sync check（hook + CI 共用）
 screenshots/<site_id>/<timestamp>/<smoke|feature>/<test_name>/  — per-test screenshot folders, auto-categorized (in .gitignore)
 screenshots/lt/vr_reference/                    — VR reference screenshots (no comparison, manual review only)

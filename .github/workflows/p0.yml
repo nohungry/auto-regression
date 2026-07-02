@@ -106,13 +106,16 @@ jobs:
         with:
           paths: "junit/${{ matrix.site }}.xml"
 
-      # upload JUnit XML 供 aggregate-summary job 做跨站聚合成績單
+      # upload JUnit XML + flaky sidecar（conftest sessionfinish 產出「重跑後才通過」清單）
+      # 供 aggregate-summary job 做跨站聚合成績單（含 flaky 欄）
       - name: Upload JUnit XML
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: junit-${{ matrix.site }}
-          path: junit/${{ matrix.site }}.xml
+          path: |
+            junit/${{ matrix.site }}.xml
+            junit/${{ matrix.site }}-flaky.json
           if-no-files-found: warn
           retention-days: 14
 

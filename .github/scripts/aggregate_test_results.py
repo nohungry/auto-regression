@@ -15,6 +15,7 @@ site 名稱取自 JUnit 檔名 stem（junit/rc.xml → rc）；遞迴 glob 容�
 
 import argparse
 import glob
+import json
 import os
 import xml.etree.ElementTree as ET
 
@@ -65,31 +66,56 @@ def parse_one(path):
             "failed_names": failed_names, "parse_error": None}
 
 
+def parse_flaky(junit_dir):
+    """讀各站 flaky sidecar（<site>-flaky.json，conftest.py sessionfinish 產出）。
+
+    回傳 {site: [nodeid, ...]}（僅含「重跑後才通過」的 test）。sidecar 由 --junitxml
+    的 stem 命名（junit/rc.xml → junit/rc-flaky.json），故 site 取檔名去掉 -flaky 後綴。
+    """
+    result = {}
+    for path in sorted(glob.glob(os.path.join(junit_dir, "**", "*-flaky.json"), recursive=True)):
+        site = os.path.basename(path)[: -len("-flaky.json")]
+        try:
+            with open(path, encoding="utf-8") as f:
+                data = json.load(f)
+        except (OSError, ValueError):
+            continue
+        names = [item.get("nodeid", "?") for item in data.get("flaky", [])]
+        result[site] = names
+    return result
+
+
 def build_markdown(stats, title):
     lines = []
     lines.append(f"## 🧪 {title} — 跨站聚合成績單\n")
-    lines.append("| Site | ✅ Passed | ❌ Failed | ⚠️ Error | ⏭ Skipped | ⏱ Duration |")
-    lines.append("|------|----------:|----------:|---------:|----------:|-----------:|")
+    lines.append("| Site | ✅ Passed | ❌ Failed | ⚠️ Error | ⏭ Skipped | 🔁 Flaky | ⏱ Duration |")
+    lines.append("|------|----------:|----------:|---------:|----------:|---------:|-----------:|")
 
-    tot = {"passed": 0, "failures": 0, "errors": 0, "skipped": 0, "duration": 0.0}
+    tot = {"passed": 0, "failures": 0, "errors": 0, "skipped": 0, "flaky": 0, "duration": 0.0}
     any_fail = False
     for st in stats:
         if st["parse_error"]:
-            lines.append(f"| {st['site']} | — | — | — | — | ⚠️ XML 解析失敗 |")
+            lines.append(f"| {st['site']} | — | — | — | — | — | ⚠️ XML 解析失敗 |")
             any_fail = True
             continue
+        n_flaky = len(st.get("flaky_names", []))
         lines.append(
             f"| {st['site']} | {st['passed']} | {st['failures']} | {st['errors']} "
-            f"| {st['skipped']} | {_fmt_duration(st['duration'])} |"
+            f"| {st['skipped']} | {n_flaky or ''} | {_fmt_duration(st['duration'])} |"
         )
         for k in tot:
-            tot[k] += st[k] if k != "duration" else st["duration"]
+            if k == "duration":
+                tot[k] += st["duration"]
+            elif k == "flaky":
+                tot[k] += n_flaky
+            else:
+                tot[k] += st[k]
         if st["failures"] or st["errors"]:
             any_fail = True
 
     lines.append(
         f"| **合計** | **{tot['passed']}** | **{tot['failures']}** | **{tot['errors']}** "
-        f"| **{tot['skipped']}** | **{_fmt_duration(tot['duration'])}** |"
+        f"| **{tot['skipped']}** | **{tot['flaky'] or ''}** | **{_fmt_duration(tot['duration'])}** |"
     )
     lines.append("")
 
@@ -108,6 +134,18 @@ def build_markdown(stats, title):
     else:
         lines.append("### ✅ 全 9 站全數通過 🎉")
     lines.append("")
+
+    # Flaky 清單（重跑後才通過，按站分組）— 綠燈但值得追的訊號
+    flaky_blocks = []
+    for st in stats:
+        names = st.get("flaky_names", [])
+        if names:
+            joined = ", ".join(f"`{n}`" for n in names)
+            flaky_blocks.append(f"- **{st['site']}**（{len(names)}）：{joined}")
+    if flaky_blocks:
+        lines.append("### 🔁 Flaky（重跑後才通過，按站分組）\n")
+        lines.extend(flaky_blocks)
+        lines.append("")
     return "\n".join(lines)
 
 
@@ -118,7 +156,9 @@ def build_slack(stats):
     failed = sum(s["failures"] for s in stats)
     error = sum(s["errors"] for s in stats)
     skipped = sum(s["skipped"] for s in stats)
-    line1 = f"{n} 站總計：✅ {passed} 通過 / ❌ {failed} 失敗 / ⚠️ {error} error / ⏭ {skipped} skip"
+    flaky = sum(len(s.get("flaky_names", [])) for s in stats)
+    line1 = (f"{n} 站總計：✅ {passed} 通過 / ❌ {failed} 失敗 / ⚠️ {error} error "
+             f"/ ⏭ {skipped} skip / 🔁 {flaky} flaky")
     fail_sites = [f"{s['site']}({s['failures'] + s['errors']})"
                   for s in stats if s["failures"] or s["errors"]]
     line2 = "失敗站別：" + ", ".join(fail_sites) if fail_sites else "全數通過 🎉"
@@ -141,6 +181,9 @@ def main():
         return
 
     stats = [parse_one(p) for p in paths]
+    flaky_map = parse_flaky(args.junit_dir)
+    for st in stats:
+        st["flaky_names"] = flaky_map.get(st["site"], [])
     print(build_markdown(stats, args.title))
     if args.slack_file:
         with open(args.slack_file, "w", encoding="utf-8") as f:

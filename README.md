@@ -99,7 +99,7 @@ GitHub Actions 自動跑測試與 docs 同步檢查：
 | `.github/workflows/full-regression.yml` | 週一 08:00 台灣 / 手動 | 9 站全套（P0 + feature；不由 PR/push 觸發） |
 | `.github/workflows/docs-sync-check.yml` | PR | code 變動是否同步更新 docs |
 
-p0 / full-regression 跑完都會由 `aggregate-summary` job（`.github/scripts/aggregate_test_results.py`）把各站結果聚合成跨站成績單寫進 run Step Summary，並可選推 Slack（設 `SLACK_WEBHOOK` secret 才推；排程必推、PR/push 失敗才推）。
+p0 / full-regression 跑完都會由 `aggregate-summary` job（`.github/scripts/aggregate_test_results.py`）把各站結果聚合成跨站成績單寫進 run Step Summary（含 **🔁 Flaky 欄**＝重跑後才通過的 test，來自 `conftest.py` 產出的 `junit/<site>-flaky.json` sidecar），並可選推 Slack（設 `SLACK_WEBHOOK` secret 才推；排程必推、PR/push 失敗才推）。
 
 操作細節（trigger 規則、cron 時段、secrets 清單、Slack 通知 + 聚合成績單、看 run / 下載 artifact / debug、docs sync check 操作 + override）見 [`docs/cicd.md`](docs/cicd.md)。
 

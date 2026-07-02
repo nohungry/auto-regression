@@ -70,14 +70,15 @@ done
 run 頁面看得到：
 - 各 job ✅/❌
 - 每 step 完整 log
-- **跨站聚合成績單**（👉 一眼看完全站，建議優先看）：`aggregate-summary` job 在所有 site 跑完後，把 9 站 JUnit 聚合成**單一總覽表**（`Site | Passed | Failed | Error | Skipped | Duration` + 合計）+ **失敗測試總清單（按站分組）**，寫到該 run 的總 Step Summary。不用逐一點 9 個 site 的 Job Summary。
-  - 機制：各 site job upload `junit-<site>` artifact → `aggregate-summary` job（`needs` matrix、`if: always()`）download 全部 → 跑 `.github/scripts/aggregate_test_results.py` 寫 `$GITHUB_STEP_SUMMARY`。
+- **跨站聚合成績單**（👉 一眼看完全站，建議優先看）：`aggregate-summary` job 在所有 site 跑完後，把 9 站 JUnit 聚合成**單一總覽表**（`Site | Passed | Failed | Error | Skipped | 🔁 Flaky | Duration` + 合計）+ **失敗測試總清單（按站分組）** + **🔁 Flaky 清單（重跑後才通過，按站分組）**，寫到該 run 的總 Step Summary。不用逐一點 9 個 site 的 Job Summary。
+  - 機制：各 site job upload `junit-<site>` artifact（含 `junit/<site>.xml` + `junit/<site>-flaky.json` flaky sidecar）→ `aggregate-summary` job（`needs` matrix、`if: always()`）download 全部 → 跑 `.github/scripts/aggregate_test_results.py` 寫 `$GITHUB_STEP_SUMMARY`。
   - 全綠時顯示「✅ 全 9 站全數通過 🎉」；有失敗時列出哪站哪些 test。
+  - **🔁 Flaky 欄／清單**：CI 用 `--reruns 1`，`conftest.py` 的 `pytest_runtest_logreport`/`pytest_sessionfinish` hook 把「**重跑後才通過**」的 test（＝本次 flaky，綠燈但值得追）寫成 `junit/<site>-flaky.json` sidecar，聚合後顯示。真失敗（重跑仍 fail）不算 flaky、照常計入 Failed。
 - **各站 Job Summary**：個別 site 的 pytest 結果 markdown 表格（pass/fail/skip + 失敗 test 名單），看單站細節用。
 - **Artifacts**（頁面最下方）：
   - `report-html-<site>.zip` / `full-regression-report-<site>.zip`：自包式 HTML 報告（保留 30 天）
   - `failure-screenshots-<site>.zip`（**只有失敗時上傳**，保留 14 天）：紅框截圖 + 自動生成 README.md
-  - `junit-<site>.zip`：JUnit XML（聚合成績單的原始資料）
+  - `junit-<site>.zip`：JUnit XML + `<site>-flaky.json`（聚合成績單／flaky 欄的原始資料）
 
 ## 手動觸發
 
