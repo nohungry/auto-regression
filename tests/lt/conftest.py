@@ -1,17 +1,16 @@
 """
 lt 站點測試專用 conftest
 - 覆寫 site_config fixture，讓 tests/lt/ 下的測試不需加 --site=lt 即可執行
-- 覆寫 page fixture：LT 2026-05-18 換版改回 desktop responsive，沿用 RC/RE/RD 的
-  CDP maximize 模式（不再用 iPhone 13 mobile emulation）；但**不注入** 全域的
-  toast-confirm-btn MutationObserver，因為 LT 的錯誤 dialog（密碼錯/帳號錯）
-  確定按鈕也叫 button.toast-confirm-btn，被 observer 秒關會讓 wrong_password /
-  wrong_username 測試 assert 不到 dialog。
+- 覆寫 page fixture：沿用全域 _new_configured_page 的 CDP maximize，但**不注入**
+  toast-confirm-btn MutationObserver — LT 的錯誤 dialog（密碼錯/帳號錯）確定按鈕
+  也叫 button.toast-confirm-btn，被 observer 秒關會讓 wrong_password / wrong_username
+  測試 assert 不到 dialog。故傳 install_toast_observer=False。
+- 不覆寫 go_home：沿用全域版（root conftest.py）。
 """
 
 import pytest
-from playwright.sync_api import Playwright
 from config.settings import get_site_config
-from conftest import _is_ci
+from conftest import _new_configured_page
 
 
 @pytest.fixture(scope="session")
@@ -22,34 +21,10 @@ def site_config():
 
 @pytest.fixture(scope="function")
 def page(browser):
+    """lt page fixture：與全域相同（CI viewport / 本機 CDP maximize），但不注入
+    toast-confirm-btn observer（LT 錯誤 dialog 用同一 selector，注入會破壞錯誤路徑測試）。
     """
-    lt 站 desktop responsive page fixture：CDP maximize + 不注入 observer。
-
-    與全域 _new_configured_page 邏輯相同，但拿掉 toast-confirm-btn observer
-    （LT 錯誤 dialog 用同一個 selector，注入會破壞錯誤路徑測試）。
-
-    CI 環境（headless 無 window manager）改用 explicit viewport 1920×1080。
-    """
-    if _is_ci():
-        context = browser.new_context(viewport={"width": 1920, "height": 1080})
-    else:
-        context = browser.new_context(no_viewport=True)
-
-    try:
-        pg = context.new_page()
-
-        if not _is_ci():
-            cdp = context.new_cdp_session(pg)
-            window_id = cdp.send("Browser.getWindowForTarget")["windowId"]
-            cdp.send("Browser.setWindowBounds", {
-                "windowId": window_id,
-                "bounds": {"windowState": "maximized"},
-            })
-            cdp.detach()
-    except BaseException:
-        context.close()
-        raise
-
+    context, pg = _new_configured_page(browser, install_toast_observer=False)
     try:
         yield pg
     finally:
