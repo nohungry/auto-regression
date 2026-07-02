@@ -9,6 +9,7 @@
 category 由 conftest auto_screenshot 自動判斷：feature/ 下為 feature，其餘為 smoke
 """
 
+import json
 import re
 from datetime import datetime
 from pathlib import Path
@@ -20,6 +21,34 @@ SCREENSHOTS_DIR = Path("screenshots")
 # 某些環境（字型第三方失敗但未 reject）會永遠 hang。縮短避免阻塞測試，
 # 截圖純觀察性質，失敗不應 fail 測試。
 _SCREENSHOT_TIMEOUT_MS = 10000
+
+# 圈選判定用常數
+_BBOX_TIMEOUT_MS = 3000      # 取 bounding_box 超時
+_SCROLL_TIMEOUT_MS = 2000    # capture 前自動捲入視野的短超時（避免阻塞）
+_OVERSIZE_RATIO = 0.85       # box 面積 > 視窗面積此比例 → 判定「圈了等於沒圈」
+
+# 圈選失敗原因 → 繁中說明（README badge / audit 報告共用）
+_REASON_ZH = {
+    "ok":          "正常",
+    "full_page":   "整頁截圖",
+    "no_match":    "命中 0 元素",
+    "no_box":      "取不到座標（元素隱藏或 detached）",
+    "zero_area":   "元素零面積",
+    "offscreen":   "元素在視窗外",
+    "bbox_error":  "座標取得逾時",
+}
+
+# 圈選失敗判定：這些 reason 代表「呼叫了 capture 卻沒真的圈到目標」
+_FAIL_REASONS = {"no_match", "no_box", "zero_area", "offscreen", "bbox_error"}
+
+
+def _step_flawed(s: dict) -> bool:
+    """capture step 是否「圈選有瑕疵」＝ 沒真的圈到 / 多命中 / 框過大。"""
+    return (
+        s.get("highlighted") is False
+        or bool(s.get("multi_match"))
+        or bool(s.get("oversize"))
+    )
 
 # 整個 session 共用同一個 timestamp（第一次建立時設定）
 _SESSION_TIMESTAMP: str | None = None
@@ -33,6 +62,11 @@ def _get_session_timestamp() -> str:
 
 # page id -> ScreenshotHelper，讓 POM 可以免傳參取得
 _registry: dict[int, "ScreenshotHelper"] = {}
+
+# session 級圈選稽核累加器：generate_report() 時把失敗步驟 append 進來，
+# pytest_sessionfinish 呼叫 write_highlight_audit() 依 (site, timestamp) 彙整成報告。
+# 每筆：{site, timestamp, category, test, step, label, reason, match_count, path}
+_AUDIT_RECORDS: list[dict] = []
 
 
 def attach_screenshotter(page: Page, sh: "ScreenshotHelper") -> None:
@@ -92,16 +126,33 @@ class ScreenshotHelper:
         self.folder.mkdir(parents=True, exist_ok=True)
         self._test_name = test_name
         self._description = description.strip()
+        self._site_id = site_id
+        self._category = category
+        self._timestamp = timestamp
         self._step = 0
-        self._steps: list[dict] = []  # {step, label, filename}
+        self._steps: list[dict] = []  # {step, label, filename, kind, highlighted, reason, ...}
 
     def capture(self, locator: Locator, label: str = "action") -> Path:
-        """標示元素（紅框 + 標籤）後截圖，回傳截圖路徑。"""
+        """標示元素（紅框 + 標籤）後截圖，回傳截圖路徑。
+
+        圈選結果（是否真的圈到、原因、命中數）會記進 step metadata，
+        供 README badge 與 session 稽核報告判定「哪些截圖沒準確圈到元素」。
+        """
         self._step += 1
         filename = f"{self._step:03d}_{_sanitize(label)}.png"
         filepath = self.folder / filename
-        _highlight_and_screenshot(self.page, locator, filepath, label)
-        self._steps.append({"step": self._step, "label": label, "filename": filename})
+        status = _highlight_and_screenshot(self.page, locator, filepath, label)
+        self._steps.append({
+            "step": self._step,
+            "label": label,
+            "filename": filename,
+            "kind": "capture",
+            "highlighted": status["highlighted"],
+            "reason": status["reason"],
+            "match_count": status["match_count"],
+            "multi_match": status["multi_match"],
+            "oversize": status["oversize"],
+        })
         return filepath
 
     def full_page(self, label: str = "full", page: Page | None = None) -> Path:
@@ -119,15 +170,32 @@ class ScreenshotHelper:
         except (PlaywrightTimeoutError, Exception):
             # 截圖是觀察性用途，失敗不應阻塞測試主流程
             pass
-        self._steps.append({"step": self._step, "label": label, "filename": filename})
+        # full_page 本就不圈選，highlighted=None 表示 N/A（不列入圈選失敗統計）
+        self._steps.append({
+            "step": self._step,
+            "label": label,
+            "filename": filename,
+            "kind": "full_page",
+            "highlighted": None,
+            "reason": "full_page",
+            "match_count": None,
+            "multi_match": False,
+            "oversize": False,
+        })
         return filepath
 
     def generate_report(self) -> None:
-        """將本次測試的操作步驟寫成 README.md，存於截圖資料夾。"""
+        """將本次測試的操作步驟寫成 README.md（含圈選失敗 badge），
+        並寫機器可讀 steps.json + 把圈選失敗步驟累加進 session 稽核累加器。"""
         if not self._steps:
             return
 
         now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+        # 統計圈選失敗步驟（capture 類且沒真的圈到 / 多命中 / 過大）
+        capture_steps = [s for s in self._steps if s.get("kind") == "capture"]
+        fail_steps = [s for s in capture_steps if _step_flawed(s)]
+
         lines: list[str] = []
 
         # 標題
@@ -146,6 +214,10 @@ class ScreenshotHelper:
         lines += [
             f"**執行時間：** {now}",
             f"**操作步驟總數：** {len(self._steps)} 步",
+        ]
+        if capture_steps:
+            lines.append(f"**圈選失敗步驟：** {len(fail_steps)}/{len(capture_steps)} 步")
+        lines += [
             "",
             "---",
             "",
@@ -156,9 +228,21 @@ class ScreenshotHelper:
         # 每個步驟
         for s in self._steps:
             zh = _label_to_zh(s["label"])
+            badge = ""
+            notes: list[str] = []
+            if s.get("kind") == "capture":
+                if s.get("highlighted") is False:
+                    badge = " ⚠️ 未圈到"
+                    notes.append(f"> ⚠️ 圈選失敗（原因：{_REASON_ZH.get(s.get('reason'), s.get('reason'))}）— 此圖未標示目標元素")
+                if s.get("multi_match"):
+                    notes.append(f"> ⚠️ 命中 {s.get('match_count')} 個元素，只圈第一個（selector 需加 .first 或收斂）")
+                if s.get("oversize"):
+                    notes.append("> ⚠️ 目標框過大（幾乎覆蓋整個視窗），紅框無鑑別度")
+            lines.append(f"### 步驟 {s['step']:03d}｜{zh}{badge}")
+            lines.append("")
+            for n in notes:
+                lines += [n, ""]
             lines += [
-                f"### 步驟 {s['step']:03d}｜{zh}",
-                "",
                 f"![步驟 {s['step']:03d} — {zh}]({s['filename']})",
                 "",
             ]
@@ -166,83 +250,295 @@ class ScreenshotHelper:
         report_path = self.folder / "README.md"
         report_path.write_text("\n".join(lines), encoding="utf-8")
 
+        # 機器可讀 sidecar（供離線重掃 script 使用）
+        steps_payload = {
+            "test": self._test_name,
+            "site": self._site_id,
+            "category": self._category,
+            "steps": self._steps,
+        }
+        try:
+            (self.folder / "steps.json").write_text(
+                json.dumps(steps_payload, ensure_ascii=False, indent=2), encoding="utf-8")
+        except Exception:
+            pass
+
+        # 累加圈選失敗步驟進 session 稽核（sessionfinish 時彙整成報告）
+        for s in fail_steps:
+            _AUDIT_RECORDS.append({
+                "site": self._site_id,
+                "timestamp": self._timestamp,
+                "category": self._category,
+                "test": self._test_name,
+                "step": s["step"],
+                "label": s["label"],
+                "reason": s.get("reason"),
+                "match_count": s.get("match_count"),
+                "multi_match": s.get("multi_match"),
+                "oversize": s.get("oversize"),
+                "path": str(self.folder / s["filename"]),
+            })
+
 
 def _highlight_and_screenshot(
     page: Page, locator: Locator, filepath: Path, label: str = ""
-) -> None:
+) -> dict:
     """
-    取得元素 bounding box → 注入紅框標籤 overlay → 截圖 → 移除 overlay。
-    若取不到 bounding box（元素在 viewport 外 / CSS 隱藏）則直接截圖不標示。
+    自動捲入視野 → 取 bounding box → 判定是否真的圈得到 → 注入紅框（成功）
+    或「未圈選」橫幅（失敗）→ 截圖 → 移除 overlay。
+
+    回傳 status dict，供 capture() 記進 step metadata / 判定報告：
+    {highlighted:bool, reason:str, match_count:int, multi_match:bool, oversize:bool, box:dict|None}
+
+    契約：截圖純觀察性，任何步驟失敗都不得 raise、不得 fail 測試。
     """
+    # 1) 多命中偵測
+    try:
+        match_count = locator.count()
+    except Exception:
+        match_count = -1  # 無法取得，不視為失敗訊號
+    multi_match = match_count > 1
+
+    target = locator.first
+
+    if match_count == 0:
+        _screenshot_with_optional_banner(page, filepath, "no_match", label)
+        return {"highlighted": False, "reason": "no_match", "match_count": match_count,
+                "multi_match": False, "oversize": False, "box": None}
+
+    # 2) 自動捲入視野（解 below-fold）。失敗不直接判定失敗——元素可能本就在視窗內，
+    #    或如 RC width=0 sidebar / LT drawer 這類 scroll 無效者；一律吞例外續跑。
+    scroll_error = False
+    try:
+        target.scroll_into_view_if_needed(timeout=_SCROLL_TIMEOUT_MS)
+    except Exception:
+        scroll_error = True
+
+    # 3) 取 bounding_box
     box = None
     try:
-        box = locator.first.bounding_box(timeout=3000)
+        box = target.bounding_box(timeout=_BBOX_TIMEOUT_MS)
     except Exception:
-        pass
+        box = None
 
-    if box:
-        page.evaluate(
-            """([x, y, w, h, lbl]) => {
-                const old = document.getElementById('__pw_highlight__');
-                if (old) old.remove();
+    # 4) 取視窗尺寸（CDP 下 viewport_size 可能為 None）
+    vp = page.viewport_size
+    if not vp:
+        try:
+            vp = page.evaluate("() => ({width: window.innerWidth, height: window.innerHeight})")
+        except Exception:
+            vp = None
 
-                const wrap = document.createElement('div');
-                wrap.id = '__pw_highlight__';
+    # 5) 分類 highlighted / reason
+    reason = "ok"
+    highlighted = True
+    oversize = False
+    if box is None:
+        highlighted, reason = False, ("bbox_error" if scroll_error else "no_box")
+    elif box["width"] * box["height"] == 0:
+        highlighted, reason = False, "zero_area"
+    elif vp and (
+        box["x"] + box["width"] <= 0 or box["y"] + box["height"] <= 0
+        or box["x"] >= vp["width"] or box["y"] >= vp["height"]
+    ):
+        # 與視窗矩形無交集 → 就算注入 fixed 紅框也在畫面外，誠實標成 offscreen
+        highlighted, reason = False, "offscreen"
+    else:
+        if vp and (box["width"] * box["height"]) > vp["width"] * vp["height"] * _OVERSIZE_RATIO:
+            oversize = True  # 框過大＝圈了等於沒圈（highlighted 仍 True，另立旗標）
 
-                // 紅框
-                const frame = document.createElement('div');
-                frame.style.cssText = [
-                    'position:fixed',
-                    `left:${x - 4}px`,
-                    `top:${y - 4}px`,
-                    `width:${w + 8}px`,
-                    `height:${h + 8}px`,
-                    'border:3px solid #ff3333',
-                    'border-radius:4px',
-                    'background:rgba(255,51,51,0.07)',
-                    'box-shadow:0 0 0 3px rgba(255,51,51,0.2)',
-                    'pointer-events:none',
-                    'z-index:2147483647',
-                ].join(';');
-                wrap.appendChild(frame);
-
-                // 標籤
-                if (lbl) {
-                    const tag = document.createElement('div');
-                    tag.textContent = lbl;
-                    tag.style.cssText = [
-                        'position:fixed',
-                        `left:${x - 4}px`,
-                        `top:${Math.max(4, y - 26)}px`,
-                        'background:#ff3333',
-                        'color:#fff',
-                        'padding:2px 8px',
-                        'border-radius:3px 3px 3px 0',
-                        'font:bold 12px/1.5 sans-serif',
-                        'white-space:nowrap',
-                        'pointer-events:none',
-                        'z-index:2147483647',
-                    ].join(';');
-                    wrap.appendChild(tag);
-                }
-
-                document.body.appendChild(wrap);
-            }""",
-            [box['x'], box['y'], box['width'], box['height'], label]
-        )
+    box_out = ({"x": box["x"], "y": box["y"], "w": box["width"], "h": box["height"]}
+               if box else None)
 
     try:
+        if highlighted:
+            _inject_highlight(page, box, label)
+        else:
+            _inject_banner(page, reason)
         try:
             page.screenshot(path=str(filepath), timeout=_SCREENSHOT_TIMEOUT_MS)
         except (PlaywrightTimeoutError, Exception):
             # 截圖是觀察性用途，失敗不應阻塞測試主流程
             pass
     finally:
-        if box:
-            try:
-                page.evaluate("""() => {
-                    const el = document.getElementById('__pw_highlight__');
-                    if (el) el.remove();
-                }""")
-            except Exception:
-                pass
+        _remove_overlay(page)
+
+    return {"highlighted": highlighted, "reason": reason, "match_count": match_count,
+            "multi_match": multi_match, "oversize": oversize, "box": box_out}
+
+
+def _inject_highlight(page: Page, box: dict, label: str) -> None:
+    """在元素 bounding box 上注入紅框 + 標籤 overlay。"""
+    page.evaluate(
+        """([x, y, w, h, lbl]) => {
+            const old = document.getElementById('__pw_highlight__');
+            if (old) old.remove();
+
+            const wrap = document.createElement('div');
+            wrap.id = '__pw_highlight__';
+
+            // 紅框
+            const frame = document.createElement('div');
+            frame.style.cssText = [
+                'position:fixed',
+                `left:${x - 4}px`,
+                `top:${y - 4}px`,
+                `width:${w + 8}px`,
+                `height:${h + 8}px`,
+                'border:3px solid #ff3333',
+                'border-radius:4px',
+                'background:rgba(255,51,51,0.07)',
+                'box-shadow:0 0 0 3px rgba(255,51,51,0.2)',
+                'pointer-events:none',
+                'z-index:2147483647',
+            ].join(';');
+            wrap.appendChild(frame);
+
+            // 標籤
+            if (lbl) {
+                const tag = document.createElement('div');
+                tag.textContent = lbl;
+                tag.style.cssText = [
+                    'position:fixed',
+                    `left:${x - 4}px`,
+                    `top:${Math.max(4, y - 26)}px`,
+                    'background:#ff3333',
+                    'color:#fff',
+                    'padding:2px 8px',
+                    'border-radius:3px 3px 3px 0',
+                    'font:bold 12px/1.5 sans-serif',
+                    'white-space:nowrap',
+                    'pointer-events:none',
+                    'z-index:2147483647',
+                ].join(';');
+                wrap.appendChild(tag);
+            }
+
+            document.body.appendChild(wrap);
+        }""",
+        [box['x'], box['y'], box['width'], box['height'], label]
+    )
+
+
+def _inject_banner(page: Page, reason: str) -> None:
+    """圈選失敗時，在畫面正中央注入紅底白字「未圈選」橫幅（純前端注入，免依賴）。"""
+    text = f"未圈選：{_REASON_ZH.get(reason, reason)}"
+    try:
+        page.evaluate(
+            """(msg) => {
+                const old = document.getElementById('__pw_highlight__');
+                if (old) old.remove();
+
+                const wrap = document.createElement('div');
+                wrap.id = '__pw_highlight__';
+
+                const banner = document.createElement('div');
+                banner.textContent = msg;
+                banner.style.cssText = [
+                    'position:fixed',
+                    'left:50%',
+                    'top:50%',
+                    'transform:translate(-50%, -50%)',
+                    'background:rgba(255,51,51,0.95)',
+                    'color:#fff',
+                    'padding:10px 24px',
+                    'border-radius:6px',
+                    'font:bold 16px/1.4 sans-serif',
+                    'white-space:nowrap',
+                    'box-shadow:0 2px 12px rgba(0,0,0,0.4)',
+                    'pointer-events:none',
+                    'z-index:2147483647',
+                ].join(';');
+                wrap.appendChild(banner);
+
+                document.body.appendChild(wrap);
+            }""",
+            text,
+        )
+    except Exception:
+        pass
+
+
+def _remove_overlay(page: Page) -> None:
+    try:
+        page.evaluate("""() => {
+            const el = document.getElementById('__pw_highlight__');
+            if (el) el.remove();
+        }""")
+    except Exception:
+        pass
+
+
+def _screenshot_with_optional_banner(page: Page, filepath: Path, reason: str, label: str) -> None:
+    """no_match 等提早返回情境：注入橫幅 → 截圖 → 移除。"""
+    try:
+        _inject_banner(page, reason)
+        try:
+            page.screenshot(path=str(filepath), timeout=_SCREENSHOT_TIMEOUT_MS)
+        except (PlaywrightTimeoutError, Exception):
+            pass
+    finally:
+        _remove_overlay(page)
+
+
+def _render_audit(records: list[dict]) -> tuple[str, str]:
+    """把圈選失敗記錄 render 成 (markdown, json) 字串。
+    write_highlight_audit()（線上）與 audit_highlights.py（離線重掃）共用。"""
+    total_fail = len(records)
+    tests = {(r["category"], r["test"]) for r in records}
+    reason_dist: dict[str, int] = {}
+    for r in records:
+        key = r.get("reason") or ("multi_match" if r.get("multi_match") else
+                                  "oversize" if r.get("oversize") else "?")
+        reason_dist[key] = reason_dist.get(key, 0) + 1
+
+    lines: list[str] = [
+        "# 截圖圈選稽核報告",
+        "",
+        f"**圈選有瑕疵步驟：** {total_fail} 步，涉及 {len(tests)} 支測試",
+        "",
+        "**原因分佈：** " + (
+            "、".join(f"{_REASON_ZH.get(k, k)}={v}" for k, v in sorted(reason_dist.items()))
+            or "（無）"
+        ),
+        "",
+        "| 分類 | test | 步驟 | label | 原因 | 命中數 | 檔案 |",
+        "|------|------|------|-------|------|-------|------|",
+    ]
+    for r in sorted(records, key=lambda x: (x["category"], x["test"], x["step"])):
+        tags = []
+        if r.get("reason") in _FAIL_REASONS:
+            tags.append(_REASON_ZH.get(r["reason"], r["reason"]))
+        if r.get("multi_match"):
+            tags.append("多命中")
+        if r.get("oversize"):
+            tags.append("框過大")
+        reason_txt = "／".join(tags) or "-"
+        lines.append(
+            f"| {r['category']} | {r['test']} | {r['step']:03d} | {r['label']} | "
+            f"{reason_txt} | {r.get('match_count')} | {r.get('path', '')} |"
+        )
+    md = "\n".join(lines) + "\n"
+    payload = json.dumps({"total": total_fail, "tests": len(tests),
+                          "reason_dist": reason_dist, "records": records},
+                         ensure_ascii=False, indent=2)
+    return md, payload
+
+
+def write_highlight_audit() -> None:
+    """把 session 累加的圈選失敗記錄，依 (site, timestamp) 各寫一份稽核報告到
+    screenshots/<site>/<timestamp>/_highlight_audit.md + .json。pytest_sessionfinish 呼叫。"""
+    if not _AUDIT_RECORDS:
+        return
+    groups: dict[tuple[str, str], list[dict]] = {}
+    for r in _AUDIT_RECORDS:
+        groups.setdefault((r["site"], r["timestamp"]), []).append(r)
+    for (site, ts), records in groups.items():
+        folder = SCREENSHOTS_DIR / site / ts
+        try:
+            folder.mkdir(parents=True, exist_ok=True)
+            md, payload = _render_audit(records)
+            (folder / "_highlight_audit.md").write_text(md, encoding="utf-8")
+            (folder / "_highlight_audit.json").write_text(payload, encoding="utf-8")
+        except Exception:
+            pass
