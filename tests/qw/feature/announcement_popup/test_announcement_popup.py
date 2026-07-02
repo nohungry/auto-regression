@@ -48,7 +48,7 @@ class TestAnnouncementPopup:
         if sh: sh.full_page("verify_popup_mask_mounted")
 
         expect(page.locator(POPUP_FRAME)).to_have_count(1, timeout=3000)
-        if sh: sh.capture(page.locator(POPUP_FRAME), "verify_popup_frame_present")
+        if sh: sh.capture(page.locator(POPUP_FRAME).first, "verify_popup_frame_present")
 
     def test_popup_close_dismisses(self, page: Page, site_config):
         """QW-TC-F02：點關閉鍵後公告 mask 從 DOM 移除（count→0）

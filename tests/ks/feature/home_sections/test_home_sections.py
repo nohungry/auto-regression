@@ -41,7 +41,8 @@ class TestHomePageSections:
         sh = get_screenshotter(page)
         container = page.locator(".min-h-0.flex-1.space-y-2.overflow-y-auto").first
         container.scroll_into_view_if_needed()
-        if sh: sh.capture(container, "verify_Recommended_tiles")
+        # 此容器為整個可捲動推薦區，紅框圈選無鑑別度（幾乎覆蓋整頁）→ 改整頁截圖
+        if sh: sh.full_page("verify_Recommended_tiles")
         expect(container).to_be_visible()
         # 結構性斷言 6 個 tile（不綁標題文案：KS locale 在 cn(推荐游戏)/en(Recommended)
         # 間變動，且 .text-[20px].text-main 該 class 非唯一命中多個，綁文案脆弱）
