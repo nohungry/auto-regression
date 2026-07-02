@@ -150,6 +150,7 @@ utils/api_helpers.py         — API 測試共用邏輯（純函式）：api_bas
 utils/home_reset.py          — go_home 共用邏輯：reset_home_with_dismissers（rc/re/rd 型）/ reset_home_with_home_popups（qw/lg/lu/ks/rf 型）；各站 conftest go_home fixture body 呼叫
 utils/dashboard_helpers.py   — 後台 login fixture 共用 generator dashboard_login_session（建 context 複用 _new_configured_page + factory 登入 + 可選 screenshotter + totp sentinel）；各站 dashboard conftest login fixture 用 yield from（fixture 仍 per-site 避免 session 快取跨站污染）
 .github/scripts/aggregate_test_results.py  — 跨站 JUnit 聚合成績單（含 🔁 flaky 欄，讀 <site>-flaky.json sidecar；p0/full-regression 的 aggregate-summary job 共用）
+.github/scripts/audit_highlights.py        — 離線重掃截圖圈選稽核（讀 steps.json 重建 _highlight_audit.md/.json，--fail-threshold 供 CI 門檻；與 write_highlight_audit 共用 _render_audit）
 .github/scripts/check-docs-sync.sh         — docs sync check（hook + CI 共用）
 screenshots/<site_id>/<timestamp>/<smoke|feature>/<test_name>/  — per-test screenshot folders, auto-categorized (in .gitignore)
 screenshots/lt/vr_reference/                    — VR reference screenshots (no comparison, manual review only)
@@ -316,7 +317,7 @@ After each test, `screenshots/<site_id>/<timestamp>/<smoke|feature>/<test_name>/
 - **README badge**：失敗步驟標題加 `⚠️ 未圈到` + 中文原因；檔頭列 `圈選失敗步驟：N/M`。
 - **`steps.json`**：每個 test 資料夾一份機器可讀 step metadata。
 - **`_highlight_audit.md` / `.json`**：`screenshots/<site>/<ts>/` 下的 session 級稽核成績單（`conftest.py` `pytest_sessionfinish` 呼叫 `write_highlight_audit()`），列出所有圈選有瑕疵的 test+step，取代人工逐張翻圖。
-- **離線重掃**：`.github/scripts/audit_highlights.py`（PR2 引入）純讀既有 `steps.json` 重建報告，與線上共用 `_render_audit()`。
+- **離線重掃**：`.github/scripts/audit_highlights.py <dir>` 純讀既有 `steps.json` 重建報告（不必重跑），`--fail-threshold N` 供 CI 門檻；與線上共用 `_render_audit()`。
 
 ## Coding Conventions
 
