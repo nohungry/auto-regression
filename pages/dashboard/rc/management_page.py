@@ -17,6 +17,7 @@ import re
 from typing import Optional
 from playwright.sync_api import Page, Locator, expect, TimeoutError as PlaywrightTimeoutError
 from utils.screenshot_helper import get_screenshotter
+from utils.wait_helpers import wait_for_text_matches
 
 
 class ManagementPage:
@@ -350,7 +351,9 @@ class ManagementPage:
         dep_btn = card.locator("button.btn-primary.me-2").first
         dep_btn.wait_for(state="attached", timeout=5000)
         self.page.evaluate("(el) => el.click()", dep_btn.element_handle())
-        self.page.wait_for_timeout(800)
+        # 等 dialog 顯示數值型「剩餘額度 N」後再讀，取代硬等 800ms
+        dialog = self.page.locator(".dialog-container").last
+        wait_for_text_matches(dialog, re.compile(r"剩餘額度\s*[\d,]+"), timeout=8000)
         balance = self._read_dialog_target_balance()
         if sh:
             sh.full_page(f"verify_代理餘額_{agent_account}_{balance}")
