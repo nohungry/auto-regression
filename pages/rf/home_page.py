@@ -372,7 +372,8 @@ class HomePage:
         first_li = self.page.locator(".lang-selector__list li").first
         first_li.wait_for(state="visible", timeout=5000)
         if sh:
-            sh.capture(self.page.locator(".lang-selector__list"), "verify_語言選單展開")
+            # 圈第一個語系 li（複用 first_li）而非整條 __list 大容器，紅框才有鑑別度
+            sh.capture(first_li, "verify_語言選單展開")
 
     def switch_language(self, lang_text: str):
         """點語言切換選單中的指定語系 li，等待 i18n_locale cookie 更新。
