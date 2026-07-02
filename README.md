@@ -40,7 +40,7 @@ utils/totp_helper.py                 — get_totp_code()：後台 2FA TOTP 產�
 utils/game_launch_helper.py          — 遊戲啟動偵測（new tab / provider 轉址判斷）
 utils/layout_fingerprint.py          — 多語系版面健康度 DOM 指紋 + overflow 偵測
 utils/window_helper.py               — 另開分頁後 CDP 最大化視窗
-utils/wait_helpers.py                — 可判定等待（wait_for_nonempty_text：讀值前等文字非空，取代硬等）
+utils/wait_helpers.py                — 可判定等待（wait_for_text_matches / wait_for_nonempty_text：讀值前等文字符合/非空，取代硬等）
 .github/workflows/                   — GitHub Actions（p0 / full-regression / docs-sync-check）
 .github/scripts/                     — CI 共用 script（check-docs-sync.sh + aggregate_test_results.py 跨站聚合成績單）
 .claude/                             — Claude Code 配置（hooks / skills / agents，團隊共用）
