@@ -42,6 +42,7 @@ utils/layout_fingerprint.py          — 多語系版面健康度 DOM 指紋 + o
 utils/window_helper.py               — 另開分頁後 CDP 最大化視窗
 utils/wait_helpers.py                — 可判定等待（wait_for_text_matches / wait_for_nonempty_text：讀值前等文字符合/非空，取代硬等）
 utils/api_helpers.py                 — API 測試共用邏輯（env 推導 / headers / 登入拿 token；各站 conftest fixture 保持 per-site）
+utils/home_reset.py                  — go_home 共用邏輯（回首頁 + 清彈窗兩型：dialog-dismisser / HomePage.dismiss_any_popups）
 .github/workflows/                   — GitHub Actions（p0 / full-regression / docs-sync-check）
 .github/scripts/                     — CI 共用 script（check-docs-sync.sh + aggregate_test_results.py 跨站聚合成績單）
 .claude/                             — Claude Code 配置（hooks / skills / agents，團隊共用）
