@@ -1,28 +1,17 @@
 """
-LU 後台測試專用 conftest
+LU 後台測試專用 conftest（Dlgbet，現金版 Vue admin）
 
-提供兩個帳號層級的 session fixture（各自獨立 browser context，視窗最大化）：
+- dashboard_page（站長 SITE_LU_DASHBOARD_USER/PASS + TOTP 2FA，-admin 入口）；落點 #/dashboard/index。
+- agent_dashboard_page（代理 SITE_LU_DASHBOARD_AGENT_USER/PASS + AGENT_TOTP，**2026-06-25 起代理也強制 2FA**）；
+  落點 #/member/member-management。
 
-- `dashboard_page`（站長 <LU 站長帳號>）：SITE_LU_DASHBOARD_URL/USER/PASS + TOTP（2FA）。
-  落點 `#/dashboard/index`，頂層選單 18 項。
-- `agent_dashboard_page`（代理 <LU 代理帳號>）：SITE_LU_DASHBOARD_AGENT_URL/USER/PASS
-  + SITE_LU_DASHBOARD_AGENT_TOTP（**2026-06-25 起代理也強制 2FA**，原本無）。
-  落點 `#/member/member-management`，頂層選單 5 項。
-
-兩帳號不同（不會互踢 session），同一 pytest session 內可並存。
-存提（deposit/withdraw）暫不做：代理 <LU 代理帳號> 為空帳號（0 會員 / 0 餘額 / 0 銀行卡），
-無法做可逆的對稱 balance 驗證，待有測資的代理帳號再補。
+兩帳號不同（不互踢）；代理為空帳號故只 read-only smoke。login fixture 共用邏輯見
+utils/dashboard_helpers.py（fixture 保持 per-site 避免 session 快取跨站污染）。
 """
 
 import pytest
-
 from config.settings import get_site_config
-from pages.dashboard.factory import get_dashboard_login_page_class
-from utils.screenshot_helper import (
-    ScreenshotHelper,
-    attach_screenshotter,
-    detach_screenshotter,
-)
+from utils.dashboard_helpers import dashboard_login_session
 
 
 @pytest.fixture(scope="session")
@@ -33,55 +22,18 @@ def site_config():
 
 @pytest.fixture(scope="session")
 def dashboard_page(browser, site_config):
-    """
-    Session-scoped 已登入後台 page（含 TOTP 2FA）。
-    使用 .env 的 SITE_LU_DASHBOARD_USER/PASS（站長）+ SITE_LU_DASHBOARD_TOTP。
-    獨立 browser context（與前台不共用），避免 cookie 衝突。
-    """
-    context = browser.new_context(no_viewport=True)
-    page = context.new_page()
-
-    # 視窗最大化（CDP 指令，WSL 連 Windows Chrome 時才會成功；失敗不影響測試）
-    try:
-        cdp = context.new_cdp_session(page)
-        window_id = cdp.send("Browser.getWindowForTarget")["windowId"]
-        cdp.send("Browser.setWindowBounds", {
-            "windowId": window_id,
-            "bounds": {"windowState": "maximized"},
-        })
-        cdp.detach()
-    except Exception:
-        pass
-
-    # 登入前先掛上 screenshotter，讓 login_page 每步（帳號/密碼/2FA/成功）都截到圖
-    # （session fixture 早於 function-scoped auto_screenshot，否則登入流程會漏截）
-    sh = ScreenshotHelper(
-        page, "dashboard_login_2fa", "LU 後台登入（含 TOTP 2FA）",
-        site_id=site_config.site_id, category="feature",
+    """站長已登入後台 page（含 TOTP 2FA；session 共用，避免頻繁登入觸發 rate-limit）。"""
+    yield from dashboard_login_session(
+        browser, site_config, site_config.dashboard_url,
+        site_config.dashboard_user, site_config.dashboard_pass,
+        totp=site_config.dashboard_totp,
+        screenshot=("dashboard_login_2fa", "LU 後台登入（含 TOTP 2FA）"),
     )
-    attach_screenshotter(page, sh)
-    try:
-        DashboardLoginPage = get_dashboard_login_page_class(site_config.site_id)
-        login = DashboardLoginPage(page, site_config.dashboard_url)
-        login.goto_and_login(
-            site_config.dashboard_user,
-            site_config.dashboard_pass,
-            site_config.dashboard_totp,
-        )
-        sh.generate_report()
-    finally:
-        detach_screenshotter(page)
-
-    yield page
-    context.close()
 
 
 @pytest.fixture
 def go_dashboard(dashboard_page, site_config):
-    """導航測試前回到後台儀表板首頁，確保各測試起點一致。
-    非 autouse：只有導航測試請求；logout 測試不需要（從任何頁皆可登出）。
-    Vue 後台 SPA 有 websocket 長連線，不能用 networkidle。
-    """
+    """導航測試前回站長儀表板首頁（#/dashboard/index）。非 autouse：logout 測試不需要。"""
     dashboard_page.goto(
         f"{site_config.dashboard_url}#/dashboard/index",
         wait_until="domcontentloaded",
@@ -92,60 +44,21 @@ def go_dashboard(dashboard_page, site_config):
 
 @pytest.fixture(scope="session")
 def agent_dashboard_page(browser, site_config):
-    """
-    Session-scoped 已登入後台 page（**代理層級 <LU 代理帳號>，無 2FA**）。
-    使用 .env 的 SITE_LU_DASHBOARD_AGENT_URL/USER/PASS（無 -admin 入口）。
-    獨立 browser context；與站長 dashboard_page 不同帳號，互不互踢。
-    """
-    context = browser.new_context(no_viewport=True)
-    page = context.new_page()
-
-    # 視窗最大化（CDP 指令，WSL 連 Windows Chrome 時才會成功；失敗不影響測試）
-    try:
-        cdp = context.new_cdp_session(page)
-        window_id = cdp.send("Browser.getWindowForTarget")["windowId"]
-        cdp.send("Browser.setWindowBounds", {
-            "windowId": window_id,
-            "bounds": {"windowState": "maximized"},
-        })
-        cdp.detach()
-    except Exception:
-        pass
-
-    # 登入前先掛上 screenshotter（同站長 fixture 理由）
-    sh = ScreenshotHelper(
-        page, "dashboard_agent_login", "LU 後台代理登入（無 2FA）",
-        site_id=site_config.site_id, category="feature",
+    """代理已登入後台 page（2026-06-25 起強制 2FA，帶 agent_totp；與站長不同帳號，互不互踢）。"""
+    yield from dashboard_login_session(
+        browser, site_config, site_config.dashboard_agent_url,
+        site_config.dashboard_agent_user, site_config.dashboard_agent_pass,
+        totp=site_config.dashboard_agent_totp,  # 條件式：站點若再撤 2FA 也不會壞
+        screenshot=("dashboard_agent_login", "LU 後台代理登入（含 2FA）"),
     )
-    attach_screenshotter(page, sh)
-    try:
-        DashboardLoginPage = get_dashboard_login_page_class(site_config.site_id)
-        login = DashboardLoginPage(page, site_config.dashboard_agent_url)
-        # 代理現已強制 2FA（2026-06-25 站點政策變更，原本無 2FA）：帶 dashboard_agent_totp。
-        # _fill_totp 仍為條件式（偵測不到 modal 會跳過），故站點若再撤掉 2FA 也不會壞。
-        login.goto_and_login(
-            site_config.dashboard_agent_user,
-            site_config.dashboard_agent_pass,
-            site_config.dashboard_agent_totp,
-        )
-        sh.generate_report()
-    finally:
-        detach_screenshotter(page)
-
-    yield page
-    context.close()
 
 
 @pytest.fixture
 def go_agent_dashboard(agent_dashboard_page, site_config):
-    """代理導航測試前回到落點頁（#/member/member-management），確保起點一致。
-    代理無 `#/dashboard/index`（站長專屬）；落點即會員管理頁。
-    """
+    """代理導航測試前回落點頁（#/member/member-management；代理無站長專屬 dashboard/index）。"""
     agent_dashboard_page.goto(
         f"{site_config.dashboard_agent_url}#/member/member-management",
         wait_until="domcontentloaded",
     )
-    agent_dashboard_page.locator(".sidebar-nav").first.wait_for(
-        state="attached", timeout=15000
-    )
+    agent_dashboard_page.locator(".sidebar-nav").first.wait_for(state="attached", timeout=15000)
     return agent_dashboard_page
