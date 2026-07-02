@@ -45,7 +45,7 @@ utils/api_helpers.py                 — API 測試共用邏輯（env 推導 / h
 utils/home_reset.py                  — go_home 共用邏輯（回首頁 + 清彈窗兩型：dialog-dismisser / HomePage.dismiss_any_popups）
 utils/dashboard_helpers.py           — 後台 login fixture 共用 generator（建 context + factory 登入 + 可選 screenshotter/2FA；各站 fixture 保持 per-site）
 .github/workflows/                   — GitHub Actions（p0 / full-regression / docs-sync-check）
-.github/scripts/                     — CI 共用 script（check-docs-sync.sh + aggregate_test_results.py 跨站聚合成績單）
+.github/scripts/                     — CI 共用 script（check-docs-sync.sh + aggregate_test_results.py 跨站聚合成績單 + audit_highlights.py 離線截圖圈選稽核）
 .claude/                             — Claude Code 配置（hooks / skills / agents，團隊共用）
 docs/                                — 團隊共用文件（追蹤於 git）
 dev-notes/                           — 個人開發筆記（gitignored，僅 README 追蹤）

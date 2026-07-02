@@ -80,6 +80,10 @@ run 頁面看得到：
   - `failure-screenshots-<site>.zip`（**只有失敗時上傳**，保留 14 天）：紅框截圖 + 自動生成 README.md
   - `junit-<site>.zip`：JUnit XML + `<site>-flaky.json`（聚合成績單／flaky 欄的原始資料）
 
+### 截圖圈選稽核（`.github/scripts/audit_highlights.py`）
+
+跑測試時 `conftest.py` `pytest_sessionfinish` 會呼叫 `write_highlight_audit()`，把「呼叫了 `sh.capture` 卻沒真的圈到元素」的步驟彙整成 `screenshots/<site>/<ts>/_highlight_audit.md`/`.json`（取代人工逐張翻圖找失準截圖）。`audit_highlights.py <dir>` 可離線重掃既有 `steps.json` 重建同樣報告（不必重跑），`--fail-threshold N` 在失敗步驟數超標時回傳非 0 exit code，供未來接入 CI 門檻。詳見 CLAUDE.md「Screenshot System → 圈選判定」。
+
 ## 手動觸發
 
 任一 workflow 的「Actions」頁面右上有「Run workflow」按鈕。
