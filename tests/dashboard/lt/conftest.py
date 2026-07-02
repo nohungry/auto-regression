@@ -1,17 +1,16 @@
 """
-LT 後台測試專用 conftest
-- 固定使用 lt 站設定
-- 提供 session-scoped dashboard_page fixture（獨立 browser context）
-- 每個測試前回到管理頁
+LT 後台測試專用 conftest（信用版 /management 後台）
+- dashboard_page：代理 SITE_LT_DASHBOARD_AGENT_USER/PASS（走無 -admin 代理入口 agent_url，無 2FA）
+- master_dashboard_page：總代/站長 SITE_LT_DASHBOARD_USER/PASS（供總代→代理派點，無 2FA）
+- go_management（autouse）：每個 test 前回管理頁
 
-登入帳號來自 .env：
-- SITE_LT_DASHBOARD_AGENT_USER/PASS（自動化代理，限定管理/報表權限，不需 TOTP）
-- 若未來需要測試儀表板/公告等需完整權限的功能，改用 SITE_LT_DASHBOARD_USER/PASS（總代）
+login fixture 共用邏輯見 utils/dashboard_helpers.py（fixture 保持 per-site 避免
+session 快取跨站污染）。
 """
 
 import pytest
 from config.settings import get_site_config
-from pages.dashboard.factory import get_dashboard_login_page_class
+from utils.dashboard_helpers import dashboard_login_session
 
 
 @pytest.fixture(scope="session")
@@ -22,84 +21,29 @@ def site_config():
 
 @pytest.fixture(scope="session")
 def dashboard_page(browser, site_config):
-    """
-    Session-scoped 已登入後台 page。
-    使用 .env 的 SITE_LT_DASHBOARD_AGENT_USER/PASS（非總代）。
-    整個測試 session 只登入一次，所有 dashboard 測試共用。
-    獨立 browser context（與前台不共用），避免 cookie 衝突。
-    """
-    context = browser.new_context(no_viewport=True)
-    page = context.new_page()
-
-    # 視窗最大化（CDP 指令，WSL 連 Windows Chrome 時才會成功；失敗不影響測試）
-    try:
-        cdp = context.new_cdp_session(page)
-        window_id = cdp.send("Browser.getWindowForTarget")["windowId"]
-        cdp.send("Browser.setWindowBounds", {
-            "windowId": window_id,
-            "bounds": {"windowState": "maximized"},
-        })
-        cdp.detach()
-    except Exception:
-        pass
-
-    # 登入後台（自動化代理帳號，從 .env 讀取，不需 TOTP）
-    # 代理走「無 -admin」代理入口 dashboard_agent_url（canonical：-admin=站長 / 無-admin=代理）
-    DashboardLoginPage = get_dashboard_login_page_class(site_config.site_id)
-    login = DashboardLoginPage(page, site_config.dashboard_agent_url)
-    login.goto_and_login(
-        site_config.dashboard_agent_user,
-        site_config.dashboard_agent_pass,
-        site_config.dashboard_agent_totp,  # 代理 2FA（LT 代理目前無；條件式自動跳過）
+    """代理帳號已登入後台 page（走代理入口 agent_url；session 共用，獨立 context）。"""
+    yield from dashboard_login_session(
+        browser, site_config, site_config.dashboard_agent_url,
+        site_config.dashboard_agent_user, site_config.dashboard_agent_pass,
+        totp=site_config.dashboard_agent_totp,  # 代理 2FA（LT 目前無，條件式跳過）
     )
-
-    yield page
-    context.close()
 
 
 @pytest.fixture(scope="session")
 def master_dashboard_page(browser, site_config):
-    """
-    Session-scoped 已登入後台 page（**總代/站長 SITE_<ID>_DASHBOARD_USER**，信用版總代無 2FA）。
-    供「總代 → 代理 派點」站長層級測試使用；與代理 dashboard_page 不同帳號，互不互踢。
-    """
-    context = browser.new_context(no_viewport=True)
-    page = context.new_page()
-
-    try:
-        cdp = context.new_cdp_session(page)
-        window_id = cdp.send("Browser.getWindowForTarget")["windowId"]
-        cdp.send("Browser.setWindowBounds", {
-            "windowId": window_id,
-            "bounds": {"windowState": "maximized"},
-        })
-        cdp.detach()
-    except Exception:
-        pass
-
-    DashboardLoginPage = get_dashboard_login_page_class(site_config.site_id)
-    login = DashboardLoginPage(page, site_config.dashboard_url)
-    login.goto_and_login(
-        site_config.dashboard_user,
-        site_config.dashboard_pass,
-        site_config.dashboard_totp,
+    """總代/站長帳號已登入後台 page（供總代→代理派點；與代理不同帳號，互不互踢）。"""
+    yield from dashboard_login_session(
+        browser, site_config, site_config.dashboard_url,
+        site_config.dashboard_user, site_config.dashboard_pass,
+        totp=site_config.dashboard_totp,
     )
-
-    yield page
-    context.close()
 
 
 @pytest.fixture(autouse=True)
 def go_management(dashboard_page, site_config):
-    """每個 test 前回到管理頁面。
-    Vue 後台 SPA 有 websocket 長連線，不能用 networkidle。
-    改用 domcontentloaded + 等主內容區 tab 出現。
-    """
+    """每個 test 前回管理頁。Vue SPA 有 websocket 長連線，用 domcontentloaded + 等 tab 出現。"""
     dashboard_page.goto(
         f"{site_config.dashboard_agent_url}#/management/all-management",
         wait_until="domcontentloaded",
     )
-    # 等任一 tab-btn 出現（代表 SPA hydration 完成），不依賴數量或順序
-    dashboard_page.locator('button.tab-btn').first.wait_for(
-        state="attached", timeout=15000
-    )
+    dashboard_page.locator('button.tab-btn').first.wait_for(state="attached", timeout=15000)
