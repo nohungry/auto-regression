@@ -139,7 +139,7 @@ tests/rf/                   — rf site tests (test_p0_smoke.py p0; feature/<nam
 tests/rf/conftest.py        — rf-specific overrides: site_config=rf, go_home (+ dismiss base-modal 彈窗)
 utils/locale_helper.py       — set_locale(): injects i18n_locale cookie for lt site
 utils/dialog_helper.py       — helpers: dismiss server error popups, wait for loading animation
-utils/screenshot_helper.py   — element-highlight screenshot system, auto README.md generation
+utils/screenshot_helper.py   — element-highlight screenshot system, auto README.md generation; 圈選判定（scroll+bbox+視窗交集判 highlighted/reason/multi_match/oversize，寫 steps.json + README badge + PNG「未圈選」橫幅 + session _highlight_audit）
 utils/totp_helper.py         — get_totp_code(): pyotp TOTP 產碼 + 30s 窗口過期緩衝（後台 2FA，首用於 lu dashboard）
 utils/game_launch_helper.py  — 遊戲啟動偵測（new tab / provider 轉址判斷）共用 helper
 utils/layout_fingerprint.py  — 多語系版面健康度 DOM 指紋 + overflow 偵測（locale_layout / visual 用）
@@ -304,6 +304,19 @@ Label naming convention:
 - `loading_XXX` → Loading 狀態
 
 After each test, `screenshots/<site_id>/<timestamp>/<smoke|feature>/<test_name>/README.md` is auto-generated in Traditional Chinese with step-by-step screenshots embedded. Category is auto-detected: tests under `feature/` → `feature`, others → `smoke`.
+
+### 圈選判定（Highlight audit）
+
+`sh.capture(locator, label)` 不再靜默降級：`_highlight_and_screenshot` 會先 `scroll_into_view_if_needed`（解 below-fold）、`locator.count()`（偵測多命中）、取 `bounding_box` 並與視窗矩形比對，判定該次是否**真的圈到目標元素**，結果記進每步 metadata（`highlighted / reason / match_count / multi_match / oversize`）。契約不變——任何截圖/判定失敗都不 fail 測試。
+
+失敗分類 `reason`：`no_match`（命中 0）/ `no_box`（取不到座標，元素隱藏或 detached）/ `zero_area`（零面積）/ `offscreen`（元素在視窗外）/ `bbox_error`（座標逾時）。`multi_match`（命中 >1，只圈第一個）與 `oversize`（框過大 >85% 視窗，圈了等於沒圈）為獨立旗標。
+
+判定產出（皆為觀測性、gitignored）：
+- **PNG 橫幅**：圈選失敗的圖，畫面正中央注入紅底白字「未圈選：<原因>」橫幅（純前端注入，無新依賴）。
+- **README badge**：失敗步驟標題加 `⚠️ 未圈到` + 中文原因；檔頭列 `圈選失敗步驟：N/M`。
+- **`steps.json`**：每個 test 資料夾一份機器可讀 step metadata。
+- **`_highlight_audit.md` / `.json`**：`screenshots/<site>/<ts>/` 下的 session 級稽核成績單（`conftest.py` `pytest_sessionfinish` 呼叫 `write_highlight_audit()`），列出所有圈選有瑕疵的 test+step，取代人工逐張翻圖。
+- **離線重掃**：`.github/scripts/audit_highlights.py`（PR2 引入）純讀既有 `steps.json` 重建報告，與線上共用 `_render_audit()`。
 
 ## Coding Conventions
 

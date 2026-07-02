@@ -342,7 +342,15 @@ def pytest_runtest_logreport(report):
 
 
 def pytest_sessionfinish(session, exitstatus):
-    """把「重跑後才通過」的 test 寫成 sidecar JSON（僅當有 --junitxml）。"""
+    """把「重跑後才通過」的 test 寫成 sidecar JSON（僅當有 --junitxml）；
+    另把本 session 圈選失敗步驟彙整成 _highlight_audit 報告（無論是否有 junitxml）。"""
+    # 圈選稽核（觀測性附加物，寫不出不影響測試結果）
+    try:
+        from utils.screenshot_helper import write_highlight_audit
+        write_highlight_audit()
+    except Exception:
+        pass
+
     xmlpath = getattr(session.config.option, "xmlpath", None)
     if not xmlpath:
         return
