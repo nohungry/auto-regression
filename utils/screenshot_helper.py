@@ -421,7 +421,13 @@ def _inject_highlight(page: Page, box: dict, label: str) -> None:
 
 
 def _inject_banner(page: Page, reason: str) -> None:
-    """圈選失敗時，在畫面正中央注入紅底白字「未圈選」橫幅（純前端注入，免依賴）。"""
+    """圈選失敗時，在畫面正中央注入紅底白字「未圈選」橫幅（純前端注入，免依賴）。
+
+    置中用全視窗 flex 容器（inset:0），**不用 transform、不設 pointer-events:none**：
+    實測 headless 下，用 transform 置中或帶 pointer-events:none 的全視窗注入元素，在
+    部分站點 desktop 版面不會 composite 進截圖（橫幅隱形）；改用 flex 容器可靠顯示。
+    容器截圖後即由 _remove_overlay 移除，期間無任何點擊，故無需 pointer-events:none。
+    """
     text = f"未圈選：{_REASON_ZH.get(reason, reason)}"
     try:
         page.evaluate(
@@ -431,23 +437,27 @@ def _inject_banner(page: Page, reason: str) -> None:
 
                 const wrap = document.createElement('div');
                 wrap.id = '__pw_highlight__';
+                wrap.style.cssText = [
+                    'position:fixed',
+                    'inset:0',
+                    'z-index:2147483647',
+                    'display:flex',
+                    'align-items:center',
+                    'justify-content:center',
+                ].join(';');
 
                 const banner = document.createElement('div');
                 banner.textContent = msg;
                 banner.style.cssText = [
-                    'position:fixed',
-                    'left:50%',
-                    'top:50%',
-                    'transform:translate(-50%, -50%)',
                     'background:rgba(255,51,51,0.95)',
                     'color:#fff',
                     'padding:10px 24px',
                     'border-radius:6px',
+                    // 白框 + 深色陰影：即使壓在同色系（如紅色 hero）背景上也能辨識
+                    'border:2px solid #fff',
                     'font:bold 16px/1.4 sans-serif',
                     'white-space:nowrap',
-                    'box-shadow:0 2px 12px rgba(0,0,0,0.4)',
-                    'pointer-events:none',
-                    'z-index:2147483647',
+                    'box-shadow:0 2px 16px rgba(0,0,0,0.6)',
                 ].join(';');
                 wrap.appendChild(banner);
 
