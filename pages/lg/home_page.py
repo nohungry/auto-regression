@@ -131,12 +131,16 @@ class HomePage:
     # ------------------------------------------------------------------
 
     def click_nav_item(self, category_text: str):
-        """點擊頂部 nav 主分類（ul.nav-item li，用文字過濾；每分類 count=1 無 hidden 節點）。
+        """點擊頂部 nav 主分類（ul.nav-item li，用精確文字過濾）。
 
         前置：呼叫前須已 dismiss 進站公告（go_home 會做），否則殘留 mask 擋點擊。
+        用 `^分類$` 精確比對：站方新增「體育直播」等含前綴分類後，has_text 子字串
+        會同時命中「體育」與「體育直播」→ strict mode violation，故改精確錨定。
         """
         sh = get_screenshotter(self.page)
-        item = self.page.locator("ul.nav-item li").filter(has_text=category_text)
+        item = self.page.locator("ul.nav-item li").filter(
+            has_text=re.compile(rf"^{re.escape(category_text)}$")
+        )
         item.scroll_into_view_if_needed()
         if sh: sh.capture(item, f"click_nav_{category_text}")
         item.click()
@@ -180,8 +184,16 @@ class HomePage:
     # ------------------------------------------------------------------
 
     def open_user_menu(self):
-        """開啟 avatar dropdown（右側滑入 panel），等 panel translate-x-0。"""
+        """開啟 avatar dropdown（右側滑入 panel），等 panel translate-x-0。
+
+        冪等：panel 已開（class 含 translate-x-0）則不再點擊。avatar 觸發為 toggle，
+        class-scoped session 中前一測試/param 可能留下開啟狀態，重複 dispatch_event
+        會把已開的 panel 關掉 → translate-x-0 永遠等不到（本站 3 支 feature fail 主因）。
+        """
         self.dismiss_any_popups()
+        current = self.dropdown_panel.get_attribute("class") or ""
+        if "translate-x-0" in current:
+            return
         self.avatar_trigger.dispatch_event("click")
         expect(self.dropdown_panel).to_have_class(
             re.compile(r"translate-x-0"), timeout=5000
