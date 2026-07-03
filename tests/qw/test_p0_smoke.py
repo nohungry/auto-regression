@@ -120,7 +120,8 @@ class TestHome:
         popup_mask = page.locator('.popup-mask').first
         try:
             popup_mask.wait_for(state="visible", timeout=10000)
-            if sh: sh.capture(popup_mask, "verify_popup_mask_present")
+            # 全屏 popup mask，紅框等於框整頁 → 整頁截圖
+            if sh: sh.full_page("verify_popup_mask_present")
         except PlaywrightTimeoutError:
             popup_close = page.locator('.popup-close').first
             popup_close.wait_for(state="visible", timeout=3000)

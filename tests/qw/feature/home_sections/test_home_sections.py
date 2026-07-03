@@ -79,7 +79,8 @@ class TestHomePageSections:
         # 改用 has-text 或 page.evaluate 定位
         section = page.locator("css=div.main-page > div:nth-child(3)").first
         section.scroll_into_view_if_needed()
-        if sh: sh.capture(section, "verify_遊戲intro區")
+        # 整個 intro section 幾乎滿版，紅框無鑑別度 → 整頁截圖
+        if sh: sh.full_page("verify_遊戲intro區")
         expect(section).to_be_visible()
 
         # 驗 intro tab 數量

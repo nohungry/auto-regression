@@ -47,8 +47,9 @@ class TestHomePageSections:
         page = class_logged_in_page
         marquee = page.locator("p.h-full").first
         sh = get_screenshotter(page)
-        if sh: sh.capture(marquee, "verify_公告跑馬燈有內容")
+        # 跑馬燈為持續動畫元素，bbox 恆在視窗外且無法 scroll into view → 整頁截圖呈現實際狀態
         expect(marquee).to_be_visible()
+        if sh: sh.full_page("verify_公告跑馬燈有內容")
         expect(marquee).to_contain_text("公告")
 
     def test_balance_visible(self, class_logged_in_page: Page, go_home):
