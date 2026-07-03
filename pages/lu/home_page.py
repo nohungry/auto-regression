@@ -224,10 +224,11 @@ class HomePage:
 
         # 等登出 button 可見（sidebar 展開後才顯示）
         expect(self.logout_btn).to_be_visible(timeout=5000)
-        if sh: sh.capture(self.logout_btn, "verify_sidebar_opened")
+        # sidebar 展開後 logout_btn bbox 在視窗外 → 整頁截圖呈現展開狀態，紅框無意義
+        if sh: sh.full_page("verify_sidebar_opened")
 
         # 點登出
-        if sh: sh.capture(self.logout_btn, "click_登出")
+        if sh: sh.full_page("click_登出")
         self.logout_btn.dispatch_event("click")
 
         # 驗證登出成功：登錄 CTA 重現

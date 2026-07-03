@@ -26,7 +26,8 @@ class TestAnnouncementPopup:
         page.wait_for_load_state("networkidle")
         mask = page.locator(".popup-announcement-mask")
         sh = get_screenshotter(page)
-        if sh: sh.capture(mask, "verify_公告彈窗出現")
+        # 全屏公告 mask，紅框等於框整頁 → 整頁截圖更達意
+        if sh: sh.full_page("verify_公告彈窗出現")
         expect(mask).to_be_visible(timeout=5000)
 
     def test_popup_close_btn_advances_slide(self, page: Page, site_config):
@@ -45,7 +46,7 @@ class TestAnnouncementPopup:
 
         # 點擊後 popup 仍在，代表推進至下一張而非直接關閉
         # 若只有一張投影片則此測試 fail — 屬預期行為，反映測試環境 popup 為單張
-        if sh: sh.capture(mask, "verify_輪播推進後彈窗仍存在")
+        if sh: sh.full_page("verify_輪播推進後彈窗仍存在")
         expect(mask).to_be_visible(timeout=3000)
 
     def test_popup_closes_after_all_slides(self, page: Page, site_config):

@@ -21,8 +21,9 @@ class TestSidebarFeatures:
         page.locator(".sidebar-item.game-details").dispatch_event("click")
         dialog = page.locator(".dialog-container")
         sh = get_screenshotter(page)
-        if sh: sh.capture(dialog, "verify_遊戲明細彈窗開啟")
+        # 先等 dialog 可見再截圖，否則 capture 命中 0 元素（dialog 尚未 render）
         expect(dialog).to_be_visible(timeout=5000)
+        if sh: sh.capture(dialog, "verify_遊戲明細彈窗開啟")
 
     def test_announcement_opens(self, class_logged_in_page: Page, go_home):
         """TC-022：老吉公告彈窗可正常開啟且有公告內容"""
@@ -31,8 +32,8 @@ class TestSidebarFeatures:
         wait_loading_if_present(page)
         dialog = page.locator(".dialog-container")
         sh = get_screenshotter(page)
-        if sh: sh.capture(dialog, "verify_公告彈窗開啟")
         expect(dialog).to_be_visible(timeout=5000)
+        if sh: sh.capture(dialog, "verify_公告彈窗開啟")
         expect(dialog).to_contain_text("公告")
 
 

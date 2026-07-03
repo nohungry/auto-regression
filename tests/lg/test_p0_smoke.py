@@ -68,7 +68,8 @@ class TestLogin:
 
         # 驗證錯誤 toast 出現
         expect(login.error_toast).to_be_visible(timeout=5000)
-        if sh: sh.capture(login.error_toast, "verify_error_toast_visible")
+        # error_toast 綁 z-[99999] 高層容器（近全屏），紅框無鑑別度 → 整頁截圖
+        if sh: sh.full_page("verify_error_toast_visible")
 
         # 登入 modal 仍開著（未成功）
         expect(login.username_input).to_be_visible(timeout=3000)

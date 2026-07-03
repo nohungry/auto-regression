@@ -43,9 +43,9 @@ class TestMemberCenter:
 
         if sh: sh.full_page("verify_member_center_panel_整體")
 
-        # 1) panel 容器
+        # 1) panel 容器（整個 dialog 幾乎滿版，紅框無鑑別度 → 整頁截圖）
         expect(home.member_panel).to_be_visible(timeout=5000)
-        if sh: sh.capture(home.member_panel, "verify_panel_容器")
+        if sh: sh.full_page("verify_panel_容器")
 
         # 2) 帳號資訊行（包含「帳號：」固定 label，所有語系下都有冒號）
         account_row = (
@@ -65,7 +65,8 @@ class TestMemberCenter:
         # 4) sidebar item（左側 slide-in），至少一個可見即代表 panel 結構完整
         sidebar_item = page.locator(".sidebar-item").first
         sidebar_item.scroll_into_view_if_needed()
-        if sh: sh.capture(sidebar_item, "verify_sidebar_item_存在")
+        # LT drawer slide-in item 渲染在視窗外（bbox offscreen）→ 整頁截圖呈現實際狀態
+        if sh: sh.full_page("verify_sidebar_item_存在")
         expect(sidebar_item).to_be_visible()
 
     def test_maintenance_time_button_opens_dialog(self, class_logged_in_page: Page, go_home):
