@@ -32,6 +32,8 @@ class TestI18n:
         """KS-I18N-002：Nuxt i18n_redirected cookie 已設定"""
         page.goto(site_config.url, wait_until="domcontentloaded", timeout=60000)
         page.wait_for_timeout(2000)
+        sh = get_screenshotter(page)
+        if sh: sh.full_page("verify_首頁_for_cookie_check")
         cookies = {c["name"]: c["value"] for c in page.context.cookies()}
         assert cookies.get("i18n_redirected"), \
             f"預期 i18n_redirected cookie 存在，實際 cookies={list(cookies)}"
