@@ -34,7 +34,7 @@ tests/api/<site_id>/                 — API 層測試（9 站，不啟動瀏覽
 tests/dashboard/<site_id>/           — 後台管理介面測試（9 站）
 utils/locale_helper.py               — set_locale()：注入 `i18n_locale` cookie（LT 用）
 utils/dialog_helper.py               — 伺服器錯誤彈窗、公告彈窗（含 MutationObserver enforce killer）、Loading 等待
-utils/screenshot_helper.py           — 截圖系統（元素高亮 + 自動產生繁中 README；圈選判定：scroll+bbox 判是否真圈到，寫 steps.json / README badge / PNG「未圈選」橫幅 / session _highlight_audit）
+utils/screenshot_helper.py           — 截圖系統（元素高亮 + 自動產生繁中 README；圈選判定：scroll+bbox 判是否真圈到，寫 steps.json / README badge / PNG「未圈選」橫幅 / session _highlight_audit）+ written 缺圖自動回報（寫檔逾時 retry，未寫出標 ⚠️ 並列入稽核）
 utils/visual_helpers.py              — VR reference 截圖 + 動態元素遮蔽
 utils/totp_helper.py                 — get_totp_code()：後台 2FA TOTP 產碼（pyotp + 30s 窗口緩衝）
 utils/game_launch_helper.py          — 遊戲啟動偵測（new tab / provider 轉址判斷）

@@ -13,7 +13,7 @@ import json
 import re
 from datetime import datetime
 from pathlib import Path
-from playwright.sync_api import Page, Locator, TimeoutError as PlaywrightTimeoutError
+from playwright.sync_api import Page, Locator
 
 SCREENSHOTS_DIR = Path("screenshots")
 
@@ -36,6 +36,7 @@ _REASON_ZH = {
     "zero_area":   "元素零面積",
     "offscreen":   "元素在視窗外",
     "bbox_error":  "座標取得逾時",
+    "not_written": "截圖未寫出",
 }
 
 # 圈選失敗判定：這些 reason 代表「呼叫了 capture 卻沒真的圈到目標」
@@ -43,11 +44,16 @@ _FAIL_REASONS = {"no_match", "no_box", "zero_area", "offscreen", "bbox_error"}
 
 
 def _step_flawed(s: dict) -> bool:
-    """capture step 是否「圈選有瑕疵」＝ 沒真的圈到 / 多命中 / 框過大。"""
+    """step 是否「有瑕疵」＝ 沒真的圈到 / 多命中 / 框過大 / 截圖未寫出。
+
+    written 用 `.get("written") is False` 判定：舊 steps.json 無此欄回 None ≠ False，
+    向後相容不誤報。full_page 步驟只會因 written is False 命中此判定。
+    """
     return (
         s.get("highlighted") is False
         or bool(s.get("multi_match"))
         or bool(s.get("oversize"))
+        or s.get("written") is False
     )
 
 # 整個 session 共用同一個 timestamp（第一次建立時設定）
@@ -152,6 +158,7 @@ class ScreenshotHelper:
             "match_count": status["match_count"],
             "multi_match": status["multi_match"],
             "oversize": status["oversize"],
+            "written": status["written"],
         })
         return filepath
 
@@ -165,11 +172,8 @@ class ScreenshotHelper:
         filename = f"{self._step:03d}_{_sanitize(label)}.png"
         filepath = self.folder / filename
         target = page if page is not None else self.page
-        try:
-            target.screenshot(path=str(filepath), timeout=_SCREENSHOT_TIMEOUT_MS)
-        except (PlaywrightTimeoutError, Exception):
-            # 截圖是觀察性用途，失敗不應阻塞測試主流程
-            pass
+        # 截圖是觀察性用途，失敗不應阻塞測試主流程；written 記錄檔案是否真的寫出
+        written = _write_screenshot(target, filepath)
         # full_page 本就不圈選，highlighted=None 表示 N/A（不列入圈選失敗統計）
         self._steps.append({
             "step": self._step,
@@ -181,6 +185,7 @@ class ScreenshotHelper:
             "match_count": None,
             "multi_match": False,
             "oversize": False,
+            "written": written,
         })
         return filepath
 
@@ -192,9 +197,9 @@ class ScreenshotHelper:
 
         now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-        # 統計圈選失敗步驟（capture 類且沒真的圈到 / 多命中 / 過大）
-        capture_steps = [s for s in self._steps if s.get("kind") == "capture"]
-        fail_steps = [s for s in capture_steps if _step_flawed(s)]
+        # 統計截圖瑕疵步驟（圈選沒圈到 / 多命中 / 過大 / 截圖未寫出）
+        # 涵蓋所有 step：full_page 沒寫出（written is False）也算瑕疵並計入
+        fail_steps = [s for s in self._steps if _step_flawed(s)]
 
         lines: list[str] = []
 
@@ -215,8 +220,7 @@ class ScreenshotHelper:
             f"**執行時間：** {now}",
             f"**操作步驟總數：** {len(self._steps)} 步",
         ]
-        if capture_steps:
-            lines.append(f"**圈選失敗步驟：** {len(fail_steps)}/{len(capture_steps)} 步")
+        lines.append(f"**截圖瑕疵步驟：** {len(fail_steps)}/{len(self._steps)} 步")
         lines += [
             "",
             "---",
@@ -238,14 +242,21 @@ class ScreenshotHelper:
                     notes.append(f"> ⚠️ 命中 {s.get('match_count')} 個元素，只圈第一個（selector 需加 .first 或收斂）")
                 if s.get("oversize"):
                     notes.append("> ⚠️ 目標框過大（幾乎覆蓋整個視窗），紅框無鑑別度")
+            # written is False：截圖檔逾時未寫出（舊 steps.json 無此欄回 None ≠ False）
+            missing = s.get("written") is False
+            if missing:
+                badge += " ⚠️ 截圖未寫出"
+                notes.append("> ⚠️ 截圖檔未寫出（screenshot 逾時），此步驟無圖")
             lines.append(f"### 步驟 {s['step']:03d}｜{zh}{badge}")
             lines.append("")
             for n in notes:
                 lines += [n, ""]
-            lines += [
-                f"![步驟 {s['step']:03d} — {zh}]({s['filename']})",
-                "",
-            ]
+            # 未寫出者不嵌壞圖連結，避免 README 內出現破圖
+            if not missing:
+                lines += [
+                    f"![步驟 {s['step']:03d} — {zh}]({s['filename']})",
+                    "",
+                ]
 
         report_path = self.folder / "README.md"
         report_path.write_text("\n".join(lines), encoding="utf-8")
@@ -263,7 +274,7 @@ class ScreenshotHelper:
         except Exception:
             pass
 
-        # 累加圈選失敗步驟進 session 稽核（sessionfinish 時彙整成報告）
+        # 累加截圖瑕疵步驟進 session 稽核（sessionfinish 時彙整成報告）
         for s in fail_steps:
             _AUDIT_RECORDS.append({
                 "site": self._site_id,
@@ -276,6 +287,7 @@ class ScreenshotHelper:
                 "match_count": s.get("match_count"),
                 "multi_match": s.get("multi_match"),
                 "oversize": s.get("oversize"),
+                "written": s.get("written"),
                 "path": str(self.folder / s["filename"]),
             })
 
@@ -302,9 +314,9 @@ def _highlight_and_screenshot(
     target = locator.first
 
     if match_count == 0:
-        _screenshot_with_optional_banner(page, filepath, "no_match", label)
+        written = _screenshot_with_optional_banner(page, filepath, "no_match", label)
         return {"highlighted": False, "reason": "no_match", "match_count": match_count,
-                "multi_match": False, "oversize": False, "box": None}
+                "multi_match": False, "oversize": False, "box": None, "written": written}
 
     # 2) 自動捲入視野（解 below-fold）。失敗不直接判定失敗——元素可能本就在視窗內，
     #    或如 RC width=0 sidebar / LT drawer 這類 scroll 無效者；一律吞例外續跑。
@@ -350,21 +362,20 @@ def _highlight_and_screenshot(
     box_out = ({"x": box["x"], "y": box["y"], "w": box["width"], "h": box["height"]}
                if box else None)
 
+    written = False
     try:
         if highlighted:
             _inject_highlight(page, box, label)
         else:
             _inject_banner(page, reason)
-        try:
-            page.screenshot(path=str(filepath), timeout=_SCREENSHOT_TIMEOUT_MS)
-        except (PlaywrightTimeoutError, Exception):
-            # 截圖是觀察性用途，失敗不應阻塞測試主流程
-            pass
+        # 截圖是觀察性用途，失敗不應阻塞測試主流程；written 記錄檔案是否真的寫出
+        written = _write_screenshot(page, filepath)
     finally:
         _remove_overlay(page)
 
     return {"highlighted": highlighted, "reason": reason, "match_count": match_count,
-            "multi_match": multi_match, "oversize": oversize, "box": box_out}
+            "multi_match": multi_match, "oversize": oversize, "box": box_out,
+            "written": written}
 
 
 def _inject_highlight(page: Page, box: dict, label: str) -> None:
@@ -479,14 +490,30 @@ def _remove_overlay(page: Page) -> None:
         pass
 
 
-def _screenshot_with_optional_banner(page: Page, filepath: Path, reason: str, label: str) -> None:
-    """no_match 等提早返回情境：注入橫幅 → 截圖 → 移除。"""
+def _write_screenshot(target, filepath: Path) -> bool:
+    """截圖寫檔，回傳是否成功。失敗先以 animations='disabled' retry 一次（凍結 CSS 動畫，
+    緩解忙碌 SPA 首頁撞 timeout 的 transient），仍失敗回 False、不拋出。
+
+    target 可為 Page 或另開分頁的 popup page，皆有 .screenshot()。
+    """
+    try:
+        target.screenshot(path=str(filepath), timeout=_SCREENSHOT_TIMEOUT_MS)
+        return True
+    except Exception:
+        pass
+    try:
+        target.screenshot(path=str(filepath), timeout=_SCREENSHOT_TIMEOUT_MS,
+                          animations="disabled")
+        return True
+    except Exception:
+        return False
+
+
+def _screenshot_with_optional_banner(page: Page, filepath: Path, reason: str, label: str) -> bool:
+    """no_match 等提早返回情境：注入橫幅 → 截圖 → 移除。回傳截圖是否寫出。"""
     try:
         _inject_banner(page, reason)
-        try:
-            page.screenshot(path=str(filepath), timeout=_SCREENSHOT_TIMEOUT_MS)
-        except (PlaywrightTimeoutError, Exception):
-            pass
+        return _write_screenshot(page, filepath)
     finally:
         _remove_overlay(page)
 
@@ -498,14 +525,18 @@ def _render_audit(records: list[dict]) -> tuple[str, str]:
     tests = {(r["category"], r["test"]) for r in records}
     reason_dist: dict[str, int] = {}
     for r in records:
-        key = r.get("reason") or ("multi_match" if r.get("multi_match") else
-                                  "oversize" if r.get("oversize") else "?")
+        # 截圖未寫出（連檔案都沒有）優先歸入獨立 bucket，比圈選原因更根本
+        if r.get("written") is False:
+            key = "not_written"
+        else:
+            key = r.get("reason") or ("multi_match" if r.get("multi_match") else
+                                      "oversize" if r.get("oversize") else "?")
         reason_dist[key] = reason_dist.get(key, 0) + 1
 
     lines: list[str] = [
         "# 截圖圈選稽核報告",
         "",
-        f"**圈選有瑕疵步驟：** {total_fail} 步，涉及 {len(tests)} 支測試",
+        f"**截圖有瑕疵步驟：** {total_fail} 步，涉及 {len(tests)} 支測試",
         "",
         "**原因分佈：** " + (
             "、".join(f"{_REASON_ZH.get(k, k)}={v}" for k, v in sorted(reason_dist.items()))
@@ -523,6 +554,8 @@ def _render_audit(records: list[dict]) -> tuple[str, str]:
             tags.append("多命中")
         if r.get("oversize"):
             tags.append("框過大")
+        if r.get("written") is False:
+            tags.append("截圖未寫出")
         reason_txt = "／".join(tags) or "-"
         lines.append(
             f"| {r['category']} | {r['test']} | {r['step']:03d} | {r['label']} | "
