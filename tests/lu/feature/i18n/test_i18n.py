@@ -38,6 +38,8 @@ class TestI18n:
     def test_i18n_cookie_set(self, class_logged_in_page: Page, go_home, site_config):
         """LU-I18N-002：Nuxt i18n_redirected cookie 已設定"""
         page = class_logged_in_page
+        sh = get_screenshotter(page)
+        if sh: sh.full_page("verify_首頁_for_cookie_check")
         cookies = {c["name"]: c["value"] for c in page.context.cookies()}
         assert cookies.get("i18n_redirected"), \
             f"預期 i18n_redirected cookie 存在，實際 cookies={list(cookies)}"
