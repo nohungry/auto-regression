@@ -77,6 +77,7 @@ GitHub Actions 自動跑測試：
 | 新增 `docs/` 檔 | **docs/README.md** 索引 + **README.md** 文件資源表 |
 | 測試策略 / 覆蓋邊界 | **docs/testing-strategy.md** + **CLAUDE.md** Test Strategy |
 | skill 流程變動 | 對應 `SKILL.md` + 其 frontmatter `description` |
+| 團隊決策 / 協作協定變動 | **docs/decisions.md** + **CLAUDE.md** 雙人協作協定段 |
 
 > 自動關卡（`check-docs-sync.sh`）對其中最高訊號的兩列加了 deterministic 硬規則：**新前台站點**、**marker 變動** 若沒同步 README + CLAUDE.md 會直接 block / PR 紅。其餘列靠本表 + skill/subagent 紀律 + reviewer 把關。
 
@@ -361,3 +362,22 @@ LT 使用 React SPA。若 form 在 `networkidle` 前被填入，登入 API 會�
 
 - 任何 commit / push 動作需先經使用者確認。
 - **禁止**在 commit message 加入 `Co-Authored-By: Claude ...` 或任何 Claude 署名。
+
+## 雙人協作協定(並行開發)
+
+兩位開發者(nohungry 主、Luke 次)並行開發,各自使用自己的 Claude Code;個人 Claude memory 為 machine-local **不進 git**。協調訊號放在雙方已共享的通道(repo + GitHub),架構決策見 [`docs/decisions.md`](docs/decisions.md)(決策條目的新增/修訂規則見該檔檔頭)。
+
+### 開工協定(動工任何 feature / 重構前)
+
+1. **讀 `docs/decisions.md` 相關條目** — 與既有決策衝突的寫法不可逕行動工;做法有多種且無對應決策 → 先以 PR 新增 `proposed` 條目,由 nohungry 拍板改 `accepted` 再動工(**架構決策的最終解釋權在 nohungry;Luke 提交的 PR 由 nohungry review**)。
+2. **查對方 in-flight 工作**:`gh pr list --state open` 檢視對方 open/draft PR 的範圍。
+3. **碰撞偵測**:比對「本次計畫要動的檔案」與對方 PR 的 `gh pr diff <n> --name-only` 是否有交集;有 codebase-memory MCP 的機器可再沿呼叫關係反查間接相依(無此 MCP 則略過該層,屬 best-effort 加值)。有交集 → 先與對方協調,不硬擋。
+4. **開 draft PR 宣告施工**:第一個真 commit 後即開 draft PR(不必等功能完成),描述寫明:範圍(站點 / 檔案 / feature)+ **使用中的站點測試帳號**(配合同帳號不並行規則,對方動測試前先看)。功能完成後轉 ready for review。
+
+### commit 前
+
+git-commit skill 內含碰撞檢查 step(對方的新 PR 可能在開工後才出現),見該 skill。
+
+### Memory 政策
+
+個人 memory 維持私有;「對團隊有效」的知識(架構決策、站點陷阱、慣例)應蒸餾進 `docs/`(決策類進 `docs/decisions.md`),**蒸餾時嚴禁帶出憑證(帳號 / 密碼 / TOTP / .env 值)與個人筆記**。
