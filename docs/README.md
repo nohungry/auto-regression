@@ -53,6 +53,7 @@
 | [`agent-skills-workflow.md`](./agent-skills-workflow.md) | Agent / skill / subagent 6+3 接力工作流 |
 | [`new-site-onboarding-workflow.md`](./new-site-onboarding-workflow.md) | 新站 onboarding 完整 SOP（mermaid 流程圖、subagent/skill 觸發條件、預估時間、QW 實作踩坑） |
 | [`product-bugs-to-report.md`](./product-bugs-to-report.md) | 已確認的產品/前端/後端 bug 清單（待回報廠商），與「測試端待穩定」flaky 區分 |
+| [`decisions.md`](./decisions.md) | 團隊架構決策紀錄（決定什麼/為什麼/不採的替代案），並行開發的架構共識層；使用規則見檔頭 + CLAUDE.md 雙人協作協定段 |
 
 ---
 

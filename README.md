@@ -195,6 +195,7 @@ ip route show | grep -i default | awk '{print $3}'   # WSL 預設 gateway = Wind
 | [`docs/lt-dashboard-sitemap.md`](docs/lt-dashboard-sitemap.md) | LT 後台 25 頁功能地圖 |
 | [`docs/dashboard-technical-notes.md`](docs/dashboard-technical-notes.md) | 後台測試技術注意事項 |
 | [`docs/product-bugs-to-report.md`](docs/product-bugs-to-report.md) | 已確認待回報的產品/前端/後端 bug 清單 |
+| [`docs/decisions.md`](docs/decisions.md) | 團隊架構決策紀錄（並行開發的架構共識層） |
 | [`PORTS_AND_SETUP.md`](PORTS_AND_SETUP.md) | Port 轉發與環境設定 |
 | [`dev-notes/`](dev-notes/) | 個人開發筆記（gitignored） |
 
