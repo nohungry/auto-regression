@@ -1,22 +1,24 @@
 # Auto Regression - Platform 自動化回歸測試
 
-使用 **Python + pytest-playwright**，針對 T9 Platform 旗下多個遊戲站台進行端對端回歸測試，支援 Windows / WSL / Linux / CI 四種環境自動偵測。
+使用 **Python + pytest-playwright**，針對多個遊戲站台進行端對端回歸測試，支援 Windows / WSL / Linux / CI 四種環境自動偵測。
 
 ## 支援站台
 
-| 站台 ID | 中文名 | 網址 | 測試數 |
-|---------|--------|------|--------|
-| `rc` | 王老吉娛樂城 | 見 .env `SITE_RC_URL` | 63 |
-| `lt` | LT 來財 | 見 .env `SITE_LT_URL` | 112 |
-| `re` | BeWin | 見 .env `SITE_RE_URL` | 63 |
-| `rd` | 狗狗娛樂城 | 見 .env `SITE_RD_URL` | 58 |
-| `qw` | LM 來財娛樂城 | 見 .env `SITE_QW_URL` | 31 |
-| `lg` | 大撈家娛樂城 | 見 .env `SITE_LG_URL` | 35 |
-| `lu` | Dlgbet | 見 .env `SITE_LU_URL` | 31 |
-| `ks` | Super9 娛樂城 | 見 .env `SITE_KS_URL` | 34 |
-| `rf` | 金爺娛樂城 | 見 .env `SITE_RF_URL` | 38 |
-| API | (9 站，不啟動瀏覽器) | - | 102 |
-| Dashboard | (9 站後台) | - | 51 |
+站台一律以代號敘述；實際網址與帳號見 `.env` 的 `SITE_<ID>_*` keys。
+
+| 站台 ID | 網址 | 測試數 |
+|---------|------|--------|
+| `rc` | 見 .env `SITE_RC_URL` | 63 |
+| `lt` | 見 .env `SITE_LT_URL` | 112 |
+| `re` | 見 .env `SITE_RE_URL` | 63 |
+| `rd` | 見 .env `SITE_RD_URL` | 58 |
+| `qw` | 見 .env `SITE_QW_URL` | 31 |
+| `lg` | 見 .env `SITE_LG_URL` | 35 |
+| `lu` | 見 .env `SITE_LU_URL` | 31 |
+| `ks` | 見 .env `SITE_KS_URL` | 34 |
+| `rf` | 見 .env `SITE_RF_URL` | 38 |
+| API | (9 站，不啟動瀏覽器) | 102 |
+| Dashboard | (9 站後台) | 51 |
 
 > 測試數以 `.venv/bin/pytest tests/<site>/ --collect-only -q` 為準，會隨新增測試變動。
 
@@ -155,17 +157,7 @@ ip route show | grep -i default | awk '{print $3}'   # WSL 預設 gateway = Wind
 
 ### 站台
 
-| Marker | 站台 |
-|--------|------|
-| `rc` | rc 站（王老吉娛樂城） |
-| `lt` | lt 站（LT 來財） |
-| `re` | re 站（BeWin） |
-| `rd` | rd 站（狗狗娛樂城） |
-| `qw` | qw 站（LM 來財娛樂城） |
-| `lg` | lg 站（大撈家娛樂城） |
-| `lu` | lu 站（Dlgbet） |
-| `ks` | ks 站（Super9 娛樂城） |
-| `rf` | rf 站（金爺娛樂城） |
+站台 marker 與站台 ID 同名：`rc` / `lt` / `re` / `rd` / `qw` / `lg` / `lu` / `ks` / `rf`。
 
 ### 功能 / 其他
 
