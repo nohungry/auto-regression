@@ -1,6 +1,6 @@
 ---
 name: git-commit
-description: 針對 auto-regression repo 的測試變更，執行提交前檢查、整理 diff、建議驗證步驟與 commit message。當使用者準備 commit、要求整理變更摘要、或需要提交前品質把關時，使用此 skill。
+description: 針對 auto-regression repo 的測試變更，執行提交前檢查（含並行開發碰撞檢查）、整理 diff、建議驗證步驟與 commit message。當使用者準備 commit、要求整理變更摘要、或需要提交前品質把關時，使用此 skill。
 ---
 
 # Purpose
@@ -118,6 +118,16 @@ description: 針對 auto-regression repo 的測試變更，執行提交前檢查
 3. 根據修改範圍，提出最小必要驗證指令。
 4. 若使用者已執行過測試，整理結果；若尚未執行，提醒至少先跑 targeted pytest。
 5. 檢查此次變更是否把站點名稱、站點目錄或規則不必要地寫死。
+
+## Step 1.5 — 並行開發碰撞檢查（每次 commit 都做）
+
+依 CLAUDE.md「雙人協作協定」與 `docs/decisions.md` D-019：commit 前檢查本次變更是否與另一位開發者的 in-flight 工作相撞（對方的新 PR 可能在本次開工後才出現）。
+
+1. `gh pr list --state open --json number,title,author,headRefName,isDraft` 取得所有 open PR（含 draft），排除本次所在 branch 自己的 PR。
+2. 對其他開發者的每支 PR：`gh pr diff <number> --name-only` 取檔案清單，與本次 diff 檔案（staged + unstaged）求交集。
+3. **交集非空 → 列出衝突檔案 + 對方 PR 編號/標題，提醒使用者先協調**（先合對方 / 調整本次範圍 / 知情續行）。**提醒不硬擋**，由使用者決定是否續行；若續行，建議在 commit message body 註明知情（如 `overlaps #<n>, coordinated`）。
+4. 間接相依（best-effort 加值層）：機器上有 codebase-memory MCP 時，對本次修改的 function/method 沿 CALLS/USAGE 邊反查呼叫者，若波及對方 PR 檔案內的程式一併提醒；無此 MCP 則略過此層，不影響流程。
+5. `gh` 不可用或離線 → 回報「碰撞檢查略過（gh 不可用）」，不阻擋 commit。
 
 ## Step 2 — CDP 本地實際測試驗證（腳本類變更必做，非腳本類略過）
 
@@ -315,6 +325,7 @@ review diff 時注意以下紅旗：
 # Output expectations
 完成任務時，應：
 - 摘要本次變更檔案，標示風險等級。
+- **回報碰撞檢查結果**（Step 1.5）：與對方 open PR 的檔案交集（有 → 列出檔案與 PR 編號並提醒協調；無 → 一句帶過；gh 不可用 → 註明略過）。
 - **標示本次是否包含腳本類變更**（Step 2.1 判斷）；若有，列出對應的 CDP 必跑指令，並確認使用者本地已跑通過 — 未跑不得產生 commit message。
 - **列出可能需要同步的文件清單**（Step 3.2 逐項檢查）；若有，在 commit 前完成文件更新或明確說明拆 commit 策略。
 - 列出建議先執行的 pytest 指令（重申範圍）。
