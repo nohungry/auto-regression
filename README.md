@@ -99,7 +99,7 @@ GitHub Actions 自動跑測試與 docs 同步檢查：
 
 | Workflow | 觸發 | 跑什麼 |
 |---|---|---|
-| `.github/workflows/p0.yml` | PR / push to main / daily 09:00 台灣 / 手動 | 9 站 P0 smoke matrix（rc/lt/re/rd/qw/lg/lu/ks/rf） |
+| `.github/workflows/p0.yml` | PR（draft 不跑）/ push to main / daily 09:00 台灣 / 手動 | 9 站 P0 smoke matrix（rc/lt/re/rd/qw/lg/lu/ks/rf） |
 | `.github/workflows/full-regression.yml` | 週一 08:00 台灣 / 手動 | 9 站全套（P0 + feature；不由 PR/push 觸發） |
 | `.github/workflows/docs-sync-check.yml` | PR | code 變動是否同步更新 docs |
 
