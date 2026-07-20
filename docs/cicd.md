@@ -4,7 +4,7 @@ GitHub Actions 自動跑這個 repo 的測試。當前 3 個 workflow：
 
 | Workflow | 觸發 | 跑什麼 | 預估時長 |
 |---|---|---|---|
-| `p0.yml` | PR / push to main / daily cron / 手動 | 9 站 P0 smoke matrix（rc/lt/re/rd/qw/lg/lu/ks/rf） | ~3 分（9 job 並行） |
+| `p0.yml` | PR（**draft 不跑**，轉 ready 才跑）/ push to main / daily cron / 手動 | 9 站 P0 smoke matrix（rc/lt/re/rd/qw/lg/lu/ks/rf） | ~3 分（9 job 並行） |
 | `full-regression.yml` | weekly cron（週一） / 手動 | 9 站全套（P0 + feature） | ~17 分（9 job 並行） |
 | `docs-sync-check.yml` | PR | code 變動是否同步 docs | < 30 秒 |
 
@@ -111,6 +111,7 @@ CI=true .venv/bin/pytest tests/rc/test_p0_smoke.py
 | 某 step fail | 點 step 看 log；常見：`Run <site> P0 smoke` 內可見 pytest output / traceback |
 | Test fail 但本機過 | 下載 `failure-screenshots-<site>.zip`，看 README.md 與紅框截圖比對本機行為 |
 | Workflow 沒觸發 | 確認 trigger 規則（如 `pull_request: branches: [main]` 只認對 main 的 PR） |
+| **Draft PR 沒跑 p0** | **by design**：draft = 施工中訊號（雙人協作協定），不跑 9 站 smoke 以免佔用共用測試帳號與本地 CDP 互踢；PR 轉 ready for review 即觸發 |
 | Cron 沒跑 | GitHub 負載高時可能 skip；隔天看 / 改 cron 加多個時段 |
 | Secret 缺 | `gh secret list` 確認；或 step log 會出現 `SITE_X_PASSWORD: ${{ secrets.SITE_X_PASSWORD }}` 變空字串 → 測試 fail 在 login |
 

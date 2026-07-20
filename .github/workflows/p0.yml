@@ -1,13 +1,17 @@
 name: P0 Smoke (9 sites)
 
 # 觸發條件：
-# - PR 開啟 / 更新時自動跑（擋住有問題的 merge）
+# - PR 開啟 / 更新時自動跑（擋住有問題的 merge）；draft PR 不跑（轉 ready 才跑）——
+#   draft 是「施工中」訊號（見 CLAUDE.md 雙人協作協定 / docs/decisions.md D-019），
+#   施工中就跑 9 站 smoke 會佔用共用測試帳號、與本地 CDP 測試互踢 session
 # - 成功 merge 到 main 後再跑一次（確認 squash 後合進去的版本實際 OK）
 # - 每日 09:00 台灣（= 01:00 UTC）定時跑，捕捉產品端 drift（無 PR 時的健康度）
 # - 手動 trigger（Actions 介面按鈕）
 on:
   pull_request:
     branches: [main]
+    # 預設 types 不含 ready_for_review：不加的話 draft 轉 ready 那一刻不會觸發
+    types: [opened, synchronize, reopened, ready_for_review]
   push:
     branches: [main]
   schedule:
@@ -28,6 +32,8 @@ jobs:
     name: P0 Smoke (${{ matrix.site }})
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    # draft PR 不跑（施工中訊號；轉 ready 才跑）
+    if: github.event_name != 'pull_request' || !github.event.pull_request.draft
 
     strategy:
       # 任一 site fail 不取消其他 site，讓所有結果可見
@@ -145,7 +151,8 @@ jobs:
     name: Aggregate cross-site summary
     runs-on: ubuntu-latest
     needs: p0-smoke
-    if: always()
+    # always() 保留「site fail 也要聚合」語意；draft PR（p0-smoke skipped）則整個不跑
+    if: always() && (github.event_name != 'pull_request' || !github.event.pull_request.draft)
     steps:
       - name: Checkout
         uses: actions/checkout@v4
