@@ -78,8 +78,13 @@ class LoginPage:
         # 10 次仍 fail → 拋最終錯誤（含完整 timeout 訊息給 debug 用）
         self.username_input.wait_for(state="visible", timeout=5000)
 
-    def login(self, username: str, password: str):
-        """填入帳號密碼並登入"""
+    def login(self, username: str, password: str, expect_success: bool = True):
+        """填入帳號密碼並登入。
+
+        expect_success=True（預設）：送出後守衛「表單真正關閉」，未關閉重送一次
+        （SPA 卡 /login 對策）。負向測試（錯誤憑證，表單本來就會留著）必須傳
+        False 跳過守衛，否則會被重送 + 最終 TimeoutError 誤傷。
+        """
         sh = get_screenshotter(self.page)
 
         self.username_input.scroll_into_view_if_needed()
@@ -101,13 +106,15 @@ class LoginPage:
         # 送出後等表單真正關閉（2026-07-21 連 3 次實錄：loading 跑完但表單仍在、
         # SPA 卡 /login 不轉場）。與 open_login_form 同類 hydration dead zone，
         # 修法對齊：10s 未關閉 → 重送一次（同帳號重複送出無副作用）再等 10s。
-        try:
-            self.username_input.wait_for(state="hidden", timeout=10000)
-        except PlaywrightTimeoutError:
-            if sh: sh.capture(self.login_btn, "click_送出登入_retry")
-            self.login_btn.click()
-            self._wait_for_loading()
-            self.username_input.wait_for(state="hidden", timeout=10000)
+        # 僅適用預期成功的登入；負向測試（expect_success=False）表單留著是正確結果。
+        if expect_success:
+            try:
+                self.username_input.wait_for(state="hidden", timeout=10000)
+            except PlaywrightTimeoutError:
+                if sh: sh.capture(self.login_btn, "click_送出登入_retry")
+                self.login_btn.click()
+                self._wait_for_loading()
+                self.username_input.wait_for(state="hidden", timeout=10000)
 
         # 登入後可能出現伺服器錯誤彈窗
         dismiss_server_error_if_present(self.page)
