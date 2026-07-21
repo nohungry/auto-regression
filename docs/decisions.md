@@ -147,3 +147,11 @@
 - 理由:兩人各用各的 Claude Code、memory 互不可見,撞工與架構分歧需要 git/GitHub 這個雙方已有的共享通道承載協調訊號;memory 含憑證線索與個人筆記,不可直接 git track。
 - 替代方案:共用 memory 目錄進 git(不採:機密與個人觀點無法分離);共享記憶伺服器(不採:2 人規模 overkill、憑證管理風險);每 feature 強制 plan 檔(不採:draft PR 描述已覆蓋)。
 - 影響:CLAUDE.md 協作段、`.claude/skills/git-commit/`(碰撞檢查 step)、`.github/workflows/p0.yml`(draft guard)、兩位開發者的日常流程。
+
+## D-020 信用版後台 POM 跨站共用:全同 re-export、有差異 subclass 覆寫
+
+- 狀態:proposed(2026-07-21,graph dedup 掃描後補追認既有演進路線)
+- 決策:t9platform 信用版後台(RC/RE/LT/RD)的 dashboard POM 以 RC 為 base:與 RC 全同的站 **re-export**(LT/RD 現況);有實機差異的站 **subclass RC 並只覆寫差異方法**(RE:Vue tab 需 native click ×2、會員/代理名渲染為 `<a>` 的定位 ×2),差異原因寫進 override docstring。前台 POM 與現金版後台(LU 系)不在本條範圍。
+- 理由:RE 原為 RC 整檔複製(388 行),16 個方法中僅 4 個有真差異,其餘 12 個的 drift 全是註解/docstring 失同步 —— 複製模式讓 RC 的修正(如 `_agent_card` tag-agnostic、密碼欄 count 防禦)無法自動到達 RE。subclass 讓共用修正單點生效,差異點顯式可審。
+- 替代方案:維持整檔複製(不採:drift 已實際發生);抽獨立共用 base module(不採:RC 即事實上的 base,多一層抽象無收益;`re/login_page.py` docstring 早已預告 subclass 路線)。
+- 影響:`pages/dashboard/re/management_page.py`(388→108 行)、後續信用版新站 onboarding 依此模式。
