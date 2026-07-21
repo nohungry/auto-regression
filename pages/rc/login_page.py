@@ -103,24 +103,35 @@ class LoginPage:
         # 登入 API 回應期間會顯示此動畫，需等它消失才代表登入完成
         self._wait_for_loading()
 
-        # 送出後等表單真正關閉（2026-07-21 連 3 次實錄：loading 跑完但表單仍在、
-        # SPA 卡 /login 不轉場）。與 open_login_form 同類 hydration dead zone，
-        # 修法對齊：10s 未關閉 → 重送一次（同帳號重複送出無副作用）再等 10s。
-        # 僅適用預期成功的登入；負向測試（expect_success=False）表單留著是正確結果。
-        if expect_success:
-            try:
-                self.username_input.wait_for(state="hidden", timeout=10000)
-            except PlaywrightTimeoutError:
-                if sh: sh.capture(self.login_btn, "click_送出登入_retry")
-                self.login_btn.click()
-                self._wait_for_loading()
-                self.username_input.wait_for(state="hidden", timeout=10000)
-
         # 登入後可能出現伺服器錯誤彈窗
         dismiss_server_error_if_present(self.page)
 
         # 處理「用戶協議」彈窗（首次登入才會出現）
         self._handle_user_agreement()
+
+        # 送出後等表單真正關閉（2026-07-21 連 3 次實錄：loading 跑完但表單仍在、
+        # SPA 卡 /login 不轉場）。與 open_login_form 同類 hydration dead zone，
+        # 修法對齊：未關閉 → 重送一次（同帳號重複送出無副作用）再等 10s。
+        # 僅適用預期成功的登入；負向測試（expect_success=False）表單留著是正確結果。
+        # 必須放在彈窗處理之後：CI fresh context 首登「協議確定」彈窗每次出現，
+        # 彈窗未清前表單不會關（2026-07-21 CI 實錄）；retry 用「登入」文字限定
+        # submit，避免與彈窗「確定」同為 primary-btn 的 strict violation。
+        if expect_success:
+            try:
+                self.username_input.wait_for(state="hidden", timeout=10000)
+            except PlaywrightTimeoutError:
+                dismiss_server_error_if_present(self.page)
+                self._handle_user_agreement()
+                try:
+                    self.username_input.wait_for(state="hidden", timeout=3000)
+                except PlaywrightTimeoutError:
+                    submit = self.page.locator("button.primary-btn", has_text="登入").first
+                    if sh: sh.capture(submit, "click_送出登入_retry")
+                    submit.click()
+                    self._wait_for_loading()
+                    dismiss_server_error_if_present(self.page)
+                    self._handle_user_agreement()
+                    self.username_input.wait_for(state="hidden", timeout=10000)
 
     def _wait_for_loading(self):
         """登入 loading 等待＋截圖：委派 utils.dialog_helper.wait_login_loading（RC/RD/RE 共用）"""
