@@ -5,7 +5,7 @@
 """
 
 from playwright.sync_api import Page, TimeoutError as PlaywrightTimeoutError
-from utils.dialog_helper import dismiss_server_error_if_present, dismiss_announcement_popup_if_present
+from utils.dialog_helper import dismiss_server_error_if_present, dismiss_announcement_popup_if_present, wait_login_loading
 from utils.screenshot_helper import get_screenshotter
 
 
@@ -81,20 +81,8 @@ class LoginPage:
         self._handle_post_login_popup()
 
     def _wait_for_loading(self):
-        """
-        等待 loading 狗動畫（img[alt="Loading"] / ALL_Loading.gif）出現並消失。
-        Loading overlay: div.fixed.inset-0.z-[9999]，包含 ALL_Loading.gif。
-        若 2 秒內未出現（登入失敗或速度極快）則略過。
-        """
-        sh = get_screenshotter(self.page)
-        loading_img = self.page.locator('img[alt="Loading"]')
-        try:
-            loading_img.wait_for(state="visible", timeout=2000)
-            if sh: sh.capture(loading_img, "loading_登入中")
-            loading_img.wait_for(state="hidden", timeout=10000)
-            if sh: sh.full_page("loading_完成_進入首頁")
-        except PlaywrightTimeoutError:
-            pass  # loading 未出現或已快速消失，略過
+        """登入 loading 等待＋截圖：委派 utils.dialog_helper.wait_login_loading（RC/RD/RE 共用）"""
+        wait_login_loading(self.page)
 
     def _handle_post_login_popup(self):
         """處理登入後可能出現的彈窗：

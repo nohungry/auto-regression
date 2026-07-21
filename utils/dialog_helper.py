@@ -2,9 +2,12 @@
 通用彈窗 / Loading 處理 Helper
 - dismiss_server_error_if_present：關閉伺服器錯誤彈窗
 - wait_loading_if_present：等待 loading 狗動畫消失
+- wait_login_loading：登入流程 loading 等待＋步驟截圖（RC/RD/RE LoginPage 共用）
 """
 
 from playwright.sync_api import Page, TimeoutError as PlaywrightTimeoutError
+
+from utils.screenshot_helper import get_screenshotter
 
 
 def dismiss_server_error_if_present(page: Page, timeout: int = 3000) -> bool:
@@ -167,3 +170,19 @@ def wait_loading_if_present(page: Page, timeout: int = 2000) -> bool:
         return True
     except PlaywrightTimeoutError:
         return False
+
+
+def wait_login_loading(page: Page) -> None:
+    """
+    等待 loading 狗動畫（img[alt="Loading"] / ALL_Loading.gif）出現並消失，含步驟截圖。
+    RC/RD/RE LoginPage 登入流程共用；若 2 秒內未出現（登入失敗或速度極快）則略過。
+    """
+    sh = get_screenshotter(page)
+    loading_img = page.locator('img[alt="Loading"]')
+    try:
+        loading_img.wait_for(state="visible", timeout=2000)
+        if sh: sh.capture(loading_img, "loading_登入中")
+        loading_img.wait_for(state="hidden", timeout=10000)
+        if sh: sh.full_page("loading_完成_進入首頁")
+    except PlaywrightTimeoutError:
+        pass  # loading 未出現或已快速消失，略過

@@ -24,12 +24,12 @@ RE 機台 select dialog 流程也與 RC 微異）— 修改座標時請各自獨
 """
 
 import re
-import time
 import pytest
-from playwright.sync_api import Page, Frame, expect, TimeoutError as PlaywrightTimeoutError
+from playwright.sync_api import Page, expect, TimeoutError as PlaywrightTimeoutError
 from pages.re.login_page import LoginPage
 from pages.re.home_page import HomePage
 from utils.dialog_helper import wait_loading_if_present
+from utils.game_launch_helper import get_game_frame
 from utils.screenshot_helper import get_screenshotter
 
 
@@ -53,23 +53,6 @@ GAME_BTN = {
     "選單":   (0.90, 0.60),  # 三條橫線（漢堡選單）
     "紀錄":   (0.88, 0.46),  # 側邊欄展開後「紀錄」按鈕
 }
-
-
-def _get_game_frame(page: Page, timeout: int = 30000) -> Frame:
-    """等待包含 canvas 的遊戲 iframe 出現"""
-    deadline = time.time() + timeout / 1000
-    while time.time() < deadline:
-        for frame in page.frames:
-            if frame == page.main_frame:
-                continue
-            if frame.url and frame.url != "about:blank":
-                try:
-                    if frame.query_selector("canvas"):
-                        return frame
-                except Exception:
-                    pass
-        page.wait_for_timeout(500)
-    raise RuntimeError(f"在 {timeout}ms 內找不到含 canvas 的遊戲 iframe")
 
 
 @pytest.mark.p1
@@ -106,7 +89,7 @@ class TestGameEntry:
         game_card.dispatch_event("click")
 
         # 等待遊戲 iframe + canvas
-        _get_game_frame(page, timeout=30000)
+        get_game_frame(page, timeout=30000)
         # RE 的 game asset 載入較慢（實機觀察 loading bar 從 0 → 100% 約需 12-15s）；
         # RC 用 3s 即可進入 preview，RE 必須等 15s 否則點 開始 會打在 99% loading 畫面被吞掉
         page.wait_for_timeout(15000)

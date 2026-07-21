@@ -1,4 +1,4 @@
-"""遊戲 launch 斷言輔助（LG/LU/KS 共用）。
+"""遊戲 launch 斷言輔助（新分頁型 LG/LU/KS + 同分頁 iframe 型 RC/RD/RE 共用）。
 
 三站點遊戲卡 → window.open 另開新分頁 → `<site>/launchLoading` →（後端簽發 token）→
 轉址至**第三方 provider** 遊戲（LG=ugsdev gamelauncher / LU=royalgaming777 EnterGame2 /
@@ -6,8 +6,9 @@ KS=kplay playGame.do）。遊戲為真錢、外部 provider、新分頁，**不�
 測試只驗「launch pipeline 成功」= 新分頁成功轉址離開本站，落到外部 provider host。
 """
 
+import time
 from urllib.parse import urlparse
-from playwright.sync_api import Page, TimeoutError as PlaywrightTimeoutError
+from playwright.sync_api import Frame, Page, TimeoutError as PlaywrightTimeoutError
 
 
 # Provider 端「啟動失敗」的明確錯誤詞（簡繁皆列）。只取「錯誤發生」語意的詞，
@@ -103,3 +104,20 @@ def launch_first_healthy_game(
         f"slots 前 {max_tries} 款遊戲皆未能乾淨載入（疑似 provider regression）："
         + "; ".join(attempts)
     )
+
+
+def get_game_frame(page: Page, timeout: int = 30000) -> Frame:
+    """等待包含 canvas 的遊戲 iframe 出現（RC/RD/RE 信用版同分頁遊戲用）"""
+    deadline = time.time() + timeout / 1000
+    while time.time() < deadline:
+        for frame in page.frames:
+            if frame == page.main_frame:
+                continue
+            if frame.url and frame.url != "about:blank":
+                try:
+                    if frame.query_selector("canvas"):
+                        return frame
+                except Exception:
+                    pass
+        page.wait_for_timeout(500)
+    raise RuntimeError(f"在 {timeout}ms 內找不到含 canvas 的遊戲 iframe")
