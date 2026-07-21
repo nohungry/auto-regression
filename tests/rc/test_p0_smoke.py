@@ -41,7 +41,7 @@ class TestLogin:
         login = LoginPage(page, site_config.url)
         login.goto()
         login.open_login_form()
-        login.login(site_config.username, "wrong_password_123")
+        login.login(site_config.username, "wrong_password_123", expect_success=False)
 
         toast_btn = page.locator("button.toast-confirm-btn")
         error_msg = page.locator("p", has_text="密碼錯誤")
@@ -60,7 +60,7 @@ class TestLogin:
         login = LoginPage(page, site_config.url)
         login.goto()
         login.open_login_form()
-        login.login("nonexistent_user_xyz", site_config.password)
+        login.login("nonexistent_user_xyz", site_config.password, expect_success=False)
 
         toast_btn = page.locator("button.toast-confirm-btn")
         error_msg = page.locator("p", has_text="帳號不存在")

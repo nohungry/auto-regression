@@ -3,6 +3,7 @@
 - dismiss_server_error_if_present：關閉伺服器錯誤彈窗
 - wait_loading_if_present：等待 loading 狗動畫消失
 - wait_login_loading：登入流程 loading 等待＋步驟截圖（RC/RD/RE LoginPage 共用）
+- clear_stuck_leave_overlay_if_present：清卡死的 Vue 離場動畫全屏遮罩（KS/RD dev bug 家族）
 """
 
 from playwright.sync_api import Page, TimeoutError as PlaywrightTimeoutError
@@ -186,3 +187,35 @@ def wait_login_loading(page: Page) -> None:
         if sh: sh.full_page("loading_完成_進入首頁")
     except PlaywrightTimeoutError:
         pass  # loading 未出現或已快速消失，略過
+
+
+def clear_stuck_leave_overlay_if_present(page: Page, settle_timeout: int = 3000) -> bool:
+    """
+    清掉卡死的 Vue 離場動畫全屏遮罩（.fade-leave-active）。
+
+    dev 環境偶發 Vue Transition 離場後元素不從 DOM 移除（KS 2026-06 首見、
+    RD 2026-07-21 於導覽點擊重現）：彈窗本身已正常關閉，但殘留的 fixed 全屏
+    遮罩持續攔截 pointer events，後續 click 以 "subtree intercepts pointer
+    events" timeout。此處僅隱藏殘留遮罩，非掩蓋產品彈窗邏輯。
+
+    先等 settle_timeout 給正常離場動畫收尾（正常 <1s 即 detach）；仍殘留才 JS 隱藏。
+
+    Returns:
+        True  - 有殘留遮罩且已強制隱藏
+        False - 無殘留（不存在或已自行 detach）
+    """
+    overlay = page.locator(".fade-leave-active")
+    if overlay.count() == 0:
+        return False
+    try:
+        overlay.first.wait_for(state="detached", timeout=settle_timeout)
+        return False
+    except PlaywrightTimeoutError:
+        page.evaluate(
+            """() => {
+            document.querySelectorAll('.fade-leave-active').forEach(m => {
+                m.style.display = 'none';
+            });
+        }"""
+        )
+        return True

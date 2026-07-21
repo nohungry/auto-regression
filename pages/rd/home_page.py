@@ -9,7 +9,7 @@
 """
 
 from playwright.sync_api import Page, expect
-from utils.dialog_helper import dismiss_server_error_if_present, dismiss_announcement_popup_if_present, wait_loading_if_present
+from utils.dialog_helper import dismiss_server_error_if_present, dismiss_announcement_popup_if_present, wait_loading_if_present, clear_stuck_leave_overlay_if_present
 from utils.screenshot_helper import get_screenshotter
 
 
@@ -60,9 +60,10 @@ class HomePage:
         if sh: sh.full_page(f"verify_登入成功_{username}")
 
     def dismiss_any_popups(self):
-        """進首頁後清除可能出現的彈窗（伺服器錯誤 / 公告）"""
+        """進首頁後清除可能出現的彈窗（伺服器錯誤 / 公告），並清卡死的離場遮罩"""
         dismiss_server_error_if_present(self.page)
         dismiss_announcement_popup_if_present(self.page)
+        clear_stuck_leave_overlay_if_present(self.page)
 
     def open_user_dropdown(self):
         """點擊「個人資訊」icon 開啟個人資訊面板（內含登出按鈕）
@@ -82,6 +83,8 @@ class HomePage:
     def click_nav_item(self, name: str):
         """點擊主導覽列項目（真人 / 電子 / 捕魚 / 體育 / 彩票 / 鬥雞）"""
         sh = get_screenshotter(self.page)
+        # dev-rd 偶發 fade-leave 遮罩卡死攔截導覽點擊（2026-07-21 實錄）
+        clear_stuck_leave_overlay_if_present(self.page)
         nav = self.page.locator(f"text={name}").first
         nav.scroll_into_view_if_needed()
         if sh: sh.capture(nav, f"click_導覽_{name}")

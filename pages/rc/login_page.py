@@ -27,6 +27,12 @@ class LoginPage:
         - helpers 會先用 count() 短路：元素不在 DOM → 立即回傳，不耗 timeout。
         """
         self.page.goto(self.base_url, wait_until="domcontentloaded")
+        # SPA hydration 緩衝（2026-05-22 記錄的卡 /login 對策）：心跳走 WebSocket
+        # 不擋 networkidle，HTTP 靜止即觸發；逾時不視為錯誤（best-effort）
+        try:
+            self.page.wait_for_load_state("networkidle", timeout=8000)
+        except PlaywrightTimeoutError:
+            pass
         dismiss_server_error_if_present(self.page)
         dismiss_announcement_popup_if_present(self.page)
 
@@ -72,8 +78,13 @@ class LoginPage:
         # 10 次仍 fail → 拋最終錯誤（含完整 timeout 訊息給 debug 用）
         self.username_input.wait_for(state="visible", timeout=5000)
 
-    def login(self, username: str, password: str):
-        """填入帳號密碼並登入"""
+    def login(self, username: str, password: str, expect_success: bool = True):
+        """填入帳號密碼並登入。
+
+        expect_success=True（預設）：送出後守衛「表單真正關閉」，未關閉重送一次
+        （SPA 卡 /login 對策）。負向測試（錯誤憑證，表單本來就會留著）必須傳
+        False 跳過守衛，否則會被重送 + 最終 TimeoutError 誤傷。
+        """
         sh = get_screenshotter(self.page)
 
         self.username_input.scroll_into_view_if_needed()
@@ -97,6 +108,30 @@ class LoginPage:
 
         # 處理「用戶協議」彈窗（首次登入才會出現）
         self._handle_user_agreement()
+
+        # 送出後等表單真正關閉（2026-07-21 連 3 次實錄：loading 跑完但表單仍在、
+        # SPA 卡 /login 不轉場）。與 open_login_form 同類 hydration dead zone，
+        # 修法對齊：未關閉 → 重送一次（同帳號重複送出無副作用）再等 10s。
+        # 僅適用預期成功的登入；負向測試（expect_success=False）表單留著是正確結果。
+        # 必須放在彈窗處理之後：CI fresh context 首登「協議確定」彈窗每次出現，
+        # 彈窗未清前表單不會關（2026-07-21 CI 實錄）；retry 用「登入」文字限定
+        # submit，避免與彈窗「確定」同為 primary-btn 的 strict violation。
+        if expect_success:
+            try:
+                self.username_input.wait_for(state="hidden", timeout=10000)
+            except PlaywrightTimeoutError:
+                dismiss_server_error_if_present(self.page)
+                self._handle_user_agreement()
+                try:
+                    self.username_input.wait_for(state="hidden", timeout=3000)
+                except PlaywrightTimeoutError:
+                    submit = self.page.locator("button.primary-btn", has_text="登入").first
+                    if sh: sh.capture(submit, "click_送出登入_retry")
+                    submit.click()
+                    self._wait_for_loading()
+                    dismiss_server_error_if_present(self.page)
+                    self._handle_user_agreement()
+                    self.username_input.wait_for(state="hidden", timeout=10000)
 
     def _wait_for_loading(self):
         """登入 loading 等待＋截圖：委派 utils.dialog_helper.wait_login_loading（RC/RD/RE 共用）"""
