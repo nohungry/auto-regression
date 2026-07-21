@@ -34,12 +34,12 @@ pages/dashboard/<site_id>/           — 各站後台 Page Objects（9 站）
 tests/<site_id>/                     — 各站前台測試（rc/lt/re/rd/qw/lg/lu/ks/rf；含 test_p0_smoke.py + feature/）
 tests/api/<site_id>/                 — API 層測試（9 站，不啟動瀏覽器，requests 直打 API）
 tests/dashboard/<site_id>/           — 後台管理介面測試（9 站）
-utils/locale_helper.py               — set_locale()：注入 `i18n_locale` cookie（LT 用）
-utils/dialog_helper.py               — 伺服器錯誤彈窗、公告彈窗（含 MutationObserver enforce killer）、Loading 等待
+utils/locale_helper.py               — set_locale()：注入 `i18n_locale` cookie（LT 用）；switch_language_via_globe()：globe icon UI 切語系（RC/RE i18n 測試共用）
+utils/dialog_helper.py               — 伺服器錯誤彈窗、公告彈窗（含 MutationObserver enforce killer）、Loading 等待；wait_login_loading()：登入 loading 等待＋截圖（RC/RD/RE LoginPage 共用）
 utils/screenshot_helper.py           — 截圖系統（元素高亮 + 自動產生繁中 README；圈選判定：scroll+bbox 判是否真圈到，寫 steps.json / README badge / PNG「未圈選」橫幅 / session _highlight_audit）+ written 缺圖自動回報（寫檔逾時 retry，未寫出標 ⚠️ 並列入稽核）
 utils/visual_helpers.py              — VR reference 截圖 + 動態元素遮蔽
 utils/totp_helper.py                 — get_totp_code()：後台 2FA TOTP 產碼（pyotp + 30s 窗口緩衝）
-utils/game_launch_helper.py          — 遊戲啟動偵測（new tab / provider 轉址判斷）
+utils/game_launch_helper.py          — 遊戲啟動偵測：new tab / provider 轉址判斷（LG/LU/KS 型）+ get_game_frame() 同分頁 canvas iframe 等待（RC/RD/RE 型）
 utils/layout_fingerprint.py          — 多語系版面健康度 DOM 指紋 + overflow 偵測
 utils/window_helper.py               — 另開分頁後 CDP 最大化視窗
 utils/wait_helpers.py                — 可判定等待（wait_for_text_matches / wait_for_nonempty_text：讀值前等文字符合/非空，取代硬等）

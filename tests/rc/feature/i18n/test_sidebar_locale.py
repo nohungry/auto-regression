@@ -10,7 +10,7 @@ RC 側邊欄（.sidebar-item）對應 LT 的 hamburger drawer：
 
 import pytest
 from playwright.sync_api import Page, expect
-from utils.dialog_helper import dismiss_server_error_if_present, dismiss_announcement_popup_if_present
+from utils.locale_helper import switch_language_via_globe
 from utils.screenshot_helper import get_screenshotter
 
 
@@ -23,21 +23,6 @@ _SIDEBAR_LOCALE_CHECKS = [
     ("RC-I18N-SIDEBAR-005", "Tiếng Việt", "Thông tin cá nhân", "Chi tiết trò chơi", "Thư nội bộ"),
     ("RC-I18N-SIDEBAR-006", "English",    "Profile",           "Game History",      "Inbox"),
 ]
-
-
-def _switch_language(page: Page, url: str, lang_name: str):
-    """前往首頁 → dismiss 彈窗 → globe icon 切換語系"""
-    page.goto(url, wait_until="networkidle")
-    dismiss_server_error_if_present(page)
-    dismiss_announcement_popup_if_present(page, timeout=3000)
-    globe = page.locator("img[src*='global']")
-    globe.scroll_into_view_if_needed()
-    globe.click()
-    lang_option = page.locator("p.whitespace-nowrap", has_text=lang_name).first
-    lang_option.wait_for(state="visible", timeout=5000)
-    lang_option.click()
-    page.wait_for_load_state("networkidle")
-    dismiss_server_error_if_present(page)
 
 
 @pytest.mark.p2
@@ -53,7 +38,7 @@ class TestI18NSidebar:
     def test_sidebar_locale_text(self, page: Page, site_config, case_id, lang_name,
                                   personal_info, game_detail, inbox):
         """各語系側邊欄選單項目文案正確顯示"""
-        _switch_language(page, site_config.url, lang_name)
+        switch_language_via_globe(page, site_config.url, lang_name)
 
         sh = get_screenshotter(page)
         if sh: sh.full_page(f"verify_{lang_name}_sidebar文案")

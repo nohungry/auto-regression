@@ -13,7 +13,7 @@ RE 與 RC 共用 t9platform 平台 modal 內結構（modal submit btn 為 button
 
 import pytest
 from playwright.sync_api import Page, expect
-from utils.dialog_helper import dismiss_server_error_if_present, dismiss_announcement_popup_if_present
+from utils.locale_helper import switch_language_via_globe
 from utils.screenshot_helper import get_screenshotter
 
 
@@ -26,21 +26,6 @@ _LOGIN_LOCALE_CHECKS = [
     ("RE-I18N-LOGIN-005", "Tiếng Việt", "Tên người dùng", "Mật khẩu",   "Đăng nhập"),
     ("RE-I18N-LOGIN-006", "English",    "Username",        "Password",   "Login"),
 ]
-
-
-def _switch_language(page: Page, url: str, lang_name: str):
-    """前往首頁 → dismiss 彈窗 → globe icon 切換語系"""
-    page.goto(url, wait_until="networkidle")
-    dismiss_server_error_if_present(page)
-    dismiss_announcement_popup_if_present(page, timeout=3000)
-    globe = page.locator("img[src*='global']")
-    globe.scroll_into_view_if_needed()
-    globe.click()
-    lang_option = page.locator("p.whitespace-nowrap", has_text=lang_name).first
-    lang_option.wait_for(state="visible", timeout=5000)
-    lang_option.click()
-    page.wait_for_load_state("networkidle")
-    dismiss_server_error_if_present(page)
 
 
 @pytest.mark.p2
@@ -56,7 +41,7 @@ class TestI18NLoginModal:
     def test_login_modal_locale_text(self, page: Page, site_config, case_id, lang_name,
                                      username_ph, password_ph, login_btn_text):
         """各語系登入 Modal placeholder 與送出按鈕文案正確顯示"""
-        _switch_language(page, site_config.url, lang_name)
+        switch_language_via_globe(page, site_config.url, lang_name)
 
         sh = get_screenshotter(page)
 

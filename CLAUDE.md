@@ -138,11 +138,11 @@ tests/ks/                   — ks site tests (test_p0_smoke.py p0; feature/<nam
 tests/ks/conftest.py        — ks-specific overrides: site_config=ks, go_home (+ dismiss 進站公告)
 tests/rf/                   — rf site tests (test_p0_smoke.py p0; feature/<name>/ p1: announcement_popup, navigation, member, wallet, i18n, game, sidebar, home_sections; copy p2; visual p2; 信用版 金爺娛樂城，Nuxt/Vue 三段彈窗登入)
 tests/rf/conftest.py        — rf-specific overrides: site_config=rf, go_home (+ dismiss base-modal 彈窗)
-utils/locale_helper.py       — set_locale(): injects i18n_locale cookie for lt site
-utils/dialog_helper.py       — helpers: dismiss server error popups, wait for loading animation
+utils/locale_helper.py       — set_locale(): injects i18n_locale cookie for lt site；switch_language_via_globe(): rc/re 型站點 globe icon UI 切語系（i18n 測試共用）
+utils/dialog_helper.py       — helpers: dismiss server error popups, wait for loading animation；wait_login_loading(): 登入 loading 等待＋截圖（rc/rd/re LoginPage 共用）
 utils/screenshot_helper.py   — element-highlight screenshot system, auto README.md generation; 圈選判定（scroll+bbox+視窗交集判 highlighted/reason/multi_match/oversize，寫 steps.json + README badge + PNG「未圈選」橫幅 + session _highlight_audit）+ written 缺圖自動回報（_write_screenshot 逾時 retry，未寫出標 ⚠️ 並列入 _highlight_audit）
 utils/totp_helper.py         — get_totp_code(): pyotp TOTP 產碼 + 30s 窗口過期緩衝（後台 2FA，首用於 lu dashboard）
-utils/game_launch_helper.py  — 遊戲啟動偵測（new tab / provider 轉址判斷）共用 helper
+utils/game_launch_helper.py  — 遊戲啟動偵測共用 helper：new tab / provider 轉址判斷（lg/lu/ks 型）+ get_game_frame() 同分頁 canvas iframe 等待（rc/rd/re 型）
 utils/layout_fingerprint.py  — 多語系版面健康度 DOM 指紋 + overflow 偵測（locale_layout / visual 用）
 utils/visual_helpers.py      — VR 共用邏輯：save_vr_screenshot() / screenshot_with_mask()（詳見 Visual Regression 段）
 utils/window_helper.py       — 另開分頁（遊戲 launch new tab）後 CDP 最大化視窗

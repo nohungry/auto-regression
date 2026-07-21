@@ -13,12 +13,12 @@ RC-GAME-001
 """
 
 import re
-import time
 import pytest
-from playwright.sync_api import Page, Frame, expect, TimeoutError as PlaywrightTimeoutError
+from playwright.sync_api import Page, expect, TimeoutError as PlaywrightTimeoutError
 from pages.rc.login_page import LoginPage
 from pages.rc.home_page import HomePage
 from utils.dialog_helper import wait_loading_if_present
+from utils.game_launch_helper import get_game_frame
 from utils.screenshot_helper import get_screenshotter
 
 
@@ -38,23 +38,6 @@ GAME_BTN = {
     "選單":    (0.90, 0.60),   # 三條橫線（漢堡選單），機台圖標(0.53)下方
     "紀錄":    (0.88, 0.46),   # 側邊欄展開後「紀錄」按鈕（設定在0.55，往上調）
 }
-
-
-def _get_game_frame(page: Page, timeout: int = 30000) -> Frame:
-    """等待包含 canvas 的遊戲 iframe 出現"""
-    deadline = time.time() + timeout / 1000
-    while time.time() < deadline:
-        for frame in page.frames:
-            if frame == page.main_frame:
-                continue
-            if frame.url and frame.url != "about:blank":
-                try:
-                    if frame.query_selector("canvas"):
-                        return frame
-                except Exception:
-                    pass
-        page.wait_for_timeout(500)
-    raise RuntimeError(f"在 {timeout}ms 內找不到含 canvas 的遊戲 iframe")
 
 
 @pytest.mark.p1
@@ -91,7 +74,7 @@ class TestGameEntry:
         game_card.dispatch_event("click")
 
         # 等待遊戲 iframe + canvas
-        _get_game_frame(page, timeout=30000)
+        get_game_frame(page, timeout=30000)
         page.wait_for_timeout(3000)  # 等遊戲引擎初始化
         if sh:
             sh.full_page("verify_遊戲載入完成")

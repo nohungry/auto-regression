@@ -20,11 +20,11 @@ launchLoading 頁載入後 body 為空、無 iframe、無 canvas — 遊戲後�
 """
 
 import re
-import time
 import pytest
-from playwright.sync_api import Page, Frame, expect
+from playwright.sync_api import Page, expect
 from pages.factory import get_login_page_class, get_home_page_class
 from utils.dialog_helper import wait_loading_if_present, dismiss_dialog_mask_if_present
+from utils.game_launch_helper import get_game_frame
 from utils.screenshot_helper import get_screenshotter
 
 
@@ -32,23 +32,6 @@ LoginPage = get_login_page_class("rd")
 HomePage = get_home_page_class("rd")
 
 CATEGORY_NAV = "電子"
-
-
-def _get_game_frame(page: Page, timeout: int = 30000) -> Frame:
-    """等待包含 canvas 的遊戲 iframe 出現（與 RC / RE 同 helper）"""
-    deadline = time.time() + timeout / 1000
-    while time.time() < deadline:
-        for frame in page.frames:
-            if frame == page.main_frame:
-                continue
-            if frame.url and frame.url != "about:blank":
-                try:
-                    if frame.query_selector("canvas"):
-                        return frame
-                except Exception:
-                    pass
-        page.wait_for_timeout(500)
-    raise RuntimeError(f"在 {timeout}ms 內找不到含 canvas 的遊戲 iframe")
 
 
 @pytest.mark.p1
@@ -101,7 +84,7 @@ class TestGameEntry:
 
         # ===== Phase 4: 驗新 tab 內 iframe + canvas mount =====
         # 此步驟若 fail（找不到 canvas iframe）= dev-rd 遊戲後端 regression 訊號
-        game_frame = _get_game_frame(new_page, timeout=30000)
+        game_frame = get_game_frame(new_page, timeout=30000)
         new_page.wait_for_timeout(3000)
 
         canvas_count = game_frame.evaluate("() => document.querySelectorAll('canvas').length")
