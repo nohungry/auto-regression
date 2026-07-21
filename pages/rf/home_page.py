@@ -346,14 +346,6 @@ class HomePage:
     # i18n（語言切換）
     # ------------------------------------------------------------------
 
-    def get_lang_cookie(self) -> str:
-        """取目前語系 cookie（i18n_locale）值。
-
-        RF 使用 i18n_locale（非 i18n_redirected），預設值為 'tw'（繁體中文）。
-        """
-        cookies = {c["name"]: c["value"] for c in self.page.context.cookies()}
-        return cookies.get("i18n_locale", "")
-
     def open_lang_selector(self):
         """點 .lang-selector button.btn-icon 展開語言選單（.lang-selector__list）。
 

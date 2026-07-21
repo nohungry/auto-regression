@@ -473,16 +473,3 @@ class ManagementPage:
             pass
         # 額外等待 DOM 穩定
         self.page.wait_for_timeout(1000)
-
-    def _wait_for_dialog_closed(self):
-        """等待彈窗關閉（送出按鈕消失）"""
-        try:
-            self.page.locator('button', has_text='送出').first.wait_for(
-                state="hidden", timeout=10000
-            )
-        except PlaywrightTimeoutError:
-            try:
-                ok_btn = self.page.locator('button', has_text='確定')
-                ok_btn.click(timeout=2000)
-            except PlaywrightTimeoutError:
-                pass
