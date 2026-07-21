@@ -27,6 +27,12 @@ class LoginPage:
         - helpers 會先用 count() 短路：元素不在 DOM → 立即回傳，不耗 timeout。
         """
         self.page.goto(self.base_url, wait_until="domcontentloaded")
+        # SPA hydration 緩衝（2026-05-22 記錄的卡 /login 對策）：心跳走 WebSocket
+        # 不擋 networkidle，HTTP 靜止即觸發；逾時不視為錯誤（best-effort）
+        try:
+            self.page.wait_for_load_state("networkidle", timeout=8000)
+        except PlaywrightTimeoutError:
+            pass
         dismiss_server_error_if_present(self.page)
         dismiss_announcement_popup_if_present(self.page)
 
@@ -91,6 +97,17 @@ class LoginPage:
         # 等待 loading 狗動畫（ALL_Loading.gif）出現後消失
         # 登入 API 回應期間會顯示此動畫，需等它消失才代表登入完成
         self._wait_for_loading()
+
+        # 送出後等表單真正關閉（2026-07-21 連 3 次實錄：loading 跑完但表單仍在、
+        # SPA 卡 /login 不轉場）。與 open_login_form 同類 hydration dead zone，
+        # 修法對齊：10s 未關閉 → 重送一次（同帳號重複送出無副作用）再等 10s。
+        try:
+            self.username_input.wait_for(state="hidden", timeout=10000)
+        except PlaywrightTimeoutError:
+            if sh: sh.capture(self.login_btn, "click_送出登入_retry")
+            self.login_btn.click()
+            self._wait_for_loading()
+            self.username_input.wait_for(state="hidden", timeout=10000)
 
         # 登入後可能出現伺服器錯誤彈窗
         dismiss_server_error_if_present(self.page)
