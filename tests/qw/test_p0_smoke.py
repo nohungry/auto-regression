@@ -20,7 +20,7 @@ from utils.screenshot_helper import get_screenshotter
 @pytest.mark.qw
 @pytest.mark.login
 class TestLogin:
-    """TC-QW-001 ~ TC-QW-002：登入相關"""
+    """TC-QW-001 ~ TC-QW-002、TC-QW-005 ~ TC-QW-007：登入相關（含負向登入）"""
 
     def test_login_success(self, page: Page, site_config):
         """TC-QW-001：正常登入應成功，首頁顯示帳號名稱
@@ -71,6 +71,81 @@ class TestLogin:
 
         # URL 應停留在 /auth（登入失敗未跳轉）
         assert "/auth" in page.url, f"預期停留 /auth，實際 URL：{page.url}"
+
+    def test_login_wrong_username(self, page: Page, site_config):
+        """TC-QW-005：不存在帳號登入應失敗，停留 /auth 且顯示錯誤 toast
+
+        斷言策略（對齊 test_login_invalid，依據 selector-explorer probe 2026-07-22）：
+        - 錯誤容器 .toast-mask 出現（文案 locale-sensitive，只驗容器出現不綁文字）
+        - 登入表單仍在（username_input 可見）
+        - URL 停留 /auth（登入失敗未跳轉）
+        """
+        sh = get_screenshotter(page)
+        login = LoginPage(page, site_config.url)
+
+        login.goto()
+
+        # 填入不存在帳號 + 該站正確密碼
+        login.username_input.scroll_into_view_if_needed()
+        if sh: sh.capture(login.username_input, "fill_username_nonexistent")
+        login.username_input.fill("nonexistent_user_xyz")
+
+        login.password_input.scroll_into_view_if_needed()
+        if sh: sh.capture(login.password_input, "fill_password")
+        login.password_input.fill(site_config.password)
+
+        login.submit_button.scroll_into_view_if_needed()
+        if sh: sh.capture(login.submit_button, "click_login_submit_invalid")
+        login.submit_button.click()
+
+        # timeout=10000：CI runner（US）連線台灣 dev 站，連線 + memberLogin API 響應疊加
+        # 可能 >5s（沿用 test_login_invalid 的等待窗口）
+        expect(login.error_toast).to_be_visible(timeout=10000)
+        # error_toast 為全屏遮罩容器，紅框無鑑別度 → 整頁截圖
+        if sh: sh.full_page("verify_error_toast_visible")
+
+        expect(login.username_input).to_be_visible()
+        assert "/auth" in page.url, f"預期停留 /auth，實際 URL：{page.url}"
+
+    def test_login_empty_fields(self, page: Page, site_config):
+        """TC-QW-006：空白帳密送出應失敗，停留 /auth 且顯示錯誤 toast
+
+        斷言策略（依據 selector-explorer probe 2026-07-22）：
+        - QW 無前端空欄位擋，空欄位送出打 API 回錯，錯誤呈現在與錯誤密碼相同的 .toast-mask 容器
+        - 錯誤容器 .toast-mask 出現（只驗容器出現不綁文字）
+        - 登入表單仍在、URL 停留 /auth
+        """
+        sh = get_screenshotter(page)
+        login = LoginPage(page, site_config.url)
+
+        login.goto()
+
+        login.submit_button.scroll_into_view_if_needed()
+        if sh: sh.capture(login.submit_button, "click_login_submit_empty")
+        login.submit_button.click()
+
+        # timeout=10000：CI 網路延遲考量（同 test_login_invalid）
+        expect(login.error_toast).to_be_visible(timeout=10000)
+        if sh: sh.full_page("verify_error_toast_visible")
+
+        expect(login.username_input).to_be_visible()
+        assert "/auth" in page.url, f"預期停留 /auth，實際 URL：{page.url}"
+
+    def test_login_form_elements_exist(self, page: Page, site_config):
+        """TC-QW-007：登入表單元素存在（帳號/密碼輸入框/送出按鈕）"""
+        login = LoginPage(page, site_config.url)
+        login.goto()
+        sh = get_screenshotter(page)
+
+        login.username_input.scroll_into_view_if_needed()
+        if sh: sh.capture(login.username_input, "verify_帳號欄位")
+        login.password_input.scroll_into_view_if_needed()
+        if sh: sh.capture(login.password_input, "verify_密碼欄位")
+        login.submit_button.scroll_into_view_if_needed()
+        if sh: sh.capture(login.submit_button, "verify_送出按鈕")
+        expect(login.username_input).to_be_visible()
+        expect(login.password_input).to_be_visible()
+        expect(login.submit_button).to_be_visible()
 
 
 @pytest.mark.p0

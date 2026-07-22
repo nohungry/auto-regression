@@ -35,6 +35,10 @@ class LoginPage:
         # - 先去逛逛：.outline-btn-shared.auth-btn（不含 solid）
         self.submit_button = page.locator("button.solid-btn-shared.auth-btn")
 
+        # 錯誤提示 toast：全屏遮罩式容器，約 5s 自動消失
+        # （selector-explorer 實機 probe 2026-07-22；負向登入斷言用容器出現，不綁文案）
+        self.error_toast = page.locator(".toast-mask")
+
     def goto(self):
         """直接導向 /auth（Nuxt：等 networkidle 確保 hydration 完成再 fill）"""
         self.page.goto(self.auth_url, wait_until="networkidle")
