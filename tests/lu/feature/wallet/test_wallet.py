@@ -49,3 +49,26 @@ class TestWallet:
         if sh: sh.capture(home.balance, f"verify_餘額非空含數字_{text}")
         assert text, "餘額文字為空"
         assert any(c.isdigit() for c in text), f"餘額文字不含數字：{text!r}"
+
+    def test_deposit_entry_opens_dialog(self, class_logged_in_page: Page, go_home):
+        """LU-WALLET-003：頂部 nav 儲值 + 開啟錢包 dialog（probe 2026-07-24）
+
+        斷言策略：dispatch_event 點擊（LU 殘留 dialog-mask 站慣例）→
+        .dialog-container.max-w-[612px] 可見、URL 停留首頁。
+        空帳號站：只驗入口與 dialog 開啟，不做真實存款。
+        """
+        page = class_logged_in_page
+        home = HomePage(page)
+        home.open_deposit_dialog()
+        expect(home.wallet_dialog).to_be_visible()
+        assert "/member" not in page.url, f"錢包 dialog 應為 in-page modal，實際 URL：{page.url}"
+
+    def test_withdraw_entry_opens_dialog(self, class_logged_in_page: Page, go_home):
+        """LU-WALLET-004：頂部 nav 提現 button 開啟錢包 dialog（probe 2026-07-24）
+
+        斷言策略同 LU-WALLET-003；提現與儲值共用 612px 錢包 dialog 容器。
+        """
+        page = class_logged_in_page
+        home = HomePage(page)
+        home.open_withdraw_dialog()
+        expect(home.wallet_dialog).to_be_visible()
