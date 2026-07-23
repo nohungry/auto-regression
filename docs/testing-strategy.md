@@ -159,6 +159,21 @@ class TestI18NHome:
 
 ---
 
+## 站點覆蓋邊界（Coverage boundary）
+
+### QW 語系覆蓋邊界
+
+QW（LM來財娛樂城）有 `LaiBetLanguage` cookie（`tw` / `en` / `cn` / `th` / `vn` 值合法），但 probe（2026-07-22 複驗）確認：
+
+- **無語系切換 UI**（前台找不到任何切換入口）。
+- **手動改 cookie 會被重置**、**頁面文案不隨 cookie 值變化**。
+
+因此 QW 為**實質單語系顯示站**。i18n 覆蓋刻意停留在 **cookie 存在性 / 值格式層**（`tests/qw/feature/i18n` 現有 2 條），**不做 UI 文案多語系驗證** —— 產品無此能力，硬寫多語系文案斷言等於造假覆蓋。
+
+**連帶影響**：QW feature 測試（如 member panel item、nav 分類）在無多語系切換 UI 的前提下，允許以**文字定位** panel item / 分類，並在測試 docstring 標註「文字定位風險已評估」。若未來 QW 開通語系切換 UI，需**重新 probe** 並將受影響測試改為結構化定位、i18n 覆蓋再向 UI 文案層擴充。
+
+---
+
 ## 相關文件
 
 - `CLAUDE.md` — 測試撰寫慣例、fixture 策略、POM 架構
