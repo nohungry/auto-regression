@@ -12,11 +12,11 @@
 | `lt` | 見 .env `SITE_LT_URL` | 112 |
 | `re` | 見 .env `SITE_RE_URL` | 63 |
 | `rd` | 見 .env `SITE_RD_URL` | 58 |
-| `qw` | 見 .env `SITE_QW_URL` | 31 |
-| `lg` | 見 .env `SITE_LG_URL` | 35 |
-| `lu` | 見 .env `SITE_LU_URL` | 31 |
-| `ks` | 見 .env `SITE_KS_URL` | 34 |
-| `rf` | 見 .env `SITE_RF_URL` | 38 |
+| `qw` | 見 .env `SITE_QW_URL` | 48 |
+| `lg` | 見 .env `SITE_LG_URL` | 44 |
+| `lu` | 見 .env `SITE_LU_URL` | 41 |
+| `ks` | 見 .env `SITE_KS_URL` | 43 |
+| `rf` | 見 .env `SITE_RF_URL` | 48 |
 | API | (9 站，不啟動瀏覽器) | 102 |
 | Dashboard | (9 站後台) | 51 |
 
