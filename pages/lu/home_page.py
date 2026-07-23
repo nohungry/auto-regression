@@ -40,6 +40,12 @@ class HomePage:
         self.nav_toggle = page.locator("button.nav-toggle-btn").first
         # 2026-07-23 站點改版：sidebar 容器改為 #sidebar（z-30 → z-[99]，icon-rail 設計）
         self.sidebar = page.locator("#sidebar").first
+
+        # 頂部 nav 存提入口（2026-07-24 probe：桌面皆可見；點擊開 max-w-[612px] 錢包
+        # dialog、URL 不變；LU 殘留 .dialog-mask 攔 pointer → 互動用 dispatch_event 站慣例）
+        self.deposit_btn = page.locator(".fixed.top-0.z-50 button.neon-btn").first
+        self.withdraw_btn = page.locator(".fixed.top-0.z-50 button", has_text="提現").first
+        self.wallet_dialog = page.locator(".dialog-container.max-w-\\[612px\\]").first
         # user menu 容器別名（sidebar feature 用；LU 即左側 sidebar）
         self.user_menu = self.sidebar
         # 登出 button（sidebar 展開後唯一 button，class 含 border-shade04）
@@ -210,6 +216,22 @@ class HomePage:
     # ------------------------------------------------------------------
     # 登出
     # ------------------------------------------------------------------
+
+    def open_deposit_dialog(self):
+        """點頂部 nav 儲值 +（neon-btn）開錢包 dialog（max-w-[612px]，URL 不變）。"""
+        sh = get_screenshotter(self.page)
+        if sh: sh.capture(self.deposit_btn, "click_儲值入口")
+        self.deposit_btn.dispatch_event("click")
+        self.wallet_dialog.wait_for(state="visible", timeout=8000)
+        if sh: sh.full_page("verify_錢包dialog_儲值")
+
+    def open_withdraw_dialog(self):
+        """點頂部 nav 提現 button 開錢包 dialog（同 612px 容器）。"""
+        sh = get_screenshotter(self.page)
+        if sh: sh.capture(self.withdraw_btn, "click_提現入口")
+        self.withdraw_btn.dispatch_event("click")
+        self.wallet_dialog.wait_for(state="visible", timeout=8000)
+        if sh: sh.full_page("verify_錢包dialog_提現")
 
     def logout(self):
         """登出：點 hamburger 展開左側 sidebar → click 登出 button → 驗證登出。
