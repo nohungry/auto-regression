@@ -22,7 +22,7 @@ from utils.screenshot_helper import get_screenshotter
 @pytest.mark.ks
 @pytest.mark.login
 class TestLogin:
-    """TC-KS-001 ~ TC-KS-002：登入相關"""
+    """TC-KS-001 ~ TC-KS-002、TC-KS-005 ~ TC-KS-007：登入相關（含負向登入）"""
 
     def test_login_success(self, page: Page, site_config):
         """TC-KS-001：正常登入應成功，nav 顯示 wallet 圖示與帳號名稱"""
@@ -67,6 +67,79 @@ class TestLogin:
         # URL 停留首頁（登入失敗未跳轉）
         assert page.url.rstrip("/") == site_config.url.rstrip("/"), \
             f"預期停留首頁，實際 URL：{page.url}"
+
+    def test_login_wrong_username(self, page: Page, site_config):
+        """TC-KS-005：不存在帳號登入應失敗，顯示錯誤 modal 且登入 modal 仍開著
+
+        斷言策略（對齊 test_login_invalid，依據 selector-explorer probe 2026-07-22）：
+        - 錯誤 modal div[class*="z-[99999]"] 出現（英文文案 locale-sensitive，只驗 modal 出現不綁文字）
+        - 登入 modal 仍開著（帳號 input 仍可見）
+        """
+        sh = get_screenshotter(page)
+        login = LoginPage(page, site_config.url)
+
+        login.goto()
+        login.dismiss_announcement()
+        login.open_login_modal()
+
+        # 填入不存在帳號 + 該站正確密碼
+        login.username_input.scroll_into_view_if_needed()
+        if sh: sh.capture(login.username_input, "fill_username_nonexistent")
+        login.username_input.fill("nonexistent_user_xyz")
+
+        login.password_input.scroll_into_view_if_needed()
+        if sh: sh.capture(login.password_input, "fill_password")
+        login.password_input.fill(site_config.password)
+
+        login.submit_button.scroll_into_view_if_needed()
+        if sh: sh.capture(login.submit_button, "click_login_submit_invalid")
+        # dispatch_event：繞過 KS 卡住的公告 .dialog-mask 對 submit 的 pointer 攔截（同 login_page）
+        login.submit_button.dispatch_event("click")
+
+        expect(login.error_modal).to_be_visible(timeout=5000)
+        if sh: sh.capture(login.error_modal, "verify_error_modal_visible")
+
+        expect(login.username_input).to_be_visible(timeout=3000)
+
+    def test_login_empty_fields(self, page: Page, site_config):
+        """TC-KS-006：空白帳密時送出按鈕應為 disabled（四站唯一有前端 guard），登入 modal 仍在
+
+        斷言策略（依據 selector-explorer probe 2026-07-22）：
+        - KS 送出鈕在空欄位時 disabled（前端擋，與 qw/lg/lu 不同）
+        - 不點擊：probe 證實 dispatchEvent 可繞過 disabled 打 API，但那不是真實使用者路徑，不採用
+        - 斷言 submit_button to_be_disabled() + 登入 modal 仍開著（帳號 input 仍可見）
+        """
+        sh = get_screenshotter(page)
+        login = LoginPage(page, site_config.url)
+
+        login.goto()
+        login.dismiss_announcement()
+        login.open_login_modal()
+
+        login.submit_button.scroll_into_view_if_needed()
+        if sh: sh.capture(login.submit_button, "verify_送出按鈕_disabled_空白欄位")
+        expect(login.submit_button).to_be_disabled()
+
+        if sh: sh.capture(login.username_input, "verify_登入modal仍在")
+        expect(login.username_input).to_be_visible(timeout=3000)
+
+    def test_login_form_elements_exist(self, page: Page, site_config):
+        """TC-KS-007：登入 modal 元素存在（帳號/密碼輸入框/送出按鈕）"""
+        login = LoginPage(page, site_config.url)
+        login.goto()
+        login.dismiss_announcement()
+        login.open_login_modal()
+        sh = get_screenshotter(page)
+
+        login.username_input.scroll_into_view_if_needed()
+        if sh: sh.capture(login.username_input, "verify_帳號欄位")
+        login.password_input.scroll_into_view_if_needed()
+        if sh: sh.capture(login.password_input, "verify_密碼欄位")
+        login.submit_button.scroll_into_view_if_needed()
+        if sh: sh.capture(login.submit_button, "verify_送出按鈕")
+        expect(login.username_input).to_be_visible()
+        expect(login.password_input).to_be_visible()
+        expect(login.submit_button).to_be_visible()
 
 
 @pytest.mark.p0
