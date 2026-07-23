@@ -22,7 +22,7 @@ from utils.screenshot_helper import get_screenshotter
 @pytest.mark.lg
 @pytest.mark.login
 class TestLogin:
-    """TC-LG-001 ~ TC-LG-002：登入相關"""
+    """TC-LG-001 ~ TC-LG-002、TC-LG-005 ~ TC-LG-007：登入相關（含負向登入）"""
 
     def test_login_success(self, page: Page, site_config):
         """TC-LG-001：正常登入應成功，首頁顯示餘額與帳號名稱
@@ -73,6 +73,82 @@ class TestLogin:
 
         # 登入 modal 仍開著（未成功）
         expect(login.username_input).to_be_visible(timeout=3000)
+
+    def test_login_wrong_username(self, page: Page, site_config):
+        """TC-LG-005：不存在帳號登入應失敗，顯示錯誤 toast 且 modal 仍開著
+
+        斷言策略（對齊 test_login_invalid，依據 selector-explorer probe 2026-07-22）：
+        - 錯誤 toast div[class*="z-[99999]"] 出現（文案 locale-sensitive，只驗容器出現不綁文字）
+        - 登入 modal 仍開著（帳號 input 仍可見）
+        """
+        sh = get_screenshotter(page)
+        login = LoginPage(page, site_config.url)
+
+        login.goto()
+        login.dismiss_announcement()
+        login.open_login_modal()
+
+        # 填入不存在帳號 + 該站正確密碼
+        login.username_input.scroll_into_view_if_needed()
+        if sh: sh.capture(login.username_input, "fill_username_nonexistent")
+        login.username_input.fill("nonexistent_user_xyz")
+
+        login.password_input.scroll_into_view_if_needed()
+        if sh: sh.capture(login.password_input, "fill_password")
+        login.password_input.fill(site_config.password)
+
+        login.submit_button.scroll_into_view_if_needed()
+        if sh: sh.capture(login.submit_button, "click_login_submit_invalid")
+        # dispatch_event：繞過 dev 過載時殘留公告 mask 對 submit 的 pointer 攔截（同 login_page）
+        login.submit_button.dispatch_event("click")
+
+        expect(login.error_toast).to_be_visible(timeout=5000)
+        # error_toast 綁 z-[99999] 高層容器（近全屏），紅框無鑑別度 → 整頁截圖
+        if sh: sh.full_page("verify_error_toast_visible")
+
+        expect(login.username_input).to_be_visible(timeout=3000)
+
+    def test_login_empty_fields(self, page: Page, site_config):
+        """TC-LG-006：空白帳密送出應失敗，顯示錯誤 toast 且 modal 仍開著
+
+        斷言策略（依據 selector-explorer probe 2026-07-22）：
+        - LG 無前端空欄位擋，空欄位送出打 API 回錯，錯誤呈現在與錯誤密碼相同的 z-[99999] toast
+        - 錯誤 toast 出現（只驗容器）+ 登入 modal 仍開著
+        """
+        sh = get_screenshotter(page)
+        login = LoginPage(page, site_config.url)
+
+        login.goto()
+        login.dismiss_announcement()
+        login.open_login_modal()
+
+        login.submit_button.scroll_into_view_if_needed()
+        if sh: sh.capture(login.submit_button, "click_login_submit_empty")
+        # dispatch_event：繞過 dev 過載時殘留公告 mask 對 submit 的 pointer 攔截（同 login_page）
+        login.submit_button.dispatch_event("click")
+
+        expect(login.error_toast).to_be_visible(timeout=5000)
+        if sh: sh.full_page("verify_error_toast_visible")
+
+        expect(login.username_input).to_be_visible(timeout=3000)
+
+    def test_login_form_elements_exist(self, page: Page, site_config):
+        """TC-LG-007：登入 modal 元素存在（帳號/密碼輸入框/送出按鈕）"""
+        login = LoginPage(page, site_config.url)
+        login.goto()
+        login.dismiss_announcement()
+        login.open_login_modal()
+        sh = get_screenshotter(page)
+
+        login.username_input.scroll_into_view_if_needed()
+        if sh: sh.capture(login.username_input, "verify_帳號欄位")
+        login.password_input.scroll_into_view_if_needed()
+        if sh: sh.capture(login.password_input, "verify_密碼欄位")
+        login.submit_button.scroll_into_view_if_needed()
+        if sh: sh.capture(login.submit_button, "verify_送出按鈕")
+        expect(login.username_input).to_be_visible()
+        expect(login.password_input).to_be_visible()
+        expect(login.submit_button).to_be_visible()
 
 
 @pytest.mark.p0
