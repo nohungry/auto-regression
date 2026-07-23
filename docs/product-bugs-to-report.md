@@ -16,6 +16,7 @@
 | 6 | **RE** | **navbar 餘額區未實作獨立 refresh 按鈕**（僅 coin icon + 數字 span） | 實機確認無刷新鈕 | `tests/re/feature/wallet/test_wallet.py::test_balance_refresh_button_visible`（skip） | 低（功能未做） |
 | 8 | **RC** | **登入 API 成功但 SPA 不轉場**：`/api/Member/memberLogin` 回 200 Success（含 token），前端停在 /login、表單保留、不進首頁 | 儀器化 probe 2026-07-21：API 200 + token 確認，15s 後仍 /login。WSL CDP 環境當日 4 連發重現，**傍晚起惡化到幾乎每次新登入都卡**（含 `test_login_success`，19:0x 起 smoke 內全部 logged_in 流程 ERROR/FAIL）；**CI headless 未重現**（同日 4 輪 CI rc smoke 全綠）→ 前端登入回應處理存在 timing 敏感 race 且持續劣化中 | `test_home_page_loads`（logged_in_page fixture 會 ERROR；**未加 xfail 守門**因 CI 綠、僅本機重現）；測試側已加送出 retry + 表單關閉守衛（PR #152），站點修復後自動轉綠 | 中（登入主流程間歇壞） |
 | 9 | **RD** | **遊戲 launch pipeline 惡化：點 .play 後新分頁完全不開**（15s 無 page event）。比 2026-05-11 記錄的「launchLoading 空白頁」更早一步壞掉 | 實測 2026-07-21：.play click 已送出（截圖 009），`expect_page` timeout。另 dev-rd 出現 **fade-leave 遮罩卡死攔導覽**（同 KS bug 家族），該部分已測試側清除（PR #152） | `test_enter_game`（刻意不 skip，以 fail 作 regression 訊號；launch 修復後 fail 點會回到 canvas 驗證或轉綠） | 中（遊戲入口全斷） |
+| 10 | **LG** | **首頁 15 張圖片 src 格式錯誤全數破圖**：src 為 `/dev-res.t9platform.com`（缺 `https://` 前綴與圖檔路徑，其中一張含前導空白）→ 被解析為站內相對路徑 404，naturalWidth=0 | Wave 3 DOM 健康度測試 2026-07-23 首跑即攔截，重跑穩定重現 15 張；src 樣態指向模板變數展開錯誤或 CMS 資料填錯 | `tests/lg/feature/visual/test_visual.py::test_home_no_broken_images`（xfail strict，修復自動 XPASS） | 中（首頁 15 處破圖，觀感直接受損） |
 
 ## 二、確認的後端 Bug
 
