@@ -155,3 +155,11 @@
 - 理由:RE 原為 RC 整檔複製(388 行),16 個方法中僅 4 個有真差異,其餘 12 個的 drift 全是註解/docstring 失同步 —— 複製模式讓 RC 的修正(如 `_agent_card` tag-agnostic、密碼欄 count 防禦)無法自動到達 RE。subclass 讓共用修正單點生效,差異點顯式可審。
 - 替代方案:維持整檔複製(不採:drift 已實際發生);抽獨立共用 base module(不採:RC 即事實上的 base,多一層抽象無收益;`re/login_page.py` docstring 早已預告 subclass 路線)。
 - 影響:`pages/dashboard/re/management_page.py`(388→108 行)、後續信用版新站 onboarding 依此模式。
+
+## D-021 Commit message:簡潔英文 subject,細節進 PR body
+
+- 狀態:accepted(2026-07-24 nohungry 提出並拍板)
+- 決策:commit subject 一律簡潔英文 `type(scope): summary`(≤72 字元、禁 CJK;types: feat/fix/test/chore/docs/refactor/ci/perf/revert/wip)。細節、理由、`[skip-docs-check] <短理由>` 放 body(第二個 `-m`,語言不限)。PR title 遵守同規則(squash-merge 後即 main 的 commit subject);詳細脈絡寫 PR description。守門:`.github/scripts/check-commit-msg.sh`(PreToolUse hook,違規 block;`SKIP_COMMIT_MSG_CHECK=1` override)。
+- 理由:2026-07 中文長 message 把 PR 描述等級的細節塞進 subject,git log 可讀性差、跨工具(blame/shortlog)截斷;英文短 subject + PR 描述承載細節是原有慣例。
+- 替代方案:commitlint CI(不採:2 人 repo,hook 層即時擋比 CI 事後紅更有效;必要時再加)。
+- 影響:`.claude/settings.json`、`.github/scripts/check-commit-msg.sh`、`git-commit` skill Step 4、CLAUDE.md Git Commit Rules、兩位開發者的 commit 習慣。

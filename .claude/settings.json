@@ -8,6 +8,10 @@
           {
             "type": "command",
             "command": "bash .github/scripts/check-docs-sync.sh"
+          },
+          {
+            "type": "command",
+            "command": "bash .github/scripts/check-commit-msg.sh"
           }
         ]
       }

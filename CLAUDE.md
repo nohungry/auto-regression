@@ -362,6 +362,7 @@ LT 使用 React SPA。若 form 在 `networkidle` 前被填入，登入 API 會�
 
 - 任何 commit / push 動作需先經使用者確認。
 - **禁止**在 commit message 加入 `Co-Authored-By: Claude ...` 或任何 Claude 署名。
+- **Commit message 風格（D-021，hook 強制）**：subject 一律**簡潔英文** `type(scope): summary`（≤72 字元，禁 CJK；types: feat/fix/test/chore/docs/refactor/ci/perf/revert/wip）。細節、理由、`[skip-docs-check] <短理由>` 放 **body（第二個 `-m`）**，body 不限語言。PR title 遵守同規則（squash-merge 後即 main 的 commit subject）；詳細脈絡寫在 PR description，不塞 commit。守門：`.github/scripts/check-commit-msg.sh`（PreToolUse hook，違規 block；`SKIP_COMMIT_MSG_CHECK=1` 可 override）。
 
 ## 雙人協作協定(並行開發)
 
