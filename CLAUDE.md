@@ -112,7 +112,7 @@ pages/rc/                   — rc site Page Objects (LoginPage, HomePage) — �
 pages/lt/                   — lt site Page Objects (LoginPage, HomePage) — LT來財
 pages/re/                   — re site Page Objects (LoginPage, HomePage) — BeWin
 pages/rd/                   — rd site Page Objects (LoginPage, HomePage) — 狗狗娛樂城
-pages/qw/                   — qw site Page Objects (LoginPage, HomePage) — LM來財娛樂城（Nuxt/Vue，多語系）
+pages/qw/                   — qw site Page Objects (LoginPage, HomePage) — LM來財娛樂城（Nuxt/Vue，多語系 cookie 但無切換 UI＝實質單語系顯示）
 pages/lg/                   — lg site Page Objects (LoginPage, HomePage) — 大撈家娛樂城（Nuxt/Vue，modal 登入）
 pages/lu/                   — lu site Page Objects (LoginPage, HomePage) — Dlgbet（Nuxt/Vue，雙層彈窗 + 左側 sidebar 登出）
 pages/ks/                   — ks site Page Objects (LoginPage, HomePage) — Super9娛樂城（Nuxt/Vue，金色英文主題 + 右側 drawer 登出）

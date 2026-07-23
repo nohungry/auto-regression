@@ -275,6 +275,19 @@ class HomePage:
             }"""
         )
 
+    def click_menu_item_by_text(self, text: str):
+        """在 avatar-menu__panel 中點含 text 的 .avatar-menu__item。
+
+        QW panel item 為 DIV（非 <a>），click 後 Vue handler 做 router 跳轉。
+        需先 open_user_menu() 確保 panel 可見。
+        （2026-07-21 曾以死碼刪除、2026-07-23 member 擴充復活）
+        """
+        sh = get_screenshotter(self.page)
+        panel = self.page.locator('.avatar-menu__panel')
+        item = panel.locator(f'.avatar-menu__item:has-text("{text}")').first
+        if sh: sh.capture(item, f"click_menu_{text}")
+        item.click()
+
     # ------------------------------------------------------------------
     # 會員中心 — member feature 用
     # ------------------------------------------------------------------
