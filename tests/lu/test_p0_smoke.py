@@ -22,7 +22,7 @@ from utils.screenshot_helper import get_screenshotter
 @pytest.mark.lu
 @pytest.mark.login
 class TestLogin:
-    """TC-LU-001 ~ TC-LU-002：登入相關"""
+    """TC-LU-001 ~ TC-LU-002、TC-LU-005 ~ TC-LU-007：登入相關（含負向登入）"""
 
     def test_login_success(self, page: Page, site_config):
         """TC-LU-001：正常登入應成功，nav 顯示餘額且登錄 CTA 消失"""
@@ -67,6 +67,89 @@ class TestLogin:
         # URL 停留首頁（登入失敗未跳轉）
         assert page.url.rstrip("/") == site_config.url.rstrip("/"), \
             f"預期停留首頁，實際 URL：{page.url}"
+
+    def test_login_wrong_username(self, page: Page, site_config):
+        """TC-LU-005：不存在帳號登入應失敗，顯示錯誤 modal 且登入 modal 仍開著
+
+        斷言策略（對齊 test_login_invalid，依據 selector-explorer probe 2026-07-22）：
+        - 錯誤 modal .dialog-container.mx-auto 出現（文案 locale-sensitive，只驗 modal 出現不綁文字）
+        - 登入 modal 仍開著（帳號 input 仍可見）
+        - 錯誤 modal 不會自動消失，斷言後手動關閉避免殘留污染後續截圖/斷言
+        """
+        sh = get_screenshotter(page)
+        login = LoginPage(page, site_config.url)
+
+        login.goto()
+        login.dismiss_announcement()
+        login.open_login_modal()
+
+        # 填入不存在帳號 + 該站正確密碼
+        login.username_input.scroll_into_view_if_needed()
+        if sh: sh.capture(login.username_input, "fill_username_nonexistent")
+        login.username_input.fill("nonexistent_user_xyz")
+
+        login.password_input.scroll_into_view_if_needed()
+        if sh: sh.capture(login.password_input, "fill_password")
+        login.password_input.fill(site_config.password)
+
+        login.submit_button.scroll_into_view_if_needed()
+        if sh: sh.capture(login.submit_button, "click_login_submit_invalid")
+        # dispatch_event：繞過雙層公告 .dialog-mask 在慢環境下的 pointer 攔截（同 login_page）
+        login.submit_button.dispatch_event("click")
+
+        expect(login.error_modal).to_be_visible(timeout=5000)
+        if sh: sh.capture(login.error_modal, "verify_error_modal_visible")
+
+        # 錯誤 modal 不會自動消失，手動關閉避免殘留污染後續截圖/斷言
+        login.error_modal.locator(".close-wrap").dispatch_event("click")
+
+        expect(login.username_input).to_be_visible(timeout=3000)
+
+    def test_login_empty_fields(self, page: Page, site_config):
+        """TC-LU-006：空白帳密送出應失敗，顯示錯誤 modal 且登入 modal 仍開著
+
+        斷言策略（依據 selector-explorer probe 2026-07-22）：
+        - LU 無前端空欄位擋，空欄位送出打 API 回錯，錯誤呈現在與錯誤密碼相同的 .dialog-container.mx-auto modal
+        - 錯誤 modal 出現（只驗容器）+ 登入 modal 仍開著
+        - 錯誤 modal 不會自動消失，斷言後手動關閉避免殘留污染後續截圖/斷言
+        """
+        sh = get_screenshotter(page)
+        login = LoginPage(page, site_config.url)
+
+        login.goto()
+        login.dismiss_announcement()
+        login.open_login_modal()
+
+        login.submit_button.scroll_into_view_if_needed()
+        if sh: sh.capture(login.submit_button, "click_login_submit_empty")
+        # dispatch_event：繞過雙層公告 .dialog-mask 在慢環境下的 pointer 攔截（同 login_page）
+        login.submit_button.dispatch_event("click")
+
+        expect(login.error_modal).to_be_visible(timeout=5000)
+        if sh: sh.capture(login.error_modal, "verify_error_modal_visible")
+
+        # 錯誤 modal 不會自動消失，手動關閉避免殘留污染後續截圖/斷言
+        login.error_modal.locator(".close-wrap").dispatch_event("click")
+
+        expect(login.username_input).to_be_visible(timeout=3000)
+
+    def test_login_form_elements_exist(self, page: Page, site_config):
+        """TC-LU-007：登入 modal 元素存在（帳號/密碼輸入框/送出按鈕）"""
+        login = LoginPage(page, site_config.url)
+        login.goto()
+        login.dismiss_announcement()
+        login.open_login_modal()
+        sh = get_screenshotter(page)
+
+        login.username_input.scroll_into_view_if_needed()
+        if sh: sh.capture(login.username_input, "verify_帳號欄位")
+        login.password_input.scroll_into_view_if_needed()
+        if sh: sh.capture(login.password_input, "verify_密碼欄位")
+        login.submit_button.scroll_into_view_if_needed()
+        if sh: sh.capture(login.submit_button, "verify_送出按鈕")
+        expect(login.username_input).to_be_visible()
+        expect(login.password_input).to_be_visible()
+        expect(login.submit_button).to_be_visible()
 
 
 @pytest.mark.p0

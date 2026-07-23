@@ -38,12 +38,15 @@ class HomePage:
 
         # 左側 sidebar 與 hamburger
         self.nav_toggle = page.locator("button.nav-toggle-btn").first
-        self.sidebar = page.locator(".fixed.left-0.z-30").first
+        # 2026-07-23 站點改版：sidebar 容器改為 #sidebar（z-30 → z-[99]，icon-rail 設計）
+        self.sidebar = page.locator("#sidebar").first
         # user menu 容器別名（sidebar feature 用；LU 即左側 sidebar）
         self.user_menu = self.sidebar
         # 登出 button（sidebar 展開後唯一 button，class 含 border-shade04）
+        # 2026-07-23 sidebar 改版：容器改 #sidebar；收合時 lg:hidden、hamburger 展開後可見
+        # （Playwright 原生 click 展開正常；agent-browser dispatchEvent 探勘曾誤判 toggle 失效）
         self.logout_btn = page.locator(
-            ".fixed.left-0.z-30 button[class*='border-shade04']"
+            "#sidebar button[class*='border-shade04']"
         ).first
 
         # 進站雙層彈窗關閉鈕

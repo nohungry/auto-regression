@@ -31,7 +31,8 @@ class TestI18n:
         sh = get_screenshotter(page)
 
         home.open_user_menu()  # 展開左側 sidebar
-        lang_item = page.locator(".fixed.left-0.z-30").get_by_text("語言", exact=True).first
+        # 2026-07-23 sidebar 改版：容器改 #sidebar（原 .fixed.left-0.z-30 已消失）
+        lang_item = page.locator("#sidebar").get_by_text("語言", exact=True).first
         expect(lang_item).to_be_visible(timeout=5000)
         if sh: sh.capture(lang_item, "verify_sidebar語言項存在")
 
