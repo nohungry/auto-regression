@@ -255,6 +255,13 @@ description: 針對 auto-regression repo 的測試變更，執行提交前檢查
 
 （原有 Step 6，移到最後）
 
+**Message 風格（D-021，`.github/scripts/check-commit-msg.sh` hook 強制）**：
+
+- Subject：**簡潔英文** `type(scope): summary`，≤72 字元、禁 CJK、祈使句（types: feat/fix/test/chore/docs/refactor/ci/perf/revert/wip）
+- Body（第二個 `-m`，語言不限）：放 `[skip-docs-check] <短理由>`、知情註記（`overlaps #<n>`）、必要脈絡
+- **細節寫進 PR description，不塞 commit**——squash-merge 後 PR title 即 main 的 subject，PR title 遵守同規則
+- 範例：`git commit -m "test(lu): add wallet entry tests" -m "[skip-docs-check] test-only; probe notes in PR"`
+
 # Validation rules — 最小必要驗證
 依變更範圍遞增：
 
