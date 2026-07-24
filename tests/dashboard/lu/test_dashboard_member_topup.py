@@ -24,8 +24,7 @@ from playwright.sync_api import Page
 
 from pages.dashboard.factory import get_dashboard_management_page_class
 
-TARGET_MEMBER = "norautolu1"   # 站長底下的測試會員（代理 norauto001 之下線）
-ADJUST = 1                     # 調整額度（取最小值，降低對測試資料的擾動）
+ADJUST = 1  # 調整額度（取最小值，降低對測試資料的擾動）
 
 
 @pytest.mark.p1
@@ -38,6 +37,12 @@ class TestMasterMainWalletTopup:
     def test_main_wallet_adjust_reversible(self, dashboard_page: Page, site_config):
         Mgmt = get_dashboard_management_page_class(site_config.site_id)
         mgmt = Mgmt(dashboard_page)
+
+        # 目標會員：站長底下的穩定測試會員（SITE_LU_DASHBOARD_AGENT_USER 代理之下線）。
+        # 帳號依 D-014 不進 repo，由 .env SITE_LU_DASHBOARD_TARGET_MEMBER 提供。
+        TARGET_MEMBER = site_config.dashboard_target_member
+        if not TARGET_MEMBER:
+            pytest.skip("SITE_LU_DASHBOARD_TARGET_MEMBER 未設定（.env），無法指定目標會員")
 
         # 唯一 token：讓額度歷史驗證能精準鎖定本次產生的紀錄（避開歷史殘留同文案）
         token = uuid.uuid4().hex[:8]

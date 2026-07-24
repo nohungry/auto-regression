@@ -14,7 +14,7 @@ RD-DASH-MASTER-TOPUP-001
 - 仍完整覆蓋「總代能派點給代理 + 代理餘額正確增減 + 可逆」。
 
 對稱可逆 + finally diff 補償：存入 N → 驗代理 +N → 提取 N 還原 → 驗回初始；
-中途失敗時 finally 依差額補回，確保 qadrctest 餘額不留殘差、可重跑。
+中途失敗時 finally 依差額補回，確保目標代理餘額不留殘差、可重跑。
 
 目標代理用 site_config.dashboard_agent_user（= rd 代理，總代直屬下線、與 member 測試同帳號）。
 """
@@ -37,7 +37,7 @@ class TestMasterToAgentTopUp:
     def test_master_deposit_withdraw_to_agent(self, master_dashboard_page: Page, site_config):
         Mgmt = get_dashboard_management_page_class(site_config.site_id)
         mgmt = Mgmt(master_dashboard_page)
-        agent = site_config.dashboard_agent_user  # qadrctest，不寫死帳號
+        agent = site_config.dashboard_agent_user  # SITE_RD_DASHBOARD_AGENT_USER，不寫死帳號
 
         mgmt.goto(site_config.dashboard_url)
         mgmt.switch_to_agent_tab()

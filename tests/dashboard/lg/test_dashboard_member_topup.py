@@ -2,7 +2,7 @@
 LG 後台 — 站長會員主錢包額度調整（測試專用充值路徑）
 
 ⚠️ 帳號層級：**站長帳號**（SITE_LG_DASHBOARD_USER）。LG dashboard POM re-export LU，
-   主錢包充值流程與 LU 同構（probe 2026-06-25：會員 dlgauto01 Main wallet 欄 index 5、
+   主錢包充值流程與 LU 同構（probe 2026-06-25：會員（SITE_LG_USERNAME）Main wallet 欄 index 5、
    點金額開「Main wallet」彈窗）。
 
 非正規金流：走後台「會員管理 → Main wallet 金額彈窗 → 額度調整」直接增減，為測試需求作法。
@@ -11,7 +11,7 @@ LG 後台 — 站長會員主錢包額度調整（測試專用充值路徑）
 額度歷史稽核：增/減各應在「會員報表 > Amount adjustment」(#/report/balance-adjustment-report)
   產生一筆對應紀錄；以唯一 token remark 精準鎖定。
 
-目標會員用 site_config.username（前台測試帳號 dlgauto01，站長底下穩定會員）。
+目標會員用 site_config.username（SITE_LG_USERNAME，站長底下穩定會員）。
 """
 
 import uuid
@@ -34,7 +34,7 @@ class TestMasterMainWalletTopup:
     def test_main_wallet_adjust_reversible(self, dashboard_page: Page, site_config):
         Mgmt = get_dashboard_management_page_class(site_config.site_id)
         mgmt = Mgmt(dashboard_page)
-        target = site_config.username  # SITE_LG_USERNAME（= dlgauto01），不寫死帳號
+        target = site_config.username  # SITE_LG_USERNAME，不寫死帳號
 
         token = uuid.uuid4().hex[:8]
         remark_inc = f"autoreg-{token}-inc"
