@@ -6,16 +6,16 @@ RF-DASH-MASTER-TOPUP-001
 本檔補測**「總代→代理」**，補齊信用版 5 站（RC/RE/LT/RD #118 + RF 本檔）最上層覆蓋。
 
 ⚠️ 帳號層級：**站長/總代帳號**（SITE_RF_DASHBOARD_USER，無 2FA）。
-   RF 站長即總代層級（probe 2026-06-27：代理 tab 列 8 個下線代理，目標代理 qaautodrf 可定位）。
+   RF 站長即總代層級（probe 2026-06-27：代理 tab 列 8 個下線代理，目標代理（SITE_RF_DASHBOARD_AGENT_USER）可定位）。
 
 範圍（信用版總代餘額 = ∞）：
 - 總代額度無限 → 派點後總代仍 ∞，無法做「總代 -N」斷言 → **只驗目標代理側餘額變化**（同 #118）。
 - dialog 餘額：label-xs[1]=代理餘額（[0]=上級總代 ∞）。
 
 對稱可逆 + finally diff 補償：存入 N → 驗代理 +N → 提取 N 還原 → 驗回初始；
-中途失敗時 finally 依差額補回，確保 qaautodrf 額度不留殘差、可重跑。
+中途失敗時 finally 依差額補回，確保目標代理額度不留殘差、可重跑。
 
-target = site_config.dashboard_agent_user（= qaautodrf，站長直屬下線、與既有代理 smoke 同帳號）。
+target = site_config.dashboard_agent_user（站長直屬下線、與既有代理 smoke 同帳號）。
 """
 
 import pytest
@@ -37,7 +37,7 @@ class TestMasterToAgentTopUp:
         page = fresh_dashboard_page
         Mgmt = get_dashboard_management_page_class(site_config.site_id)
         mgmt = Mgmt(page)
-        agent = site_config.dashboard_agent_user  # qaautodrf，不寫死帳號
+        agent = site_config.dashboard_agent_user  # SITE_RF_DASHBOARD_AGENT_USER，不寫死帳號
 
         # 站長落點即 #/management/all-management；切代理 tab + 開大每頁筆數
         page.goto(

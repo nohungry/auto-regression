@@ -65,7 +65,7 @@ def _patch_playwright_crbrowser_sw_assert() -> bool:
     Patch Playwright driver：讓 pre-existing service_worker target（沒有 browserContextId）
     不要觸發 assertion，改為靜默 detach。
 
-    背景：若 Chrome 曾造訪過註冊 Service Worker 的站（例：dev-rc.t9platform.com），SW target
+    背景：若 Chrome 曾造訪過註冊 Service Worker 的站（例：RC 站前台），SW target
     在日後 CDP 重連時會被列出但 `browserContextId` 為空（default context，Chrome 不填該欄位）。
     Playwright crBrowser.js line 147 的 `assert(targetInfo.browserContextId, ...)` 因此 throw，
     整個 connect_over_cdp 掛掉，使用者被迫重啟 Chrome。
@@ -128,7 +128,7 @@ def _detach_stuck_service_workers(cdp_url: str) -> int:
     """
     Pre-flight：偵測 CDP 上 attached 的 service_worker target，逐一關閉。
 
-    原因：若 Chrome 曾造訪過會註冊 Service Worker 的站（例：dev-rc.t9platform.com/sw.js），
+    原因：若 Chrome 曾造訪過會註冊 Service Worker 的站（例：RC 站前台的 /sw.js），
     該 SW target 會以 attached=true 存在於既有 CDP。Playwright 的
     CRBrowser._onAttachedToTarget 對 service_worker 有「不應已 attached」的 assertion，
     直接 connect_over_cdp 會打到 assert → "Connection closed while reading from the driver"。

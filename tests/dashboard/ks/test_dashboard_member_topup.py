@@ -5,7 +5,7 @@ KS 後台 — 站長會員主錢包額度調整（測試專用充值路徑）
    KS 後台版面與 LU/LG/QW 略異：少 Convenience Store 欄、Main wallet 在不同 td index，
    且 tbody/thead 欄位未對齊（Convenience Store 的「Create」cell 會誤命中固定 index）。
    因此 POM 改用**內容定位**（含 Game wallet 按鈕的 td 內 div.bold）跨站通用
-   （probe 2026-06-26：dksauto01 主錢包 1,000、點金額開「Main wallet」彈窗）。
+   （probe 2026-06-26：SITE_KS_USERNAME 會員主錢包 1,000、點金額開「Main wallet」彈窗）。
 
 非正規金流：走後台「會員管理 → Main wallet 金額彈窗 → 額度調整」直接增減，為測試需求作法。
 
@@ -13,7 +13,7 @@ KS 後台 — 站長會員主錢包額度調整（測試專用充值路徑）
 額度歷史稽核：增/減各應在「會員報表 > Amount adjustment」(#/report/balance-adjustment-report)
   產生一筆對應紀錄；以唯一 token remark 精準鎖定。
 
-目標會員用 site_config.username（前台測試帳號 dksauto01，站長底下穩定會員）。
+目標會員用 site_config.username（SITE_KS_USERNAME，站長底下穩定會員）。
 """
 
 import uuid
@@ -36,7 +36,7 @@ class TestMasterMainWalletTopup:
     def test_main_wallet_adjust_reversible(self, dashboard_page: Page, site_config):
         Mgmt = get_dashboard_management_page_class(site_config.site_id)
         mgmt = Mgmt(dashboard_page)
-        target = site_config.username  # SITE_KS_USERNAME（= dksauto01），不寫死帳號
+        target = site_config.username  # SITE_KS_USERNAME，不寫死帳號
 
         token = uuid.uuid4().hex[:8]
         remark_inc = f"autoreg-{token}-inc"

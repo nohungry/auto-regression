@@ -2,7 +2,7 @@
 RF API 遊戲平台分類測試（金爺娛樂城，信用版）
 
     GET /api/Game/getGamePlatformCategoryList
-    Headers: companycode=drf, domain=dev-rf.t9platform.com（無需 authorization）
+    Headers: companycode=drf, domain=<SITE_RF_API_DOMAIN>（無需 authorization）
     Response: {data: [{category, bannerList, gamePlatformList: [...]}, ...], status: "Success"}
 
 Probe 結果（2026-06-17）：

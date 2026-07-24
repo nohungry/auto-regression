@@ -6,7 +6,7 @@
   首頁 → 點 a.btn-login（登入/註冊）→ 導頁至 /Login
   → 填 #desktop-account / #desktop-password → 點 button.login-desktop__submit
   → 依序清 base-modal 確認彈窗（用戶協議*首次 + 登入成功*每次）
-  → 進首頁 https://dev-rf.t9platform.com/
+  → 進首頁（SITE_RF_URL）
 
 注意：
 - 登入入口是 <a>（非 button），class a.btn-login（「登入 / 註冊」文字）

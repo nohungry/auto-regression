@@ -54,7 +54,7 @@ class TestNavigation:
         "data_id,label", NAV_CATEGORIES, ids=[c[1] for c in NAV_CATEGORIES]
     )
     def test_nav_category_active(
-        self, class_logged_in_page: Page, go_home, data_id, label
+        self, class_logged_in_page: Page, go_home, data_id, label, site_config
     ):
         """QW-TC-N01~N07：點擊 nav 分類後 li active class 切換正確
 
@@ -84,9 +84,9 @@ class TestNavigation:
             f"實際為 {active_text!r}"
         )
 
-        # URL 應保持在首頁
-        assert page.url.rstrip("/").endswith(
-            "dev-qw.t9platform.com"
+        # URL 應保持在首頁（domain 不硬編，取 site_config.url 比對）
+        assert page.url.rstrip("/") == site_config.url.rstrip(
+            "/"
         ) or urlparse(page.url).path == "/", (
             f"QW nav 點擊後 URL 不應跳轉，實際 URL：{page.url}"
         )
