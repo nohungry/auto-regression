@@ -1,6 +1,6 @@
 # 測試策略與執行規範
 
-> 最後更新：2026-04-14
+> 最後更新：2026-07-24
 > 適用範圍：`tests/` 全部（RC、LT、API、Dashboard）
 
 本文件定義測試套件的分層、通過標準、與執行規範。實作腳本與 CI/CD 細節另見 `dev-notes/regression-strategy.md`（目前為規劃階段）。
@@ -128,25 +128,27 @@ class TestI18NHome:
 
 ---
 
-## 現況盤點（2026-06-15）
+## 現況盤點（2026-07-24）
 
-涵蓋 **8 個前台站**（RC / LT / RE / RD / QW / LG / LU / KS）+ 8 站 API + 後台 dashboard 層。
+涵蓋 **9 個前台站**（RC / LT / RE / RD / QW / LG / LU / KS / RF）+ 9 站 API + 後台 dashboard 層。
 數量為 `pytest --collect-only` collected 數（**含 skip**，會隨 parametrize 展開）：
 
 | 站點 | 前台 UI | API | 後台 | 小計 |
 |------|--------|-----|------|------|
-| RC   | 63     | 11  | 1    | 75   |
-| LT   | 109    | 14  | 1    | 124  |
-| RE   | 63     | 11  | 1    | 75   |
-| RD   | 58     | 11  | 0    | 69   |
-| QW   | 7      | 11  | 0    | 18   |
-| LG   | 35     | 11  | 0    | 46   |
-| LU   | 31     | 11  | 6    | 48   |
-| KS   | 34     | 11  | 0    | 45   |
-| **合計** | **400** | **91** | **9** | **500** |
+| RC   | 63     | 11  | 2    | 76   |
+| LT   | 112    | 14  | 2    | 128  |
+| RE   | 63     | 11  | 2    | 76   |
+| RD   | 58     | 11  | 2    | 71   |
+| QW   | 48     | 11  | 6    | 65   |
+| LG   | 44     | 11  | 6    | 61   |
+| LU   | 43     | 11  | 12   | 66   |
+| KS   | 43     | 11  | 6    | 60   |
+| RF   | 48     | 11  | 13   | 72   |
+| **合計** | **522** | **102** | **51** | **675** |
 
-- **後台覆蓋**：RC / RE / LT 為充值（top_up）；**LU 為 login + TOTP 2FA + 導航 + logout**（唯一含真實 2FA）。LG / KS / RD / QW 後台尚未 onboard。詳見 `docs/dashboard-technical-notes.md`。
-- **API**：8 站結構齊備，各站 11 case（LT 14）。
+- **testcase 數量級拉平（2026-07-22 收官）**：後進 Nuxt 站（QW 48 / LG 44 / LU 43 / KS 43 / RF 48）已補齊至與 RC 系（58~63）同量級。
+- **後台覆蓋**：信用版 RC / RE / LT / RD 為總代→代理 / 站長→會員 top_up；現金版 LU / LG / KS / QW 站長主錢包 top_up（含 TOTP 2FA）+ 代理 read-only smoke；RF 信用版站長 + 代理 top_up。詳見 `docs/dashboard-technical-notes.md`。
+- **API**：9 站結構齊備，各站 11 case（LT 14）。
 
 執行時間（量級參考；實際以 CI artifact 為準）：
 

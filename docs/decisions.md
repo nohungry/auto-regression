@@ -151,7 +151,7 @@
 ## D-020 信用版後台 POM 跨站共用:全同 re-export、有差異 subclass 覆寫
 
 - 狀態:accepted(2026-07-21 nohungry 拍板;graph dedup 掃描後補追認既有演進路線)
-- 決策:t9platform 信用版後台(RC/RE/LT/RD)的 dashboard POM 以 RC 為 base:與 RC 全同的站 **re-export**(LT/RD 現況);有實機差異的站 **subclass RC 並只覆寫差異方法**(RE:Vue tab 需 native click ×2、會員/代理名渲染為 `<a>` 的定位 ×2),差異原因寫進 override docstring。前台 POM 與現金版後台(LU 系)不在本條範圍。
+- 決策:信用版後台(RC/RE/LT/RD)的 dashboard POM 以 RC 為 base:與 RC 全同的站 **re-export**(LT/RD 現況);有實機差異的站 **subclass RC 並只覆寫差異方法**(RE:Vue tab 需 native click ×2、會員/代理名渲染為 `<a>` 的定位 ×2),差異原因寫進 override docstring。前台 POM 與現金版後台(LU 系)不在本條範圍。
 - 理由:RE 原為 RC 整檔複製(388 行),16 個方法中僅 4 個有真差異,其餘 12 個的 drift 全是註解/docstring 失同步 —— 複製模式讓 RC 的修正(如 `_agent_card` tag-agnostic、密碼欄 count 防禦)無法自動到達 RE。subclass 讓共用修正單點生效,差異點顯式可審。
 - 替代方案:維持整檔複製(不採:drift 已實際發生);抽獨立共用 base module(不採:RC 即事實上的 base,多一層抽象無收益;`re/login_page.py` docstring 早已預告 subclass 路線)。
 - 影響:`pages/dashboard/re/management_page.py`(388→108 行)、後續信用版新站 onboarding 依此模式。
