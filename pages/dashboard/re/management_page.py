@@ -1,7 +1,7 @@
 """
 後台管理頁面 Page Object — RE 站點 (BeWin)
 
-RE 後台與 RC 共用 t9platform 信用版後台 DOM 結構，本檔繼承
+RE 後台與 RC 共用信用版後台 DOM 結構（同平台），本檔繼承
 `pages.dashboard.rc.management_page.ManagementPage`，只覆寫實機 probe
 確認的兩類差異（其餘方法全數繼承 RC 實作）：
 

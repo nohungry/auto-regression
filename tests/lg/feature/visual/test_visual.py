@@ -59,7 +59,7 @@ class TestVisual:
         assert metrics["scrollWidth"] <= metrics["innerWidth"] + 4, \
             f"橫向超框：scrollWidth={metrics['scrollWidth']}, innerWidth={metrics['innerWidth']}"
 
-    @pytest.mark.xfail(strict=True, reason="LG 首頁 15 張圖 src 缺 protocol/路徑（/dev-res.t9platform.com）全破圖—bug 清單 #10，2026-07-23；修復後 XPASS 提醒 un-gate")
+    @pytest.mark.xfail(strict=True, reason="LG 首頁 15 張圖 src 缺 protocol/路徑（/dev-res.<平台domain>）全破圖—bug 清單 #10，2026-07-23；修復後 XPASS 提醒 un-gate")
     def test_home_no_broken_images(self, page: Page, site_config):
         """LG-VIS-002：首頁圖片資源沒有明顯破圖（complete 且 naturalWidth=0）
 

@@ -1,7 +1,7 @@
 """
 RD API 認證測試（狗狗娛樂城）
 
-API server 與 LT 共用同一套 t9platform API endpoint（見 .env SITE_RD_API_URL），
+API server 與 LT 共用同一套平台 API endpoint（見 .env SITE_RD_API_URL），
 靠 header `companycode` / `domain` 區分站點。RD 的 companycode=drd，domain 見
 .env SITE_RD_API_DOMAIN。
 

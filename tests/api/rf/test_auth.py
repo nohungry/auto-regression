@@ -1,7 +1,7 @@
 """
 RF API 認證測試（金爺娛樂城，信用版）
 
-API server 與 RC 共用同一套 t9platform API endpoint（見 .env SITE_RF_API_URL），
+API server 與 RC 共用同一套平台 API endpoint（見 .env SITE_RF_API_URL），
 靠 header `companycode` / `domain` 區分站點。RF 的 companycode=drf，domain 見
 .env SITE_RF_API_DOMAIN。
 

@@ -18,7 +18,7 @@ import pytest
 from playwright.sync_api import Page
 from pages.factory import get_home_page_class
 from utils.screenshot_helper import get_screenshotter
-from utils.game_launch_helper import launch_first_healthy_game
+from utils.game_launch_helper import launch_first_healthy_game, site_base_domain
 
 
 HomePage = get_home_page_class("lg")
@@ -56,5 +56,5 @@ class TestGameLaunch:
 
         home.open_slots_category()
         idx, url, host = launch_first_healthy_game(home, site_config.url, sh)
-        assert host and "t9platform.com" not in host, \
+        assert host and site_base_domain(site_config.url) not in host, \
             f"遊戲未轉址至外部 provider，停在：{url}"

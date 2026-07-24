@@ -17,7 +17,7 @@ RE-GAME-001
 spin click 也打不到 — start_spin API timeout。CDP raw mouse event 才能
 驅動 RE 的 canvas event 系統。屬 RE 平台特性，非 over-engineering。
 
-與 tests/rc/feature/game/test_game_entry.py 雖然都跑 t9platform 同款遊戲，
+與 tests/rc/feature/game/test_game_entry.py 雖然都跑同平台同款遊戲，
 但 GAME_BTN 座標已 fork（RE iframe 1920x1015 與 RC 1536x762 比例不同；
 RE 機台 select dialog 流程也與 RC 微異）— 修改座標時請各自獨立調整，
 不要互相 sync。

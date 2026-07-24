@@ -41,19 +41,27 @@ def provider_error(game_page: Page, timeout_ms: int = 3000) -> str | None:
     return None
 
 
+def site_base_domain(site_url: str) -> str:
+    """site_url 的可註冊網域（hostname 最後兩段），供「已離開本站」判定/斷言共用。
+
+    domain 不硬編（D-014 精神：站點網域屬 .env 資訊），一律由 site_config.url 推導。
+    """
+    site_host = urlparse(site_url).hostname or ""
+    return ".".join(site_host.split(".")[-2:])
+
+
 def wait_for_provider_launch(
     game_page: Page, site_url: str, timeout_ms: int = 20000
 ) -> str:
     """等遊戲新分頁從 /launchLoading 轉址到外部第三方 provider host，回傳最終 URL。
 
-    判定「離開本站」用 site_url 的可註冊網域（如 t9platform.com）：hostname 不含該網域
+    判定「離開本站」用 site_url 的可註冊網域（site_base_domain()）：hostname 不含該網域
     即視為已轉址到外部 provider，代表 launch pipeline（token 簽發 + 轉址）成功。
 
     逾時仍卡在本站 host（token 失敗 / launchLoading 未轉址）→ wait_for_url 拋
     TimeoutError，呼叫端視為 real FAIL，不掩蓋（被測站點 regression 訊號）。
     """
-    site_host = urlparse(site_url).hostname or ""
-    base_domain = ".".join(site_host.split(".")[-2:])  # e.g. t9platform.com
+    base_domain = site_base_domain(site_url)
 
     def _is_external(url: str) -> bool:
         parsed = urlparse(url)
