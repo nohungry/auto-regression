@@ -1,6 +1,6 @@
 # 後台 Dashboard 測試技術注意事項
 
-> 最後更新：2026-06-15
+> 最後更新：2026-07-24
 > 適用範圍：所有後台（dashboard）自動化測試
 
 本文件整理後台測試撰寫時容易踩坑的技術規則。功能地圖請見 `docs/lt-dashboard-sitemap.md`。
@@ -93,6 +93,39 @@ TOTP 都被拒（OTP 元件填滿自動送出 → 清空 → 停在 `#/login`）
 
 ## 後台站台覆蓋現況 + 代理 vs 站長入口
 
+### top_up 大線全面完整（2026-06-27 更新，9 站皆有後台測試）
+
+> 本節為後台覆蓋的**最新事實**；其下 2026-06-24 的「已覆蓋後台站台」表與「後台 top_up 能力…現金版受限（DEFERRED）」段落記錄的是**代理→會員路徑**的當時結論，現金版 top_up 已改由**站長主錢包路徑**落地（見下 b.），故 DEFERRED 敘述僅存為歷史脈絡。
+
+2026-06-27 一輪把 top_up 從信用版擴到現金版與 RF，9 站後台皆有可逆對稱測試。三條主線：
+
+#### a. 信用版總代→代理 top_up（RC / RE / LT / RD PR#118 + RF PR#122）
+
+補測後台階層的**最上層**（總代 → 下線代理），與既有「站長 → 會員」互補：
+
+- **帳號層級**：使用站長層級帳號（`SITE_<ID>_DASHBOARD_USER`），皆**無 2FA**；`master_dashboard_page` fixture。
+- **代理 tab 結構**：每個下線代理為 `.tab-item` 卡；卡內「存入」為 `btn-primary.me-2`、「提取」為 `:not(.me-2)`。
+- **對稱驗證**：總代額度為 ∞，故**只驗代理側餘額**（存入 → 提取歸零，對稱可逆）。
+- **`_agent_card` 定位**：tag-agnostic `.tab-item:has(:text-is(<account>))` —— RE / LT 代理名是 `<a>` 非 `<span>`，寫死 tag 會漏。
+- **LT 166 代理分頁**：POM 先 `set_agent_page_size(500)` 把代理全載入 DOM，再定位卡片（否則分頁在 DOM 外找不到）。
+- **RD 操作者密碼欄**：RD dialog 獨有「操作者密碼」欄位，POM 自動傳 `dashboard_pass`（`operator_password`）；其他站無此欄自動略過。
+- **RF 站長即總代層級**：複用 `fresh_dashboard_page` 不需新 fixture；RF 自有 POM 加 `switch_to_agent_tab` / `deposit_to_agent` 等，代理 tab 同會員 `.tab-item` 結構，dialog 餘額讀 `label-xs[1]`，總代 ∞ 只驗代理側。
+
+#### b. 現金版站長主錢包 top_up（LU PR#114 / LG·QW PR#116 / KS PR#117）
+
+繞開「代理無點數」的 DEFERRED 卡點，改由**站長主錢包**對會員直接調整額度：
+
+- **站長 login + TOTP 2FA**：會員管理 → Main wallet 金額彈窗 → 增 / 減，對稱可逆（`target=site_config.username`）。
+- **LU 額度歷史稽核**：LU 另驗額度調整歷史（`#/report/balance-adjustment-report`），確認調整有落稽核紀錄。
+- **KS 欄位錯位 quirk → 內容定位**：KS 後台少 Convenience Store 欄、Main wallet 在不同 `td` index 且 tbody / thead 未對齊（用固定 index 會誤命中 Create cell）。故 LU POM 的 `_wallet_amount_locator` 改用**內容定位**——鎖定「含 Game wallet 按鈕的 `td` 內 `div.bold`」，跨站通用，不寫死欄位 index。
+
+#### c. LU 代理帳號 2026-06-25 起強制 2FA
+
+- LU 代理帳號（如 `xxxx001`）自 2026-06-25 起**也強制 2FA**，conftest 需傳 `dashboard_agent_totp`（先前代理無 2FA）。
+- LU 代理仍為 **read-only smoke**：點主錢包金額**不開彈窗**＝無充值權限，故只驗登入 / 導航 / logout，不做 top_up。
+
+---
+
 ### 已覆蓋後台站台（2026-06-24 更新，8 站皆有代理測試）
 
 代理後台依 UI 分兩種結構：**信用版 `/management`**（RC/RE/LT/RD，page object re-export RC）與
@@ -125,8 +158,8 @@ TOTP 都被拒（OTP 元件填滿自動送出 → 清空 → 停在 `#/login`）
 
 | 入口 | URL 形態 | 對應 config | 帳號層級 |
 |------|---------|------------|---------|
-| 站長 | `dev-<site>-**admin**-dashboard.t9platform.com` | `SITE_<X>_DASHBOARD_URL` | 站長（LU <LU 站長帳號>：∞ 額度、18 項頂層選單） |
-| 代理 | `dev-<site>-dashboard.t9platform.com`（**無 -admin**） | `SITE_<X>_DASHBOARD_AGENT_URL` | 下級代理（LU `SITE_LU_DASHBOARD_AGENT_USER`，權限/選單較少） |
+| 站長 | `dev-<site>-**admin**-dashboard.<平台domain>` | `SITE_<X>_DASHBOARD_URL` | 站長（LU <LU 站長帳號>：∞ 額度、18 項頂層選單） |
+| 代理 | `dev-<site>-dashboard.<平台domain>`（**無 -admin**） | `SITE_<X>_DASHBOARD_AGENT_URL` | 下級代理（LU `SITE_LU_DASHBOARD_AGENT_USER`，權限/選單較少） |
 
 - **config 欄位**：`SiteConfig.dashboard_agent_url`（讀 `SITE_<X>_DASHBOARD_AGENT_URL`，PR #98 新增）。
   8 站 `.env.example` 已備欄位；**本機 `.env` 的代理 URL 待填**（站長 URL 去掉 `-admin` 即是）。
@@ -160,7 +193,7 @@ TOTP 都被拒（OTP 元件填滿自動送出 → 清空 → 停在 `#/login`）
 
 ### 規則 3：前後台必須使用獨立 browser context
 
-後台和前台是不同 domain（`dev-lt-dashboard.t9platform.com` vs `dev-lt.t9platform.com`）。
+後台和前台是不同 domain（見 .env `SITE_LT_DASHBOARD_URL` vs `SITE_LT_URL`）。
 共用 context 會造成 cookie 衝突，驗證授權或登入狀態時會互相干擾。
 
 #### 建議做法

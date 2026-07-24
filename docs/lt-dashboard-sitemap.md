@@ -1,8 +1,10 @@
 # LT 後台 Dashboard 功能地圖
 
+> ⚠️ **待複驗（2026-07-24）**：本地圖為 **2026-04-14** 的探索結果；LT 前台已於 **2026-07** 發生**第三次換版**（目前觀望中），後台是否連動改版**尚未複驗**。使用本地圖前，建議先以 `selector-probe` 實機確認當前 DOM / 路由結構；待 LT 結構穩定後再排一次完整複驗更新本檔。
+
 > 更新日期：2026-04-14（原始探索 2026-04-13）
-> URL：`https://dev-lt-dashboard.t9platform.com/`
-> 探索帳號：dltqa01 / 角色：後臺管理
+> URL：見 .env `SITE_LT_DASHBOARD_URL`
+> 探索帳號：LT 後台管理帳號（見 .env `SITE_LT_DASHBOARD_USER`）/ 角色：後臺管理
 
 本文件為 LT 後台 UI 的事實參考，供自動化測試撰寫與跨團隊協作使用。
 原始 MCP 探索資料保留在 `dev-notes/dashboard-*.md` 供需要深入欄位細節時查閱。

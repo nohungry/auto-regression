@@ -14,7 +14,7 @@
 | `rd` | 見 .env `SITE_RD_URL` | 58 |
 | `qw` | 見 .env `SITE_QW_URL` | 48 |
 | `lg` | 見 .env `SITE_LG_URL` | 44 |
-| `lu` | 見 .env `SITE_LU_URL` | 41 |
+| `lu` | 見 .env `SITE_LU_URL` | 43 |
 | `ks` | 見 .env `SITE_KS_URL` | 43 |
 | `rf` | 見 .env `SITE_RF_URL` | 48 |
 | API | (9 站，不啟動瀏覽器) | 102 |

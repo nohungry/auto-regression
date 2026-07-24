@@ -6,6 +6,8 @@
 
 # LT 站台
 
+> ⚠️ **待複驗（2026-07-24）**：LT 前台於 **2026-07** 發生**第三次換版**（目前觀望中）。本節 LT 文案對照以 **2026-05-19（desktop responsive 換版）版**為準；待換版收斂穩定後需**重新 probe 複驗**文案與 selector。RC / RD 段不受此影響。
+
 LT 站台（SITE_LT_URL）支援五種語系：繁中（tw）、簡中（cn）、英文（en）、泰文（th）、越文（vn）。  
 語系切換方式：注入 `i18n_locale` cookie（`utils/locale_helper.set_locale()`）。
 

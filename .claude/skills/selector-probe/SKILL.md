@@ -56,8 +56,9 @@ agent-browser 是 Vercel 出的 Rust CLI，特性：
 # 安裝（用 nvm 不需 sudo）
 npm install -g agent-browser@<已驗證的版本>
 
-# 連 Windows Chrome 9223（每次新 shell 要重連）
-WS=$(curl -s http://172.30.80.1:9223/json/version | python3 -c 'import sys,json; print(json.load(sys.stdin)["webSocketDebuggerUrl"])')
+# 連 Windows Chrome 9223（每次新 shell 要重連；CDP_URL 讀 .env，勿硬編 IP）
+CDP_URL=$(grep -E '^CDP_URL=' .env | cut -d= -f2)
+WS=$(curl -s "$CDP_URL/json/version" | python3 -c 'import sys,json; print(json.load(sys.stdin)["webSocketDebuggerUrl"])')
 agent-browser connect "$WS"
 
 # 檢查當前版本
@@ -170,9 +171,10 @@ Chrome 9223 是共用 session，agent-browser 用 default tab，會繼承上次 
 agent-browser cookies clear
 agent-browser reload
 
-# 或更徹底：close 後重連
+# 或更徹底：close 後重連（CDP_URL 讀 .env）
 agent-browser close
-WS=$(curl -s http://172.30.80.1:9223/json/version | python3 -c 'import sys,json; print(json.load(sys.stdin)["webSocketDebuggerUrl"])')
+CDP_URL=$(grep -E '^CDP_URL=' .env | cut -d= -f2)
+WS=$(curl -s "$CDP_URL/json/version" | python3 -c 'import sys,json; print(json.load(sys.stdin)["webSocketDebuggerUrl"])')
 agent-browser connect "$WS"
 ```
 
