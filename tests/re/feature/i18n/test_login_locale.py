@@ -4,7 +4,7 @@ RE-I18N-LOGIN-001~006
 
 本檔驗證各語系（繁中/簡中/日/泰/越/英）切換後，登入 modal 的 placeholder 與 CTA 文案。
 
-RE 與 RC 共用 t9platform 平台 modal 內結構（modal submit btn 為 button.primary-btn），
+RE 與 RC 共用平台 modal 內結構（modal submit btn 為 button.primary-btn），
 但 RE 站 nav 上的登入觸發按鈕**沒有** primary-btn class（RC 才有），需用文字定位：
 - 點擊 nav 上的「登入」/「Login」等本地化文字按鈕開啟 modal
 - 欄位識別用 placeholder（非 label），故驗證 placeholder attribute

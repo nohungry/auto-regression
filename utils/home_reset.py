@@ -4,7 +4,7 @@ go_home fixture 的共用「回首頁 + 清彈窗」邏輯，供各站 tests/<id
 各站 go_home 是 function-scoped fixture，仍在各站 conftest 各自定義（body 只呼叫
 這裡的函式）。兩型：
 
-- **dialog-dismisser 型**（rc/re/rd，t9platform 共用前台）：goto → networkidle →
+- **dialog-dismisser 型**（rc/re/rd，共用平台前台）：goto → networkidle →
   等 Loading 消失 → dismiss server error / announcement（rd 另清蓋板 dialog-mask）。
 - **home-popup 型**（qw/lg/lu/ks/rf，Nuxt/Vue）：goto 後委由該站
   HomePage.dismiss_any_popups() 清彈窗（各站 popup selector 差異封裝在該站 POM）。

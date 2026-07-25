@@ -1,6 +1,6 @@
 """
 登入頁面 Page Object — re 站點 (BeWin)
-與 rc 共用同一份 t9platform 平台 DOM 結構，但 selector 改用 CSS-based
+與 rc 共用同一份平台 DOM 結構，但 selector 改用 CSS-based
 （input.input-style + type）避開 placeholder 文案 i18n race（2026-05-24 baseline 觀察）。
 """
 

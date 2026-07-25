@@ -1,6 +1,6 @@
 """
 RE 視覺截圖存檔（p2，供人工目視確認）— BeWin
-鏡像 tests/rc/feature/visual/test_visual_regression.py，selector 共用平台 (t9platform)。
+鏡像 tests/rc/feature/visual/test_visual_regression.py，selector 共用平台。
 
 截圖存於 screenshots/re/vr_reference/，不做 pixel 比對。
 因各人螢幕解析度不同，pixel-level baseline 比對無法跨環境穩定運作。

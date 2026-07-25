@@ -1,7 +1,7 @@
 """
 RC API 認證測試（王老吉娛樂城）
 
-API server 與 LT 共用同一套 t9platform API endpoint（見 .env SITE_RC_API_URL），
+API server 與 LT 共用同一套平台 API endpoint（見 .env SITE_RC_API_URL），
 靠 header `companycode` / `domain` 區分站點。RE 的 companycode=dre，domain 見
 .env SITE_RC_API_DOMAIN。
 

@@ -8,7 +8,7 @@ RE 文案一致性驗證 (BeWin) — 預設語系下的品牌/結構文案
 
 多語系切換後的文案驗證請見 `tests/re/feature/i18n/`。
 
-與 RC `tests/rc/feature/copy/test_copy.py` 意圖對齊；RE 共用 t9platform 平台 DOM
+與 RC `tests/rc/feature/copy/test_copy.py` 意圖對齊；RE 共用平台 DOM
 與廳館品牌（T9真人/RC真人/DG真人/MT真人/歐博），差異僅在站台 title。
 """
 

@@ -1,6 +1,6 @@
 """
 登入頁面 Page Object — rd 站點 (狗狗娛樂城)
-與 rc/re 同 t9platform 平台，但 selector 與文案有差異：
+與 rc/re 同平台，但 selector 與文案有差異：
 - placeholder 用「帳號」（rc/re 用「用戶名」）
 - submit button 用 button.main-btn（rc/re 用 button.primary-btn）
 - trigger button 文案用「登錄」（rc/re 用「登入」）

@@ -1,7 +1,7 @@
 """
 RE API 認證測試（BeWin）
 
-API server 與 LT 共用同一套 t9platform API endpoint（見 .env SITE_RE_API_URL），
+API server 與 LT 共用同一套平台 API endpoint（見 .env SITE_RE_API_URL），
 靠 header `companycode` / `domain` 區分站點。RE 的 companycode=dre，domain 見
 .env SITE_RE_API_DOMAIN。
 

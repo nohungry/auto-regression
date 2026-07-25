@@ -149,8 +149,8 @@ class TestGameLaunch:
         game_card.first.wait_for(state="attached", timeout=20000)
 
         # 點第一張遊戲卡，期待新分頁轉址到 provider
-        from utils.game_launch_helper import launch_first_healthy_game
+        from utils.game_launch_helper import launch_first_healthy_game, site_base_domain
         idx, url, host = launch_first_healthy_game(home, site_config.url, sh)
-        assert host and "t9platform.com" not in host, (
+        assert host and site_base_domain(site_config.url) not in host, (
             f"遊戲未轉址至外部 provider，停在：{url}"
         )
