@@ -163,3 +163,11 @@
 - 理由:2026-07 中文長 message 把 PR 描述等級的細節塞進 subject,git log 可讀性差、跨工具(blame/shortlog)截斷;英文短 subject + PR 描述承載細節是原有慣例。
 - 替代方案:commitlint CI(不採:2 人 repo,hook 層即時擋比 CI 事後紅更有效;必要時再加)。
 - 影響:`.claude/settings.json`、`.github/scripts/check-commit-msg.sh`、`git-commit` skill Step 4、CLAUDE.md Git Commit Rules、兩位開發者的 commit 習慣。
+
+## D-022 依賴管理:uv 雙軌制(pyproject+uv.lock 為 source of truth,requirements.txt 為 export 產物)
+
+- 狀態:accepted(2026-07-28 nohungry 拍板)
+- 決策:依賴宣告集中在 `pyproject.toml`(`[tool.uv] package = false`,純測試 repo),`uv lock` 產 `uv.lock`(進 git),`uv sync` 管理 `.venv/`(uv 預設 venv 位置即 `.venv/`,既有 `.venv/bin/pytest` 引用全部不變)。`requirements.txt` 改為 `uv export --no-hashes -o requirements.txt` 產出的**全鎖定版**,僅供 pip 相容路徑(CI 的 `pip install -r requirements.txt` 與無 uv 的機器)使用,**禁止手改**。改依賴 SOP:改 pyproject.toml → `uv lock` → `uv export` → 三檔一起 commit。守門 hook + CI 雙保險(`check-docs-sync.sh` deterministic 規則 + `docs-sync-check.yml` 的 `uv-requirements-sync` job,`--frozen` diff)。`.python-version` 鎖 3.10 對齊 CI。
+- 理由:本機要 uv 的速度與 lockfile 可重現性,但 CI 與同事機器的 pip 流程不能壞;export 雙軌讓兩條路徑裝出相同版本,順帶修掉「requirements.txt 幾乎無 pin → CI/本機版本漂移」的既有問題。升級依賴從隱性(每次 CI 裝到最新)變顯性(`uv lock --upgrade` + export,diff 可 review)。
+- 替代方案:uv 只當安裝器(uv pip install -r requirements.txt;不採:無 lockfile,漂移問題依舊);pip-tools 式 requirements.in→compile(不採:非 uv 原生流,無 uv sync/add 體驗);CI 改用 uv sync(不採本次:降低變更面,pip 路徑保留當相容驗證,未來可再議)。
+- 影響:新增 `pyproject.toml`/`uv.lock`/`.python-version`,`requirements.txt` 轉為產物,`check-docs-sync.sh`、`docs-sync-check.yml`、README/CLAUDE.md Setup 段、兩位開發者的依賴變更流程。

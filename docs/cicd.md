@@ -6,7 +6,7 @@ GitHub Actions 自動跑這個 repo 的測試。當前 3 個 workflow：
 |---|---|---|---|
 | `p0.yml` | PR（**draft 不跑**，轉 ready 才跑）/ push to main / daily cron / 手動 | 9 站 P0 smoke matrix（rc/lt/re/rd/qw/lg/lu/ks/rf） | ~3 分（9 job 並行） |
 | `full-regression.yml` | weekly cron（週一） / 手動 | 9 站全套（P0 + feature） | ~17 分（9 job 並行） |
-| `docs-sync-check.yml` | PR | code 變動是否同步 docs | < 30 秒 |
+| `docs-sync-check.yml` | PR | code 變動是否同步 docs + `requirements.txt` 與 `uv.lock` export 同步 | < 30 秒 |
 
 ## Cron 時段（台灣時區）
 
@@ -150,6 +150,13 @@ tests/*/conftest.py
 ```bash
 git commit -m "fix(test): typo in test docstring [skip-docs-check] 純註解錯字無需動 docs"
 ```
+
+## uv requirements export sync（依賴雙軌守門）
+
+依賴管理採 uv 雙軌制（`docs/decisions.md` D-022）：`pyproject.toml` + `uv.lock` 為 source of truth，`requirements.txt` 為 `uv export` 鎖定版產物。守門同樣 hook + CI 雙保險：
+
+- **Hook**（`check-docs-sync.sh` deterministic 規則）：staged 含 `pyproject.toml`/`uv.lock` 但沒動 `requirements.txt` → block（提示跑 `uv export --no-hashes -o requirements.txt`）；反向單獨改 `requirements.txt` 也 block（禁手改產物）
+- **CI**（`docs-sync-check.yml` 的 `uv-requirements-sync` job）：裝 uv → `uv export --frozen --no-hashes` 與 `requirements.txt` diff（忽略註解行）；`--frozen` 使「改了 pyproject 沒跑 `uv lock`」也直接紅
 
 ### 想升級成 hard block（PR merge 強制要求）
 

@@ -28,3 +28,22 @@ jobs:
         run: |
           # PR base commit SHA（GitHub Actions context 內建）
           bash .github/scripts/check-docs-sync.sh ${{ github.event.pull_request.base.sha }}
+
+  uv-requirements-sync:
+    name: uv requirements export sync
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        run: curl -LsSf https://astral.sh/uv/install.sh | sh
+
+      - name: Verify requirements.txt matches uv.lock export
+        run: |
+          # --frozen：pyproject 改了但沒跑 uv lock → 直接紅（不靜默 re-lock）
+          # diff 忽略註解行：export header 記錄的指令字串（-o vs stdout）不影響判定
+          diff <(uv export --frozen --no-hashes | grep -v '^#') <(grep -v '^#' requirements.txt) \
+            || { echo '::error::requirements.txt 與 uv.lock 不同步，請執行 uv export --no-hashes -o requirements.txt'; exit 1; }

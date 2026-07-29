@@ -1,0 +1,28 @@
+[project]
+name = "auto-regression"
+version = "0.0.0"
+description = "End-to-end regression test suite for gaming platform sites (pytest + playwright)"
+requires-python = ">=3.10"
+# 依賴的 source of truth 在這裡；requirements.txt 是 `uv export` 產物，不要手改。
+dependencies = [
+    "pytest",
+    "pytest-playwright",
+    "pytest-playwright-snapshot",
+    "pytest-html",
+    "pytest-base-url",
+    "pytest-metadata",
+    # flaky-trend hook 依賴 report.outcome=='rerun'，鎖大版本避免語意漂移
+    "pytest-rerunfailures>=16,<17",
+    "python-dotenv",
+    "playwright",
+    "pygments",
+    "python-slugify",
+    "requests",
+    "pyotp",
+    "Pillow",
+    "pixelmatch",
+]
+
+[tool.uv]
+# 純測試 repo，非可安裝套件；uv sync 只裝依賴、不 build 專案本身
+package = false

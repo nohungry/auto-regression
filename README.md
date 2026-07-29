@@ -59,11 +59,25 @@ reports/report.html                  — pytest-html 測試報表（gitignored�
 
 ## 安裝
 
+依賴管理採 **uv 雙軌制**（見 `docs/decisions.md` D-022）：`pyproject.toml` + `uv.lock` 是 source of truth，`requirements.txt` 為 `uv export` 產出的鎖定版，兩條路徑裝出**相同版本**。
+
+**方式 A：uv（推薦，本機開發）**
+
 ```bash
 cp .env.example .env        # 填入站台帳號密碼與 CDP_URL
-pip install -r requirements.txt
-playwright install chromium
+uv sync                     # 建立/同步 .venv/（uv 預設 venv 位置即 .venv/）
+.venv/bin/playwright install chromium
 ```
+
+**方式 B：pip（無 uv 的機器 / CI 用同一條路）**
+
+```bash
+cp .env.example .env
+python -m venv .venv && .venv/bin/pip install -r requirements.txt
+.venv/bin/playwright install chromium
+```
+
+**改依賴的 SOP**：改 `pyproject.toml` → `uv lock` → `uv export --no-hashes -o requirements.txt`，三檔一起 commit。**不要手改 `requirements.txt`**（hook + CI 會擋）。
 
 ## 執行
 

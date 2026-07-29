@@ -8,11 +8,15 @@ End-to-end regression test suite for a gaming platform using Python + pytest-pla
 
 ## Setup
 
+依賴管理採 **uv 雙軌制**（D-022）：`pyproject.toml` + `uv.lock` 為 source of truth，`requirements.txt` 是 `uv export --no-hashes -o requirements.txt` 產出的鎖定版（**不可手改**，hook + CI 守門）。
+
 ```bash
 cp .env.example .env   # Fill in credentials and CDP_URL
-pip install -r requirements.txt
-playwright install chromium
+uv sync                # 推薦；或無 uv 時：python -m venv .venv && .venv/bin/pip install -r requirements.txt
+.venv/bin/playwright install chromium
 ```
+
+改依賴 SOP：改 `pyproject.toml` → `uv lock` → `uv export --no-hashes -o requirements.txt` → 三檔一起 commit。
 
 Key `.env` variables:
 - `DEFAULT_SITE` — which site config to use (e.g. `rc`)
@@ -42,7 +46,7 @@ GitHub Actions 自動跑測試：
 
 - `p0.yml`：PR 開啟（**draft 不跑**，轉 ready 才跑——draft 為施工中訊號，避免佔用共用測試帳號）/ push to main / 每天 09:00 台灣 / 手動 → RC + LT + RE + RD + QW + LG + LU + KS + RF P0 smoke 9 站 matrix
 - `full-regression.yml`：每週一 08:00 台灣 / 手動 → 9 站全套（P0 + feature）
-- `docs-sync-check.yml`：PR 時檢查 code 變動是否有對應 .md 更新（hook 機制 + CI 雙保險）
+- `docs-sync-check.yml`：PR 時檢查 code 變動是否有對應 .md 更新（hook 機制 + CI 雙保險）；另含 `uv-requirements-sync` job 驗 `requirements.txt` 與 `uv.lock` export 同步（`uv export --frozen` diff，不同步則紅）
 
 **觀測性**：`p0.yml` 與 `full-regression.yml` 跑完後都有 `aggregate-summary` job — `.github/scripts/aggregate_test_results.py` 解析各站 JUnit XML 聚合成跨站成績單（含 **🔁 Flaky 欄／清單**＝重跑後才通過的 test，資料來自 `conftest.py` sessionfinish hook 產出的 `junit/<site>-flaky.json` sidecar；寫進 run 的 Step Summary），並可選推 Slack 通知（設了 `SLACK_WEBHOOK` secret 才推；排程一定推、PR/push 則失敗才推）。
 

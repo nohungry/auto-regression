@@ -127,6 +127,22 @@ CLAUDE.md（Architecture 樹 / 站點清單 / factory 段）" \
   fi
 fi
 
+#    依賴雙軌同步（uv 雙軌制）：pyproject.toml / uv.lock 變動 → requirements.txt 必須同步 re-export
+if { changed_has "pyproject.toml" || changed_has "uv.lock"; } && ! changed_has "requirements.txt"; then
+  block_rule "依賴（pyproject.toml / uv.lock）有變動，但 requirements.txt 未同步 re-export" \
+    "requirements.txt（執行：uv export --no-hashes -o requirements.txt 後重新 git add）" \
+    "$EXIT_CODE"
+fi
+
+#    反向：requirements.txt 是 uv export 產物，禁止單獨手改（須經 pyproject.toml → uv lock → uv export）
+if changed_has "requirements.txt" && ! { changed_has "pyproject.toml" || changed_has "uv.lock"; }; then
+  block_rule "requirements.txt 單獨變動（它是 uv export 產物，不可手改）" \
+    "pyproject.toml（依賴 source of truth，改這裡）
+uv.lock（執行 uv lock 產生）
+requirements.txt（執行 uv export --no-hashes -o requirements.txt 重新產生）" \
+    "$EXIT_CODE"
+fi
+
 #    marker 變動：pytest.ini 在 diff → 必須同改 README + CLAUDE（兩處都列 marker）
 if changed_has "pytest.ini"; then
   if ! { changed_has "README.md" && changed_has "CLAUDE.md"; }; then
