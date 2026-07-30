@@ -28,6 +28,7 @@
 from playwright.sync_api import Page
 from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
 
+from utils.dashboard_helpers import sidebar_menu_tree_texts
 from utils.screenshot_helper import get_screenshotter
 
 # 主錢包額度調整模式 → Deposit/Withdrawal select 的 option value（實機 probe 2026-06-25）
@@ -67,6 +68,21 @@ class ManagementPage:
         self.sidebar.first.wait_for(state="attached", timeout=15000)
         spans = self.page.locator(".sidebar-nav li.parent-li a.memberSpan")
         return [spans.nth(i).get_attribute("id") for i in range(spans.count())]
+
+    def menu_tree(self) -> list:
+        """回傳側欄選單樹（文字版）[(parent_route_id, [子入口顯示文字, ...]), ...]。
+
+        入口檢測用：與 per-site spec 精確比對；站長/代理兩層級皆適用。
+        LU 型側欄葉節點無 href/id/class（Vue @click，實機 probe 2026-07-30
+        含展開後複驗）→ 頂層入口用父項 route id（結構性）、子入口以顯示
+        文字識別（後台固定英文顯示，非多語系切換場景）。收合狀態 DOM 即含
+        全部葉節點，毋須展開。實作見 utils.dashboard_helpers.sidebar_menu_tree_texts。
+        """
+        tree = sidebar_menu_tree_texts(self.page)
+        sh = get_screenshotter(self.page)
+        if sh:
+            sh.full_page("verify_側欄選單樹")
+        return tree
 
     def navigate(self, route_substr: str):
         """（站長層級）點側欄葉節點導航到含 route_substr 的頁面。
