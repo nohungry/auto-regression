@@ -185,3 +185,48 @@ class TestMasterMenuEntries:
             f"站長頂層入口集合/順序變動：{[p for p, _ in tree]}"
         )
         assert tree == EXPECTED_MASTER_MENU, "站長子入口集合與 spec 不一致（見 diff）"
+
+
+# 代理層級預期選單（權限子集；identity 規則同站長：頂層 route id + 子入口文字）
+EXPECTED_AGENT_MENU = [
+    ('/member', [  # Member
+        'Member management',
+    ]),
+    ('/agent', [  # Agent
+        'Agent management',
+    ]),
+    ('/report', [  # Member Report
+        'Member deposit',
+        'Deposit report(payment)',
+        'Withdrawal report',
+    ]),
+    ('/report-bet-count', [  # Betting report
+        'Player report',
+    ]),
+    ('/statistical-report', [  # StatisticalReport
+        'BettingReportV2',
+        'OperatingReport',
+        'Game Stats',
+        'AgentStatisticalAnalysis',
+        'AgentDiscountStatistical',
+        'Agent Activity Statistics',
+        'Agent Data Analysis',
+        'Member Data Analysis',
+    ]),
+]
+
+
+@pytest.mark.p1
+@pytest.mark.lg
+@pytest.mark.dashboard
+class TestAgentMenuEntries:
+    """LG-DASH-MENU-002：代理側欄入口 + 子入口集合與 spec 精確一致。"""
+
+    def test_agent_menu_tree_matches_spec(self, agent_dashboard_page, site_config):
+        """dump 代理側欄選單樹 → 與代理層級 spec 全等比對。"""
+        Mgmt = get_dashboard_management_page_class(site_config.site_id)
+        tree = Mgmt(agent_dashboard_page).menu_tree()
+        assert [p for p, _ in tree] == [p for p, _ in EXPECTED_AGENT_MENU], (
+            f"代理頂層入口集合/順序變動：{[p for p, _ in tree]}"
+        )
+        assert tree == EXPECTED_AGENT_MENU, "代理子入口集合與 spec 不一致（見 diff）"
