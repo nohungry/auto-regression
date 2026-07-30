@@ -17,6 +17,7 @@ import re
 from typing import Optional
 from playwright.sync_api import Page, Locator, expect, TimeoutError as PlaywrightTimeoutError
 from utils.screenshot_helper import get_screenshotter
+from utils.dashboard_helpers import sidebar_menu_tree
 from utils.wait_helpers import wait_for_text_matches
 
 
@@ -32,6 +33,23 @@ class ManagementPage:
         self.agent_tab = self._main_content.locator('button.tab-btn', has_text='代理')
         self.member_tab = self._main_content.locator('button.tab-btn', has_text='會員')
         self.sub_account_tab = self._main_content.locator('button.tab-btn', has_text='子帳號')
+
+        # 側欄（入口檢測用）：信用版 /management 後台側欄結構同 RF
+        #（.sidebar-nav li.parent-li，父項 a.memberSpan 帶 route id，子入口 li a[href]）
+        self.sidebar = page.locator(".sidebar-nav")
+
+    def menu_tree(self) -> list:
+        """回傳側欄選單樹 [(parent_route_id, [子入口 href, ...]), ...]（依側欄順序）。
+
+        入口檢測用：與 per-site 預期 spec 精確比對。id/href 為結構性識別，
+        不綁文案；'' id = 非路由項目（修改密碼/登出）。實作見
+        utils.dashboard_helpers.sidebar_menu_tree（信用版全家共用）。
+        """
+        tree = sidebar_menu_tree(self.page)
+        sh = get_screenshotter(self.page)
+        if sh:
+            sh.full_page("verify_側欄選單樹")
+        return tree
 
     def get_agent_remaining_balance(self) -> float:
         """
