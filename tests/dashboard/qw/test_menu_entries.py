@@ -3,16 +3,18 @@ QW 後台側欄入口檢測（menu entry detection）— 站長層級
 
 驗證「側欄有哪些入口 + 各入口對應的子入口」與預期 spec 完全一致（含順序）：
 - 頂層入口：父項 a.memberSpan 的 route id（'' = 非路由項目）
-- 子入口：父項底下葉節點的 href（站長側欄 href 為非同步掛載，
-  sidebar_menu_tree 內含等待；收合狀態 DOM 即有全部節點，毋須展開）
+- 子入口：父項底下葉節點的**顯示文字**（現金版葉節點無 href / id / class，
+  文字是唯一穩定識別；helper = sidebar_menu_tree_texts，內含非同步掛載等待）
 選單增刪、順序、權限變動都會 fail —— 後台改版 / 權限異動的第一訊號。
 
-斷言策略：結構性識別（route id / href），不綁文案（後台 locale 混雜：
-英文 + 部分未翻譯 i18n key）；文案僅出現在 spec 註解供人類對照。
+斷言策略：頂層用結構性 route id；子入口在現金版只能綁文字——後台為固定英文
+＋部分未翻譯 i18n key（非多語系切換場景），故文案變動本身就是要回報的訊號。
 spec 來源：2026-07-30 實機 probe（headless chromium 直連 dev 站）。
 
+⚠️ lu / qw / lg 共用同一套 Vue admin 後台，三站站長 spec 逐字相同；
+   後台選單改版時三個 test_menu_entries.py 要一起改（漏改的站會單獨紅）。
 ⚠️ 帳號層級：dashboard_page = 站長（SITE_QW_DASHBOARD_USER，TOTP 2FA）。
-   代理層級側欄葉節點**無 href**（Vue @click）→ 入口檢測另案處理（Phase 3），
+   代理層級待代理 TOTP 重新綁定後補（2026-07-30 起 TwoFactorAuth/Verify 400），
    本檔不含代理層級。
 """
 
@@ -20,7 +22,7 @@ import pytest
 
 from pages.dashboard.factory import get_dashboard_management_page_class
 
-# 站長層級預期選單（頂層入口 route id → 子入口 href 清單，依側欄順序）
+# 站長層級預期選單（頂層入口 route id → 子入口顯示文字清單，依側欄順序）
 EXPECTED_MASTER_MENU = [
     ('', [  # Dashboard
         'Dashboard',
@@ -178,7 +180,7 @@ class TestMasterMenuEntries:
     """QW-DASH-MENU-001：站長側欄入口 + 子入口集合與 spec 精確一致。"""
 
     def test_master_menu_tree_matches_spec(self, dashboard_page, site_config):
-        """dump 側欄選單樹（route id + 子入口 href）→ 與站長層級 spec 全等比對。"""
+        """dump 側欄選單樹（route id + 子入口顯示文字）→ 與站長層級 spec 全等比對。"""
         Mgmt = get_dashboard_management_page_class(site_config.site_id)
         tree = Mgmt(dashboard_page).menu_tree()
         assert [p for p, _ in tree] == [p for p, _ in EXPECTED_MASTER_MENU], (

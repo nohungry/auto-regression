@@ -34,10 +34,6 @@ class ManagementPage:
         self.member_tab = self._main_content.locator('button.tab-btn', has_text='會員')
         self.sub_account_tab = self._main_content.locator('button.tab-btn', has_text='子帳號')
 
-        # 側欄（入口檢測用）：信用版 /management 後台側欄結構同 RF
-        #（.sidebar-nav li.parent-li，父項 a.memberSpan 帶 route id，子入口 li a[href]）
-        self.sidebar = page.locator(".sidebar-nav")
-
     def menu_tree(self) -> list:
         """回傳側欄選單樹 [(parent_route_id, [子入口 href, ...]), ...]（依側欄順序）。
 
