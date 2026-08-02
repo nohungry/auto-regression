@@ -41,6 +41,7 @@ import re
 
 from playwright.sync_api import Page, TimeoutError as PlaywrightTimeoutError
 
+from utils.dashboard_helpers import sidebar_menu_tree
 from utils.screenshot_helper import get_screenshotter
 from utils.wait_helpers import wait_for_nonempty_text
 
@@ -70,6 +71,19 @@ class ManagementPage:
         self.sidebar.first.wait_for(state="attached", timeout=15000)
         spans = self.page.locator(".sidebar-nav li.parent-li a.memberSpan")
         return [spans.nth(i).get_attribute("id") for i in range(spans.count())]
+
+    def menu_tree(self) -> list:
+        """回傳側欄選單樹 [(parent_route_id, [子入口 href, ...]), ...]（依側欄順序）。
+
+        入口檢測用：與 per-site 預期 spec 精確比對。id/href 為結構性識別，
+        不綁文案；'' id = 非路由項目（修改密碼/登出）。實作見
+        utils.dashboard_helpers.sidebar_menu_tree（信用版全家共用）。
+        """
+        tree = sidebar_menu_tree(self.page)
+        sh = get_screenshotter(self.page)
+        if sh:
+            sh.full_page("verify_側欄選單樹")
+        return tree
 
     def navigate(self, route_substr: str):
         """點側欄葉節點導航到含 route_substr 的頁面。

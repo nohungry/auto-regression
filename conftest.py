@@ -504,7 +504,13 @@ def auto_screenshot(request):
     attached_pages = []
     helpers = []
 
-    for fixture_name in ('page', 'class_logged_in_page', 'dashboard_page'):
+    # dashboard 系 fixture 皆納入：master_dashboard_page / agent_dashboard_page 放最後
+    # → 同測試多 page 同時 attach 時（如信用版 autouse go_management 連帶 dashboard_page），
+    #   後 generate 的 README 覆蓋先前者，保留實際操作頁的報告
+    for fixture_name in (
+        'page', 'class_logged_in_page', 'dashboard_page',
+        'master_dashboard_page', 'agent_dashboard_page',
+    ):
         if fixture_name in request.fixturenames:
             pg = request.getfixturevalue(fixture_name)
             sh = ScreenshotHelper(pg, request.node.name, description, site_id=site_id, category=test_category)

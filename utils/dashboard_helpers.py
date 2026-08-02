@@ -16,13 +16,89 @@ context 建立複用根 conftest `_new_configured_page(install_toast_observer=Fa
 （後台不需要，且避免誤關後台彈窗）。
 """
 
-from conftest import _new_configured_page
 from pages.dashboard.factory import get_dashboard_login_page_class
 from utils.screenshot_helper import (
     ScreenshotHelper,
     attach_screenshotter,
     detach_screenshotter,
 )
+
+# 側欄選單樹 dump（入口檢測用）：一次 evaluate 取回整棵樹，避免逐項 locator round-trip。
+# 結構假設（信用版 rc/re/lt/rd/rf 全家 + LU 型站長側欄皆適用，2026-07-30 實機 probe）：
+#   .sidebar-nav li.parent-li            — 頂層入口
+#   li.parent-li a.memberSpan[id]        — 父項 route id（'' = 非路由項目，如修改密碼/登出）
+#   li.parent-li li a[href]              — 子入口（信用版 collapsed DOM 即有 href，毋須展開）
+_MENU_TREE_JS = """
+() => {
+  const parents = [];
+  document.querySelectorAll('.sidebar-nav li.parent-li').forEach(li => {
+    const span = li.querySelector('a.memberSpan');
+    const hrefs = [];
+    li.querySelectorAll('li a').forEach(a => {
+      const href = a.getAttribute('href') || '';
+      if (href) hrefs.push(href);
+    });
+    parents.push([span ? (span.id || '') : '', hrefs]);
+  });
+  return parents;
+}
+"""
+
+
+# LU 型（現金版 Vue admin）側欄葉節點無 href / id / class（Vue @click 程式化導航），
+# 唯一穩定識別是顯示文字（後台固定英文 + 未翻譯 i18n key，非多語系切換）→
+# 文字版 dump：排除父項錨點（a.memberSpan / 有 id 者），只收葉節點文字。
+_MENU_TREE_TEXTS_JS = """
+() => {
+  const parents = [];
+  document.querySelectorAll('.sidebar-nav li.parent-li').forEach(li => {
+    const span = li.querySelector('a.memberSpan');
+    const leaves = [];
+    li.querySelectorAll('li a').forEach(a => {
+      if (a.classList.contains('memberSpan') || a.id) return;
+      const text = (a.textContent || '').trim().replace(/\\s+/g, ' ');
+      if (text) leaves.push(text);
+    });
+    parents.push([span ? (span.id || '') : '', leaves]);
+  });
+  return parents;
+}
+"""
+
+
+def sidebar_menu_tree_texts(page, timeout: int = 15000):
+    """回傳側欄選單樹（文字版）：[(parent_route_id, [子入口顯示文字, ...]), ...]。
+
+    LU 型現金版後台專用：葉節點無 href/id/class（Vue @click），展開與否 DOM
+    皆存在但無結構性識別 → 子入口以顯示文字識別（後台為固定英文顯示，
+    非多語系切換場景；若產品端翻譯 i18n key 造成文字變動，屬入口檢測要
+    回報的變更訊號）。頂層入口仍用父項 route id（結構性）。
+    """
+    page.locator(".sidebar-nav").first.wait_for(state="attached", timeout=timeout)
+    page.locator(".sidebar-nav li.parent-li li a").first.wait_for(
+        state="attached", timeout=timeout
+    )
+    tree = page.evaluate(_MENU_TREE_TEXTS_JS)
+    return [(parent_id, texts) for parent_id, texts in tree]
+
+
+def sidebar_menu_tree(page, timeout: int = 15000):
+    """回傳側欄選單樹：[(parent_route_id, [子入口 href, ...]), ...]（依側欄順序）。
+
+    入口檢測（menu entry detection）用：與 per-site 預期 spec 精確比對，
+    選單增刪、順序、權限變動都會反映在回傳值。識別一律結構性
+    （route id / href），不綁文案（後台 locale 混雜）。
+
+    等待策略：側欄 attached 後再等第一個 route href 出現（Vue 選單 href
+    為非同步掛載，過早 dump 會拿到空 href）。
+    """
+    page.locator(".sidebar-nav").first.wait_for(state="attached", timeout=timeout)
+    page.locator(".sidebar-nav a[href*='#/']").first.wait_for(
+        state="attached", timeout=timeout
+    )
+    tree = page.evaluate(_MENU_TREE_JS)
+    return [(parent_id, hrefs) for parent_id, hrefs in tree]
+
 
 # totp 參數的「未提供」哨兵：區分「傳 None/空字串當第三引數」與「完全不傳第三引數」。
 # rf 的 DashboardLoginPage.goto_and_login 只吃 (user, pass)；信用版/現金版 2FA 站吃
@@ -50,6 +126,10 @@ def dashboard_login_session(
       - (label, desc) tuple → 登入流程掛 ScreenshotHelper 逐步截圖（現金版 + rf）。
       - None → 不截（信用版 rc/re/lt/rd）。
     """
+    # lazy import：本模組被 pages/ 層 POM import（sidebar_menu_tree），
+    # 頂層 import conftest 會把 pages 層耦合到 pytest 環境 → 延到呼叫時才 import
+    from conftest import _new_configured_page
+
     context, page = _new_configured_page(browser, install_toast_observer=False)
 
     def _login():
