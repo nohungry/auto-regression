@@ -44,8 +44,10 @@ Reports are written to `reports/report.html` (self-contained HTML).
 
 GitHub Actions 自動跑測試：
 
-- `p0.yml`：PR 開啟（**draft 不跑**，轉 ready 才跑——draft 為施工中訊號，避免佔用共用測試帳號）/ push to main / 每天 09:00 台灣 / 手動 → RC + LT + RE + RD + QW + LG + LU + KS + RF P0 smoke 9 站 matrix
-- `full-regression.yml`：每週一 08:00 台灣 / 手動 → 9 站全套（P0 + feature）
+- `p0.yml`：PR 開啟（**draft 不跑**，轉 ready 才跑——draft 為施工中訊號，避免佔用共用測試帳號）/ push to main / 每天 09:00 台灣 / 手動 → RC + LT + RE + RD + QW + LG + LU + RF P0 smoke 8 站 matrix
+- `full-regression.yml`：每週一 08:00 台灣 / 手動 → 8 站全套（P0 + feature）
+
+> **KS（Super9娛樂城）已於 2026-07 永久退役**：站點下架，POM / 測試 / registry / marker / secrets 全數移除（本 repo 2026-08-05 清理）。歷史程式碼見 git 歷史（`git show 84bff6b:tests/ks/test_p0_smoke.py`）。
 - `docs-sync-check.yml`：PR 時檢查 code 變動是否有對應 .md 更新（hook 機制 + CI 雙保險）；另含 `uv-requirements-sync` job 驗 `requirements.txt` 與 `uv.lock` export 同步（`uv export --frozen` diff，不同步則紅）
 
 **觀測性**：`p0.yml` 與 `full-regression.yml` 跑完後都有 `aggregate-summary` job — `.github/scripts/aggregate_test_results.py` 解析各站 JUnit XML 聚合成跨站成績單（含 **🔁 Flaky 欄／清單**＝重跑後才通過的 test，資料來自 `conftest.py` sessionfinish hook 產出的 `junit/<site>-flaky.json` sidecar；寫進 run 的 Step Summary），並可選推 Slack 通知（設了 `SLACK_WEBHOOK` secret 才推；排程一定推、PR/push 則失敗才推）。
@@ -119,11 +121,10 @@ pages/rd/                   — rd site Page Objects (LoginPage, HomePage) — �
 pages/qw/                   — qw site Page Objects (LoginPage, HomePage) — LM來財娛樂城（Nuxt/Vue，多語系 cookie 但無切換 UI＝實質單語系顯示）
 pages/lg/                   — lg site Page Objects (LoginPage, HomePage) — 大撈家娛樂城（Nuxt/Vue，modal 登入）
 pages/lu/                   — lu site Page Objects (LoginPage, HomePage) — Dlgbet（Nuxt/Vue，雙層彈窗 + 左側 sidebar 登出）
-pages/ks/                   — ks site Page Objects (LoginPage, HomePage) — Super9娛樂城（Nuxt/Vue，金色英文主題 + 右側 drawer 登出）
 pages/rf/                   — rf site Page Objects (LoginPage, HomePage) — 金爺娛樂城（Nuxt/Vue 信用版，獨立 /Login 頁 + 登入三段 base-modal 確認彈窗）
 pages/dashboard/<site_id>/   — backend dashboard page objects (DashboardLoginPage, ManagementPage); per dashboard factory registry
 tests/api/<site_id>/         — API-layer tests (requests only, no browser, no pages/* import); per-site conftest
-tests/dashboard/<site_id>/   — backend dashboard tests (rc/re/lt/rd 代理 top_up（代理→會員，皆信用版；lt/rd re-export RC POM，re subclass RC POM 僅覆寫 4 差異方法：Vue tab native click ×2 + `<a>` 名稱定位 ×2）；rd dialog 獨有操作者密碼欄位需傳 operator_password；**rc/re/lt/rd 另有總代→代理 top_up（站長層級 SITE_<ID>_DASHBOARD_USER，皆無 2FA；master_dashboard_page fixture）：代理 tab 每個下線代理為 .tab-item 卡（存入 btn-primary.me-2/提取 :not(.me-2)），總代額度 ∞ 故只驗代理側餘額（對稱可逆）；目標代理用 dashboard_agent_user；POM `set_agent_page_size(500)` 先把代理全載入 DOM（LT 166 代理分頁），`_agent_card` 用 tag-agnostic `.tab-item:has(:text-is(account))`，operator_password 傳 dashboard_pass（RD 有密碼欄、其他站自動略過）**；rf 信用版 站長+代理 login（皆無 2FA）+ 導航/logout + top_up（站長→會員）+ **總代→代理 top_up（站長即總代層級，複用 fresh_dashboard_page 不需新 fixture；RF 自有 POM 加 switch_to_agent_tab/deposit_to_agent 等，代理 tab 同會員 .tab-item 結構，dialog 餘額 label-xs[1]，總代 ∞ 只驗代理側）**；lu 站長帳號 login+TOTP 2FA + 導航/logout + **主錢包額度調整 top_up（站長專屬，會員管理→Main wallet 金額彈窗→增減，對稱可逆 + 額度歷史稽核驗證 #/report/balance-adjustment-report）**，及代理帳號 login（**2026-06-25 起代理也強制 2FA**，conftest 傳 dashboard_agent_totp）+ 導航/logout read-only smoke（代理點主錢包金額不開彈窗＝無充值權限）；lg/ks/qw 代理 Vue admin smoke，re-export LU，空帳號故僅 smoke，其中 qw 代理需 2FA（conftest 傳 dashboard_agent_totp）；**lg/ks/qw 皆有站長 login+TOTP 2FA + 主錢包 top_up（同 LU 模式，target=site_config.username）**。注意 KS 後台少 Convenience Store 欄、Main wallet 在不同 td index 且 tbody/thead 未對齊（Create cell 會誤命中固定 index）→ LU POM `_wallet_amount_locator` 改用**內容定位**（含 Game wallet 按鈕的 td 內 div.bold）跨站通用，非寫死欄位 index)；**信用版全家 rc/re/lt/rd/rf 另有 test_menu_entries.py 側欄入口檢測**（`menu_tree()` dump 頂層入口 route id + 各入口子入口 href，與 per-site spec 全等比對，站長+代理兩層級；spec 內嵌測試檔、文案僅註解；2026-07-30 probe 建立）；**現金版 lu/qw/lg 站長層級同款入口檢測 + lg 代理層級**（LU 型葉節點無 href → 子入口以顯示文字識別（sidebar_menu_tree_texts），頂層仍 route id；ks 待 dev 域名恢復；lu/qw 代理待 2FA TOTP 重綁定——2026-07-30 起 TwoFactorAuth/Verify 400，secret 疑遭伺服器端重綁）; state-mutating tests should be reversible (rollback / teardown compensation)
+tests/dashboard/<site_id>/   — backend dashboard tests (rc/re/lt/rd 代理 top_up（代理→會員，皆信用版；lt/rd re-export RC POM，re subclass RC POM 僅覆寫 4 差異方法：Vue tab native click ×2 + `<a>` 名稱定位 ×2）；rd dialog 獨有操作者密碼欄位需傳 operator_password；**rc/re/lt/rd 另有總代→代理 top_up（站長層級 SITE_<ID>_DASHBOARD_USER，皆無 2FA；master_dashboard_page fixture）：代理 tab 每個下線代理為 .tab-item 卡（存入 btn-primary.me-2/提取 :not(.me-2)），總代額度 ∞ 故只驗代理側餘額（對稱可逆）；目標代理用 dashboard_agent_user；POM `set_agent_page_size(500)` 先把代理全載入 DOM（LT 166 代理分頁），`_agent_card` 用 tag-agnostic `.tab-item:has(:text-is(account))`，operator_password 傳 dashboard_pass（RD 有密碼欄、其他站自動略過）**；rf 信用版 站長+代理 login（皆無 2FA）+ 導航/logout + top_up（站長→會員）+ **總代→代理 top_up（站長即總代層級，複用 fresh_dashboard_page 不需新 fixture；RF 自有 POM 加 switch_to_agent_tab/deposit_to_agent 等，代理 tab 同會員 .tab-item 結構，dialog 餘額 label-xs[1]，總代 ∞ 只驗代理側）**；lu 站長帳號 login+TOTP 2FA + 導航/logout + **主錢包額度調整 top_up（站長專屬，會員管理→Main wallet 金額彈窗→增減，對稱可逆 + 額度歷史稽核驗證 #/report/balance-adjustment-report）**，及代理帳號 login（**2026-06-25 起代理也強制 2FA**，conftest 傳 dashboard_agent_totp）+ 導航/logout read-only smoke（代理點主錢包金額不開彈窗＝無充值權限）；lg/qw 代理 Vue admin smoke，re-export LU，空帳號故僅 smoke，其中 qw 代理需 2FA（conftest 傳 dashboard_agent_totp）；**lg/qw 皆有站長 login+TOTP 2FA + 主錢包 top_up（同 LU 模式，target=site_config.username）**。LU POM `_wallet_amount_locator` 用**內容定位**（含 Game wallet 按鈕的 td 內 div.bold）而非寫死欄位 index——各站 Main wallet 的 td index 不一致，內容定位跨站通用)；**信用版全家 rc/re/lt/rd/rf 另有 test_menu_entries.py 側欄入口檢測**（`menu_tree()` dump 頂層入口 route id + 各入口子入口 href，與 per-site spec 全等比對，站長+代理兩層級；spec 內嵌測試檔、文案僅註解；2026-07-30 probe 建立）；**現金版 lu/qw/lg 站長層級同款入口檢測 + lg 代理層級**（LU 型葉節點無 href → 子入口以顯示文字識別（sidebar_menu_tree_texts），頂層仍 route id；lu/qw 代理待 2FA TOTP 重綁定——2026-07-30 起 TwoFactorAuth/Verify 400，secret 疑遭伺服器端重綁）; state-mutating tests should be reversible (rollback / teardown compensation)
 tests/rc/                   — rc site tests (test_p0_smoke.py p0, feature/<name>/ p1: announcement_popup, i18n, navigation, wallet)
 tests/rc/conftest.py        — rc-specific overrides: site_config=rc, go_home (+ dismiss announcement popup)
 tests/lt/                   — lt site tests (test_p0_smoke.py p0, test_locale_visual_matrix.py p2 [skipped], feature/<name>/ p1: auth, copy, i18n, member, public, visual, wallet)
@@ -138,21 +139,19 @@ tests/lg/                   — lg site tests (test_p0_smoke.py p0; feature/<nam
 tests/lg/conftest.py        — lg-specific overrides: site_config=lg, go_home (+ dismiss 進站公告)
 tests/lu/                   — lu site tests (test_p0_smoke.py p0; feature/<name>/ p1: announcement_popup, navigation, member, wallet, i18n, game, sidebar, home_sections; copy p2; visual p2; 雙層彈窗)
 tests/lu/conftest.py        — lu-specific overrides: site_config=lu, go_home (+ dismiss 雙層彈窗)
-tests/ks/                   — ks site tests (test_p0_smoke.py p0; feature/<name>/ p1: announcement_popup, navigation, member, wallet, i18n, game, sidebar, home_sections; copy p2; visual p2; 右側 drawer 登出)
-tests/ks/conftest.py        — ks-specific overrides: site_config=ks, go_home (+ dismiss 進站公告)
 tests/rf/                   — rf site tests (test_p0_smoke.py p0; feature/<name>/ p1: announcement_popup, navigation, member, wallet, i18n, game, sidebar, home_sections; copy p2; visual p2; 信用版 金爺娛樂城，Nuxt/Vue 三段彈窗登入)
 tests/rf/conftest.py        — rf-specific overrides: site_config=rf, go_home (+ dismiss base-modal 彈窗)
 utils/locale_helper.py       — set_locale(): injects i18n_locale cookie for lt site；switch_language_via_globe(): rc/re 型站點 globe icon UI 切語系（i18n 測試共用）
-utils/dialog_helper.py       — helpers: dismiss server error popups, wait for loading animation；wait_login_loading(): 登入 loading 等待＋截圖（rc/rd/re LoginPage 共用）；clear_stuck_leave_overlay_if_present(): 清卡死的 Vue fade-leave 全屏遮罩（ks/rd dev bug 家族）
+utils/dialog_helper.py       — helpers: dismiss server error popups, wait for loading animation；wait_login_loading(): 登入 loading 等待＋截圖（rc/rd/re LoginPage 共用）；clear_stuck_leave_overlay_if_present(): 清卡死的 Vue fade-leave 全屏遮罩（rd dev bug 家族）
 utils/screenshot_helper.py   — element-highlight screenshot system, auto README.md generation; 圈選判定（scroll+bbox+視窗交集判 highlighted/reason/multi_match/oversize，寫 steps.json + README badge + PNG「未圈選」橫幅 + session _highlight_audit）+ written 缺圖自動回報（_write_screenshot 逾時 retry，未寫出標 ⚠️ 並列入 _highlight_audit）
 utils/totp_helper.py         — get_totp_code(): pyotp TOTP 產碼 + 30s 窗口過期緩衝（後台 2FA，首用於 lu dashboard）
-utils/game_launch_helper.py  — 遊戲啟動偵測共用 helper：new tab / provider 轉址判斷（lg/lu/ks 型）+ get_game_frame() 同分頁 canvas iframe 等待（rc/rd/re 型）+ site_base_domain() 站點可註冊網域推導（斷言不硬編 domain）
+utils/game_launch_helper.py  — 遊戲啟動偵測共用 helper：new tab / provider 轉址判斷（lg/lu 型）+ get_game_frame() 同分頁 canvas iframe 等待（rc/rd/re 型）+ site_base_domain() 站點可註冊網域推導（斷言不硬編 domain）
 utils/layout_fingerprint.py  — 多語系版面健康度 DOM 指紋 + overflow 偵測（locale_layout / visual 用）
 utils/visual_helpers.py      — VR 共用邏輯：save_vr_screenshot() / screenshot_with_mask()（詳見 Visual Regression 段）
 utils/window_helper.py       — 另開分頁（遊戲 launch new tab）後 CDP 最大化視窗
 utils/wait_helpers.py        — 可判定等待 helper：wait_for_text_matches()（等元素文字符合 pattern）/ wait_for_nonempty_text()（\S 特例）；讀值前取代散落硬等，用於 rf/rc/re/lt/rd dashboard 餘額讀取
 utils/api_helpers.py         — API 測試共用邏輯（純函式）：api_base_url_for / api_headers_for / login_for_token；各站 tests/api/<id>/conftest.py 的 fixture 仍 per-site（session 快取跨站隔離），只 body 呼叫這些函式
-utils/home_reset.py          — go_home 共用邏輯：reset_home_with_dismissers（rc/re/rd 型）/ reset_home_with_home_popups（qw/lg/lu/ks/rf 型）；各站 conftest go_home fixture body 呼叫
+utils/home_reset.py          — go_home 共用邏輯：reset_home_with_dismissers（rc/re/rd 型）/ reset_home_with_home_popups（qw/lg/lu/rf 型）；各站 conftest go_home fixture body 呼叫
 utils/dashboard_helpers.py   — 後台 login fixture 共用 generator dashboard_login_session（建 context 複用 _new_configured_page + factory 登入 + 可選 screenshotter + totp sentinel）；各站 dashboard conftest login fixture 用 yield from（fixture 仍 per-site 避免 session 快取跨站污染）；sidebar_menu_tree()：側欄選單樹 dump（入口檢測用；等 href 非同步掛載後一次 evaluate，回傳 [(parent route id, [子入口 href]), ...]）；sidebar_menu_tree_texts()：LU 型文字版（現金版葉節點無 href/id/class，子入口以顯示文字識別、頂層仍用 route id）
 .github/scripts/aggregate_test_results.py  — 跨站 JUnit 聚合成績單（含 🔁 flaky 欄，讀 <site>-flaky.json sidecar；p0/full-regression 的 aggregate-summary job 共用）
 .github/scripts/audit_highlights.py        — 離線重掃截圖圈選稽核（讀 steps.json 重建 _highlight_audit.md/.json，--fail-threshold 供 CI 門檻；與 write_highlight_audit 共用 _render_audit）
@@ -174,7 +173,7 @@ dev-notes/                   — personal developer notes (gitignored except REA
 - `auto_screenshot` (autouse) — attaches `ScreenshotHelper` to page（涵蓋 `page` / `class_logged_in_page` / `dashboard_page` / `master_dashboard_page` / `agent_dashboard_page`）; auto-categorizes tests into `smoke/` or `feature/` subfolder; generates `screenshots/<site_id>/<timestamp>/<category>/<test_name>/README.md` after each test
 - `auto_logout_after_test` (autouse) — logs out after each smoke test (`page` fixture only)
 
-**Markers** (pytest.ini): `p0`, `p1`, `p2`, `login`, `home`, `member`, `wallet`, `i18n`, `language`, `copy`, `visual`, `visual_regression`, `locale_layout`, `docker_only`, `api`, `dashboard`, `game`, `flaky`, `no_toast_observer`, `lt`, `rc`, `re`, `rd`, `qw`, `lg`, `lu`, `ks`, `rf`
+**Markers** (pytest.ini): `p0`, `p1`, `p2`, `login`, `home`, `member`, `wallet`, `i18n`, `language`, `copy`, `visual`, `visual_regression`, `locale_layout`, `docker_only`, `api`, `dashboard`, `game`, `flaky`, `no_toast_observer`, `lt`, `rc`, `re`, `rd`, `qw`, `lg`, `lu`, `rf`
 
 ## Multi-site Factory Pattern
 
@@ -261,9 +260,9 @@ This repo has **two distinct documentation folders** with different purposes and
 
 若某份 `dev-notes/` 的筆記後來成熟並獲得團隊共識，請**升級**移到 `docs/` 並調整內容為正式文件。反之，若 `docs/` 中某份文件變成僅個人觀點的 WIP 清單，應移到 `dev-notes/`。
 
-## Visual Regression (lt / rc / qw / re / rd / lg / lu / ks / rf)
+## Visual Regression (lt / rc / qw / re / rd / lg / lu / rf)
 
-LT、RC、QW、RE、RD、LG、LU、KS、RF 皆採用 **reference screenshot** 策略：存檔供人工確認，不做 pixel 比對（跨環境解析度不穩定）。
+LT、RC、QW、RE、RD、LG、LU、RF 皆採用 **reference screenshot** 策略：存檔供人工確認，不做 pixel 比對（跨環境解析度不穩定）。
 
 ```bash
 # VR reference 截圖（輸出至 screenshots/<site_id>/vr_reference/）
@@ -274,7 +273,6 @@ LT、RC、QW、RE、RD、LG、LU、KS、RF 皆採用 **reference screenshot** �
 .venv/bin/pytest tests/rd/feature/visual/test_visual_regression.py -m visual_regression
 .venv/bin/pytest tests/lg/feature/visual/test_visual_regression.py -m visual_regression
 .venv/bin/pytest tests/lu/feature/visual/test_visual_regression.py -m visual_regression
-.venv/bin/pytest tests/ks/feature/visual/test_visual_regression.py -m visual_regression
 .venv/bin/pytest tests/rf/feature/visual/test_visual_regression.py -m visual_regression
 
 # DOM 層視覺健康度（非截圖）

@@ -128,26 +128,27 @@ class TestI18NHome:
 
 ---
 
-## 現況盤點（2026-07-24）
+## 現況盤點（2026-08-05）
 
-涵蓋 **9 個前台站**（RC / LT / RE / RD / QW / LG / LU / KS / RF）+ 9 站 API + 後台 dashboard 層。
+涵蓋 **8 個前台站**（RC / LT / RE / RD / QW / LG / LU / RF）+ API + 後台 dashboard 層。
 數量為 `pytest --collect-only` collected 數（**含 skip**，會隨 parametrize 展開）：
 
 | 站點 | 前台 UI | API | 後台 | 小計 |
 |------|--------|-----|------|------|
-| RC   | 63     | 11  | 2    | 76   |
-| LT   | 112    | 14  | 2    | 128  |
-| RE   | 63     | 11  | 2    | 76   |
-| RD   | 58     | 11  | 2    | 71   |
-| QW   | 48     | 11  | 6    | 65   |
-| LG   | 44     | 11  | 6    | 61   |
-| LU   | 43     | 11  | 12   | 66   |
-| KS   | 43     | 11  | 6    | 60   |
-| RF   | 48     | 11  | 13   | 72   |
-| **合計** | **522** | **102** | **51** | **675** |
+| RC   | 63     | 11  | 4    | 78   |
+| LT   | 112    | 14  | 4    | 130  |
+| RE   | 63     | 11  | 4    | 78   |
+| RD   | 58     | 11  | 4    | 73   |
+| QW   | 48     | 11  | 7    | 66   |
+| LG   | 44     | 11  | 8    | 63   |
+| LU   | 43     | 11  | 13   | 67   |
+| RF   | 48     | 11  | 15   | 74   |
+| **合計** | **479** | **91** | **59** | **629** |
 
-- **testcase 數量級拉平（2026-07-22 收官）**：後進 Nuxt 站（QW 48 / LG 44 / LU 43 / KS 43 / RF 48）已補齊至與 RC 系（58~63）同量級。
-- **後台覆蓋**：信用版 RC / RE / LT / RD 為總代→代理 / 站長→會員 top_up；現金版 LU / LG / KS / QW 站長主錢包 top_up（含 TOTP 2FA）+ 代理 read-only smoke；RF 信用版站長 + 代理 top_up。詳見 `docs/dashboard-technical-notes.md`。
+> **KS 已於 2026-07 永久退役**（站點下架）。2026-08-05 將其 POM / 測試 / registry / marker / secrets 自 HEAD 全數移除，歷史程式碼見 git 歷史。退役前為 UI 43 / API 11 / 後台 6。
+
+- **testcase 數量級拉平（2026-07-22 收官）**：後進 Nuxt 站（QW 48 / LG 44 / LU 43 / RF 48）已補齊至與 RC 系（58~63）同量級。
+- **後台覆蓋**：信用版 RC / RE / LT / RD 為總代→代理 / 站長→會員 top_up；現金版 LU / LG / QW 站長主錢包 top_up（含 TOTP 2FA）+ 代理 read-only smoke；RF 信用版站長 + 代理 top_up。詳見 `docs/dashboard-technical-notes.md`。
 - **API**：9 站結構齊備，各站 11 case（LT 14）。
 
 執行時間（量級參考；實際以 CI artifact 為準）：

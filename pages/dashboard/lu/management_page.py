@@ -190,8 +190,9 @@ class ManagementPage:
     def _wallet_amount_locator(self, username: str):
         """主錢包金額元素 = 該會員列中「含 Game wallet 按鈕的 td」內的 div.bold。
 
-        用內容定位而非欄位 index：KS 後台 Main wallet 在 td index 4、LU/LG/QW 在 5，
-        且 KS tbody/thead 欄位未對齊（Convenience Store 的 Create cell 會誤命中固定 index）。
+        用內容定位而非欄位 index：各站 Main wallet 的 td index 不一致（LU/LG/QW 在 5，
+        已退役的 KS 在 4，且其 tbody/thead 欄位未對齊，Convenience Store 的 Create
+        cell 會誤命中固定 index）。內容定位對後續新站的欄位差異同樣免疫，故保留。
         含「Game wallet」按鈕的 cell 是跨站一致的主錢包欄特徵（與旁邊 Send points 同組）。
         （英文後台文案；與既有 get_by_role button "Search"/"Login" 一致採英文定位。）
         """

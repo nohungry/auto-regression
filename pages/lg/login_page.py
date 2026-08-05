@@ -78,7 +78,7 @@ class LoginPage:
 
         Nuxt hydration race + dev 過載：CTA 為 SSR 渲染（goto 已等到 visible），
         但 Vue @click handler 可能尚未綁定，dispatch_event 點了無效、modal 不開。
-        重試點擊直到 modal input 出現（仿 KS / RD open_login_form）。
+        重試點擊直到 modal input 出現（仿 RD open_login_form）。
         """
         sh = get_screenshotter(self.page)
         self.login_cta.scroll_into_view_if_needed()

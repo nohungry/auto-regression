@@ -1,4 +1,4 @@
-name: Full Regression (9 sites)
+name: Full Regression (8 sites)
 
 # 觸發條件：
 # - 每週一 08:00 台灣（= 00:00 UTC Monday）跑完整 regression，週末產品變動週一上班看得到
@@ -28,7 +28,7 @@ jobs:
       # 任一 site fail 不取消其他 site，讓所有結果可見
       fail-fast: false
       matrix:
-        site: [rc, lt, re, rd, qw, lg, lu, ks, rf]
+        site: [rc, lt, re, rd, qw, lg, lu, rf]
 
     # 同 site 帳號不能並行（會互踢 session）；與 p0.yml 共用同一個 lock group → 若同時 PR 跑與
     # cron 跑撞在一起，後者會等前者完成（避免帳號互踢）
@@ -79,9 +79,6 @@ jobs:
           SITE_LU_URL: ${{ secrets.SITE_LU_URL }}
           SITE_LU_USERNAME: ${{ secrets.SITE_LU_USERNAME }}
           SITE_LU_PASSWORD: ${{ secrets.SITE_LU_PASSWORD }}
-          SITE_KS_URL: ${{ secrets.SITE_KS_URL }}
-          SITE_KS_USERNAME: ${{ secrets.SITE_KS_USERNAME }}
-          SITE_KS_PASSWORD: ${{ secrets.SITE_KS_PASSWORD }}
           SITE_RF_URL: ${{ secrets.SITE_RF_URL }}
           SITE_RF_USERNAME: ${{ secrets.SITE_RF_USERNAME }}
           SITE_RF_PASSWORD: ${{ secrets.SITE_RF_PASSWORD }}
@@ -131,7 +128,7 @@ jobs:
           retention-days: 14
 
   # 跨站聚合成績單：所有 site job 跑完後（含失敗）downloads 全部 junit XML，
-  # 產出單一跨站總覽表 + 失敗清單，寫到本 run 的總 Step Summary（一眼看完 9 站）
+  # 產出單一跨站總覽表 + 失敗清單，寫到本 run 的總 Step Summary（一眼看完 8 站）
   aggregate-summary:
     name: Aggregate cross-site summary
     runs-on: ubuntu-latest
@@ -152,7 +149,7 @@ jobs:
         run: |
           python .github/scripts/aggregate_test_results.py \
             --junit-dir junit \
-            --title "Full Regression (9 sites)" \
+            --title "Full Regression (8 sites)" \
             --slack-file slack_summary.txt >> "$GITHUB_STEP_SUMMARY"
 
       # Slack 通知：排程（每週一 08:00）不論成敗都推摘要當每週報；其他觸發（手動/push）僅失敗才推。
