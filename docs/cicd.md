@@ -4,8 +4,8 @@ GitHub Actions 自動跑這個 repo 的測試。當前 3 個 workflow：
 
 | Workflow | 觸發 | 跑什麼 | 預估時長 |
 |---|---|---|---|
-| `p0.yml` | PR（**draft 不跑**，轉 ready 才跑）/ push to main / daily cron / 手動 | 9 站 P0 smoke matrix（rc/lt/re/rd/qw/lg/lu/ks/rf） | ~3 分（9 job 並行） |
-| `full-regression.yml` | weekly cron（週一） / 手動 | 9 站全套（P0 + feature） | ~17 分（9 job 並行） |
+| `p0.yml` | PR（**draft 不跑**，轉 ready 才跑）/ push to main / daily cron / 手動 | 8 站 P0 smoke matrix（rc/lt/re/rd/qw/lg/lu/rf） | ~3 分（8 job 並行） |
+| `full-regression.yml` | weekly cron（週一） / 手動 | 8 站全套（P0 + feature） | ~17 分（8 job 並行） |
 | `docs-sync-check.yml` | PR | code 變動是否同步 docs + `requirements.txt` 與 `uv.lock` export 同步 | < 30 秒 |
 
 ## Cron 時段（台灣時區）
@@ -19,7 +19,7 @@ GitHub Actions 自動跑這個 repo 的測試。當前 3 個 workflow：
 
 ## Secrets 清單
 
-`https://github.com/<owner>/<repo>/settings/secrets/actions` 設定，共 27 個：
+`https://github.com/<owner>/<repo>/settings/secrets/actions` 設定，CI 實際使用 24 個（8 站 × 3）：
 
 | Site | Secrets |
 |---|---|
@@ -30,8 +30,9 @@ GitHub Actions 自動跑這個 repo 的測試。當前 3 個 workflow：
 | QW | `SITE_QW_URL` / `SITE_QW_USERNAME` / `SITE_QW_PASSWORD` |
 | LG | `SITE_LG_URL` / `SITE_LG_USERNAME` / `SITE_LG_PASSWORD` |
 | LU | `SITE_LU_URL` / `SITE_LU_USERNAME` / `SITE_LU_PASSWORD` |
-| KS | `SITE_KS_URL` / `SITE_KS_USERNAME` / `SITE_KS_PASSWORD` |
 | RF | `SITE_RF_URL` / `SITE_RF_USERNAME` / `SITE_RF_PASSWORD` |
+
+> **已退役站點**：KS 於 2026-07 永久下架。2026-08-05 已完成清理——移出兩個 workflow 的 matrix 與 env、刪除 POM / 測試 / registry / marker，`SITE_KS_URL` / `SITE_KS_USERNAME` / `SITE_KS_PASSWORD` 三個 GitHub secret 亦已刪除。歷史程式碼見 git 歷史。
 
 **可選 secret**：`SLACK_WEBHOOK` — Slack Incoming Webhook URL。設了之後自動推通知到該頻道（含 run 連結 + 跨站聚合摘要）：
 - **排程跑（不論成敗都推，當定時報）**：P0 daily（每日 09:00）→ **每日報**；full-regression weekly（每週一 08:00）→ **每週報**。
@@ -44,7 +45,7 @@ GitHub Actions 自動跑這個 repo 的測試。當前 3 個 workflow：
 ### 用 `gh` CLI 從本機 .env 一次設好
 
 ```bash
-for site in RC LT RE RD QW LG LU KS RF; do
+for site in RC LT RE RD QW LG LU RF; do
   for k in URL USERNAME PASSWORD; do
     grep "^SITE_${site}_${k}=" .env | cut -d= -f2- | gh secret set "SITE_${site}_${k}"
   done
@@ -61,7 +62,7 @@ done
 | `full-regression-${{ github.ref }}` | 同 ref 重複手動觸發取消上一次 |
 | `<site>-account` | 同 site 帳號不能並行（避免互踢 session）；p0.yml + full-regression.yml 共用同 group |
 
-不同 site 不同帳號 → matrix 9 job 可並行。
+不同 site 不同帳號 → matrix 8 job 可並行。
 
 ## 看 workflow run
 
@@ -70,9 +71,9 @@ done
 run 頁面看得到：
 - 各 job ✅/❌
 - 每 step 完整 log
-- **跨站聚合成績單**（👉 一眼看完全站，建議優先看）：`aggregate-summary` job 在所有 site 跑完後，把 9 站 JUnit 聚合成**單一總覽表**（`Site | Passed | Failed | Error | Skipped | 🔁 Flaky | Duration` + 合計）+ **失敗測試總清單（按站分組）** + **🔁 Flaky 清單（重跑後才通過，按站分組）**，寫到該 run 的總 Step Summary。不用逐一點 9 個 site 的 Job Summary。
+- **跨站聚合成績單**（👉 一眼看完全站，建議優先看）：`aggregate-summary` job 在所有 site 跑完後，把 8 站 JUnit 聚合成**單一總覽表**（`Site | Passed | Failed | Error | Skipped | 🔁 Flaky | Duration` + 合計）+ **失敗測試總清單（按站分組）** + **🔁 Flaky 清單（重跑後才通過，按站分組）**，寫到該 run 的總 Step Summary。不用逐一點 8 個 site 的 Job Summary。
   - 機制：各 site job upload `junit-<site>` artifact（含 `junit/<site>.xml` + `junit/<site>-flaky.json` flaky sidecar）→ `aggregate-summary` job（`needs` matrix、`if: always()`）download 全部 → 跑 `.github/scripts/aggregate_test_results.py` 寫 `$GITHUB_STEP_SUMMARY`。
-  - 全綠時顯示「✅ 全 9 站全數通過 🎉」；有失敗時列出哪站哪些 test。
+  - 全綠時顯示「✅ 全 8 站全數通過 🎉」；有失敗時列出哪站哪些 test。
   - **🔁 Flaky 欄／清單**：CI 用 `--reruns 1`，`conftest.py` 的 `pytest_runtest_logreport`/`pytest_sessionfinish` hook 把「**重跑後才通過**」的 test（＝本次 flaky，綠燈但值得追）寫成 `junit/<site>-flaky.json` sidecar，聚合後顯示。真失敗（重跑仍 fail）不算 flaky、照常計入 Failed。
 - **各站 Job Summary**：個別 site 的 pytest 結果 markdown 表格（pass/fail/skip + 失敗 test 名單），看單站細節用。
 - **Artifacts**（頁面最下方）：
@@ -111,7 +112,7 @@ CI=true .venv/bin/pytest tests/rc/test_p0_smoke.py
 | 某 step fail | 點 step 看 log；常見：`Run <site> P0 smoke` 內可見 pytest output / traceback |
 | Test fail 但本機過 | 下載 `failure-screenshots-<site>.zip`，看 README.md 與紅框截圖比對本機行為 |
 | Workflow 沒觸發 | 確認 trigger 規則（如 `pull_request: branches: [main]` 只認對 main 的 PR） |
-| **Draft PR 沒跑 p0** | **by design**：draft = 施工中訊號（雙人協作協定），不跑 9 站 smoke 以免佔用共用測試帳號與本地 CDP 互踢；PR 轉 ready for review 即觸發 |
+| **Draft PR 沒跑 p0** | **by design**：draft = 施工中訊號（雙人協作協定），不跑 8 站 smoke 以免佔用共用測試帳號與本地 CDP 互踢；PR 轉 ready for review 即觸發 |
 | Cron 沒跑 | GitHub 負載高時可能 skip；隔天看 / 改 cron 加多個時段 |
 | Secret 缺 | `gh secret list` 確認；或 step log 會出現 `SITE_X_PASSWORD: ${{ secrets.SITE_X_PASSWORD }}` 變空字串 → 測試 fail 在 login |
 

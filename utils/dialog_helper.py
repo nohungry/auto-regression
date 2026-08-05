@@ -3,7 +3,7 @@
 - dismiss_server_error_if_present：關閉伺服器錯誤彈窗
 - wait_loading_if_present：等待 loading 狗動畫消失
 - wait_login_loading：登入流程 loading 等待＋步驟截圖（RC/RD/RE LoginPage 共用）
-- clear_stuck_leave_overlay_if_present：清卡死的 Vue 離場動畫全屏遮罩（KS/RD dev bug 家族）
+- clear_stuck_leave_overlay_if_present：清卡死的 Vue 離場動畫全屏遮罩（RD dev bug 家族）
 """
 
 from playwright.sync_api import Page, TimeoutError as PlaywrightTimeoutError
@@ -193,8 +193,8 @@ def clear_stuck_leave_overlay_if_present(page: Page, settle_timeout: int = 3000)
     """
     清掉卡死的 Vue 離場動畫全屏遮罩（.fade-leave-active）。
 
-    dev 環境偶發 Vue Transition 離場後元素不從 DOM 移除（KS 2026-06 首見、
-    RD 2026-07-21 於導覽點擊重現）：彈窗本身已正常關閉，但殘留的 fixed 全屏
+    dev 環境偶發 Vue Transition 離場後元素不從 DOM 移除（2026-06 首見於已退役的
+    KS、RD 2026-07-21 於導覽點擊重現）：彈窗本身已正常關閉，但殘留的 fixed 全屏
     遮罩持續攔截 pointer events，後續 click 以 "subtree intercepts pointer
     events" timeout。此處僅隱藏殘留遮罩，非掩蓋產品彈窗邏輯。
 

@@ -1,8 +1,8 @@
-"""遊戲 launch 斷言輔助（新分頁型 LG/LU/KS + 同分頁 iframe 型 RC/RD/RE 共用）。
+"""遊戲 launch 斷言輔助（新分頁型 LG/LU + 同分頁 iframe 型 RC/RD/RE 共用）。
 
-三站點遊戲卡 → window.open 另開新分頁 → `<site>/launchLoading` →（後端簽發 token）→
-轉址至**第三方 provider** 遊戲（LG=ugsdev gamelauncher / LU=royalgaming777 EnterGame2 /
-KS=kplay playGame.do）。遊戲為真錢、外部 provider、新分頁，**不做 spin**；
+新分頁型站點遊戲卡 → window.open 另開新分頁 → `<site>/launchLoading` →（後端簽發 token）→
+轉址至**第三方 provider** 遊戲（LG=ugsdev gamelauncher / LU=royalgaming777 EnterGame2）。
+遊戲為真錢、外部 provider、新分頁，**不做 spin**；
 測試只驗「launch pipeline 成功」= 新分頁成功轉址離開本站，落到外部 provider host。
 """
 
@@ -79,11 +79,11 @@ def launch_first_healthy_game(
 ):
     """逐張嘗試啟動遊戲，回傳第一款「轉址到外部 provider 且非錯誤頁」的 (index, url, host)。
 
-    為何要 retry：部分 provider 遊戲在 staging 啟動失敗（如 KS 前兩款 Pragmatic
-    playGame.do 落到錯誤頁），故跳過壞掉的、取第一款乾淨載入的，使測試驗證的是
-    「launch pipeline 確實能把玩家帶進可運作的遊戲」，而非僅僅轉址成功。
+    為何要 retry：部分 provider 遊戲在 staging 啟動失敗（歷史案例：已退役的 KS
+    前兩款 Pragmatic playGame.do 落到錯誤頁），故跳過壞掉的、取第一款乾淨載入的，
+    使測試驗證的是「launch pipeline 確實能把玩家帶進可運作的遊戲」，而非僅僅轉址成功。
 
-    `home` 須提供 open_slots_category() / launch_game(index)（LG/LU/KS HomePage 皆有）。
+    `home` 須提供 open_slots_category() / launch_game(index)（LG/LU HomePage 皆有）。
     前 max_tries 款皆失敗（卡 launchLoading / 錯誤頁）→ raise AssertionError，
     視為疑似 provider regression（[[regression-notify-before-fix]]），不掩蓋。
     """

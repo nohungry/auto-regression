@@ -10,8 +10,8 @@ RF-TC-C01 ~ RF-TC-C03
 只驗未登入公開頁可見的文案；語言切換後的文案變化見 tests/rf/feature/i18n/。
 
 probe 2026-06-17：
-- title = "金爺娛樂城"（無 slogan suffix，不同於 lg/ks 的「- 領先的在線娛樂遊戲體驗」格式）
-- nav 繁中：[首頁, 真人, 電子, 捕魚]（4 個，較 lg/ks 精簡）
+- title = "金爺娛樂城"（無 slogan suffix，不同於 lg 的「- 領先的在線娛樂遊戲體驗」格式）
+- nav 繁中：[首頁, 真人, 電子, 捕魚]（4 個，較 lg 精簡）
 - meta description 含「金爺娛樂城提供全面的在線娛樂體驗…」品牌描述
 """
 

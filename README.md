@@ -15,10 +15,9 @@
 | `qw` | 見 .env `SITE_QW_URL` | 48 |
 | `lg` | 見 .env `SITE_LG_URL` | 44 |
 | `lu` | 見 .env `SITE_LU_URL` | 43 |
-| `ks` | 見 .env `SITE_KS_URL` | 43 |
 | `rf` | 見 .env `SITE_RF_URL` | 48 |
-| API | (9 站，不啟動瀏覽器) | 102 |
-| Dashboard | (9 站後台) | 51 |
+| API | (8 站，不啟動瀏覽器) | 91 |
+| Dashboard | (8 站後台) | 59 |
 
 > 測試數以 `.venv/bin/pytest tests/<site>/ --collect-only -q` 為準，會隨新增測試變動。
 
@@ -29,17 +28,17 @@ conftest.py                          — 全域 fixtures、環境偵測（Window
 config/settings.py                   — 多站台 SiteConfig，從 .env 讀取
 pages/factory.py                     — 前台：site_id → LoginPage/HomePage 路由（registry dict）
 pages/dashboard/factory.py           — 後台：site_id → DashboardLoginPage/ManagementPage 路由
-pages/<site_id>/                     — 各站前台 Page Objects（rc/lt/re/rd/qw/lg/lu/ks/rf 共 9 站）
-pages/dashboard/<site_id>/           — 各站後台 Page Objects（9 站）
-tests/<site_id>/                     — 各站前台測試（rc/lt/re/rd/qw/lg/lu/ks/rf；含 test_p0_smoke.py + feature/）
-tests/api/<site_id>/                 — API 層測試（9 站，不啟動瀏覽器，requests 直打 API）
-tests/dashboard/<site_id>/           — 後台管理介面測試（9 站）
+pages/<site_id>/                     — 各站前台 Page Objects（rc/lt/re/rd/qw/lg/lu/rf 共 8 站）
+pages/dashboard/<site_id>/           — 各站後台 Page Objects（8 站）
+tests/<site_id>/                     — 各站前台測試（rc/lt/re/rd/qw/lg/lu/rf；含 test_p0_smoke.py + feature/）
+tests/api/<site_id>/                 — API 層測試（8 站，不啟動瀏覽器，requests 直打 API）
+tests/dashboard/<site_id>/           — 後台管理介面測試（8 站）
 utils/locale_helper.py               — set_locale()：注入 `i18n_locale` cookie（LT 用）；switch_language_via_globe()：globe icon UI 切語系（RC/RE i18n 測試共用）
-utils/dialog_helper.py               — 伺服器錯誤彈窗、公告彈窗（含 MutationObserver enforce killer）、Loading 等待；wait_login_loading()：登入 loading 等待＋截圖（RC/RD/RE LoginPage 共用）；clear_stuck_leave_overlay_if_present()：清卡死的 Vue fade-leave 遮罩（KS/RD dev bug 家族）
+utils/dialog_helper.py               — 伺服器錯誤彈窗、公告彈窗（含 MutationObserver enforce killer）、Loading 等待；wait_login_loading()：登入 loading 等待＋截圖（RC/RD/RE LoginPage 共用）；clear_stuck_leave_overlay_if_present()：清卡死的 Vue fade-leave 遮罩（RD dev bug 家族）
 utils/screenshot_helper.py           — 截圖系統（元素高亮 + 自動產生繁中 README；圈選判定：scroll+bbox 判是否真圈到，寫 steps.json / README badge / PNG「未圈選」橫幅 / session _highlight_audit）+ written 缺圖自動回報（寫檔逾時 retry，未寫出標 ⚠️ 並列入稽核）
 utils/visual_helpers.py              — VR reference 截圖 + 動態元素遮蔽
 utils/totp_helper.py                 — get_totp_code()：後台 2FA TOTP 產碼（pyotp + 30s 窗口緩衝）
-utils/game_launch_helper.py          — 遊戲啟動偵測：new tab / provider 轉址判斷（LG/LU/KS 型）+ get_game_frame() 同分頁 canvas iframe 等待（RC/RD/RE 型）+ site_base_domain() 站點可註冊網域推導（斷言不硬編 domain）
+utils/game_launch_helper.py          — 遊戲啟動偵測：new tab / provider 轉址判斷（LG/LU 型）+ get_game_frame() 同分頁 canvas iframe 等待（RC/RD/RE 型）+ site_base_domain() 站點可註冊網域推導（斷言不硬編 domain）
 utils/layout_fingerprint.py          — 多語系版面健康度 DOM 指紋 + overflow 偵測
 utils/window_helper.py               — 另開分頁後 CDP 最大化視窗
 utils/wait_helpers.py                — 可判定等待（wait_for_text_matches / wait_for_nonempty_text：讀值前等文字符合/非空，取代硬等）
@@ -92,7 +91,6 @@ python -m venv .venv && .venv/bin/pip install -r requirements.txt
 .venv/bin/pytest tests/qw/                                               # qw 站
 .venv/bin/pytest tests/lg/                                               # lg 站
 .venv/bin/pytest tests/lu/                                               # lu 站
-.venv/bin/pytest tests/ks/                                               # ks 站
 .venv/bin/pytest tests/rf/                                               # rf 站
 .venv/bin/pytest tests/api/                                              # 僅 API 測試
 .venv/bin/pytest tests/dashboard/                                        # 僅後台測試
@@ -115,8 +113,8 @@ GitHub Actions 自動跑測試與 docs 同步檢查：
 
 | Workflow | 觸發 | 跑什麼 |
 |---|---|---|
-| `.github/workflows/p0.yml` | PR（draft 不跑）/ push to main / daily 09:00 台灣 / 手動 | 9 站 P0 smoke matrix（rc/lt/re/rd/qw/lg/lu/ks/rf） |
-| `.github/workflows/full-regression.yml` | 週一 08:00 台灣 / 手動 | 9 站全套（P0 + feature；不由 PR/push 觸發） |
+| `.github/workflows/p0.yml` | PR（draft 不跑）/ push to main / daily 09:00 台灣 / 手動 | 8 站 P0 smoke matrix（rc/lt/re/rd/qw/lg/lu/rf） |
+| `.github/workflows/full-regression.yml` | 週一 08:00 台灣 / 手動 | 8 站全套（P0 + feature；不由 PR/push 觸發） |
 | `.github/workflows/docs-sync-check.yml` | PR | code 變動是否同步更新 docs |
 
 p0 / full-regression 跑完都會由 `aggregate-summary` job（`.github/scripts/aggregate_test_results.py`）把各站結果聚合成跨站成績單寫進 run Step Summary（含 **🔁 Flaky 欄**＝重跑後才通過的 test，來自 `conftest.py` 產出的 `junit/<site>-flaky.json` sidecar），並可選推 Slack（設 `SLACK_WEBHOOK` secret 才推；排程必推、PR/push 失敗才推）。
@@ -171,7 +169,7 @@ ip route show | grep -i default | awk '{print $3}'   # WSL 預設 gateway = Wind
 
 ### 站台
 
-站台 marker 與站台 ID 同名：`rc` / `lt` / `re` / `rd` / `qw` / `lg` / `lu` / `ks` / `rf`。
+站台 marker 與站台 ID 同名：`rc` / `lt` / `re` / `rd` / `qw` / `lg` / `lu` / `rf`。
 
 ### 功能 / 其他
 

@@ -2,7 +2,7 @@
 """
 跨站聚合 CI 成績單：讀多份 pytest JUnit XML → 產出 markdown 總覽表 + 失敗清單。
 
-用途：CI matrix（9 站各自一份 junit/<site>.xml）跑完後，由 aggregate-summary job
+用途：CI matrix（每站各自一份 junit/<site>.xml）跑完後，由 aggregate-summary job
 呼叫本 script，把輸出 append 進 $GITHUB_STEP_SUMMARY，讓 run 頁面一眼看完全站成績。
 
 純 stdlib（xml.etree），CI 不需額外安裝。
@@ -132,7 +132,8 @@ def build_markdown(stats, title):
     elif any_fail:
         lines.append("> ⚠️ 有站別 XML 解析失敗或非測試錯誤，請查各站 job log。")
     else:
-        lines.append("### ✅ 全 9 站全數通過 🎉")
+        # 站數依實際解析到的 XML 動態帶入，站點增減不必改這裡
+        lines.append(f"### ✅ 全 {len(stats)} 站全數通過 🎉")
     lines.append("")
 
     # Flaky 清單（重跑後才通過，按站分組）— 綠燈但值得追的訊號
