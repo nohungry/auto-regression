@@ -17,10 +17,13 @@ LU 特性（與姊妹站 LG 差異大，勿照抄）：
 
 import pytest
 from playwright.sync_api import Page
-from pages.lu.login_page import LoginPage
-from pages.lu.home_page import HomePage
+from pages.factory import get_login_page_class, get_home_page_class
 from tests.lu.feature.visual.helpers import BANNER_SELECTORS
 from utils.visual_helpers import save_vr_screenshot, screenshot_with_mask
+
+
+LoginPage = get_login_page_class("lu")
+HomePage = get_home_page_class("lu")
 
 
 def _settle_home(page: Page, login: LoginPage, home: HomePage) -> None:

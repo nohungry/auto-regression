@@ -16,9 +16,12 @@ LG 特性：
 
 import pytest
 from playwright.sync_api import Page
-from pages.lg.login_page import LoginPage
+from pages.factory import get_login_page_class
 from tests.lg.feature.visual.helpers import BANNER_SELECTORS
 from utils.visual_helpers import save_vr_screenshot, screenshot_with_mask
+
+
+LoginPage = get_login_page_class("lg")
 
 
 @pytest.mark.p2

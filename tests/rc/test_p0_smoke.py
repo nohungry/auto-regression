@@ -12,9 +12,12 @@ RC P0 Smoke Test
 
 import pytest
 from playwright.sync_api import Page, expect
-from pages.rc.login_page import LoginPage
-from pages.rc.home_page import HomePage
+from pages.factory import get_login_page_class, get_home_page_class
 from utils.screenshot_helper import get_screenshotter
+
+
+LoginPage = get_login_page_class("rc")
+HomePage = get_home_page_class("rc")
 
 
 @pytest.mark.p0

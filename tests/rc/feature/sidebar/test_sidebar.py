@@ -5,9 +5,12 @@ RC 側邊欄功能測試
 
 import pytest
 from playwright.sync_api import Page, expect, TimeoutError as PlaywrightTimeoutError
-from pages.rc.login_page import LoginPage
+from pages.factory import get_login_page_class
 from utils.dialog_helper import wait_loading_if_present
 from utils.screenshot_helper import get_screenshotter
+
+
+LoginPage = get_login_page_class("rc")
 
 
 @pytest.mark.p1

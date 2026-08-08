@@ -5,8 +5,11 @@
 import re
 import pytest
 from playwright.sync_api import Page, expect
-from pages.rc.home_page import HomePage
+from pages.factory import get_home_page_class
 from utils.screenshot_helper import get_screenshotter
+
+
+HomePage = get_home_page_class("rc")
 
 
 @pytest.mark.p1

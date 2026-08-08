@@ -13,9 +13,12 @@ LU P0 Smoke Test — Dlgbet
 
 import pytest
 from playwright.sync_api import Page, expect, TimeoutError as PlaywrightTimeoutError
-from pages.lu.login_page import LoginPage
-from pages.lu.home_page import HomePage
+from pages.factory import get_login_page_class, get_home_page_class
 from utils.screenshot_helper import get_screenshotter
+
+
+LoginPage = get_login_page_class("lu")
+HomePage = get_home_page_class("lu")
 
 
 @pytest.mark.p0

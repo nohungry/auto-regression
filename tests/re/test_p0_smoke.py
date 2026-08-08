@@ -12,9 +12,12 @@ RE P0 Smoke Test (BeWin)
 
 import pytest
 from playwright.sync_api import Page, expect
-from pages.re.login_page import LoginPage
-from pages.re.home_page import HomePage
+from pages.factory import get_login_page_class, get_home_page_class
 from utils.screenshot_helper import get_screenshotter
+
+
+LoginPage = get_login_page_class("re")
+HomePage = get_home_page_class("re")
 
 
 @pytest.mark.p0
