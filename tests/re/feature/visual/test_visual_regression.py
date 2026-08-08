@@ -8,9 +8,12 @@ RE 視覺截圖存檔（p2，供人工目視確認）— BeWin
 
 import pytest
 from playwright.sync_api import Page
-from pages.re.login_page import LoginPage
+from pages.factory import get_login_page_class
 from tests.re.feature.visual.helpers import BANNER_SELECTORS
 from utils.visual_helpers import save_vr_screenshot, screenshot_with_mask
+
+
+LoginPage = get_login_page_class("re")
 
 
 @pytest.mark.p2

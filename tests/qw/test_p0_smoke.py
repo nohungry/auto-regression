@@ -11,9 +11,12 @@ QW P0 Smoke Test — LM來財娛樂城
 
 import pytest
 from playwright.sync_api import Page, expect, TimeoutError as PlaywrightTimeoutError
-from pages.qw.login_page import LoginPage
-from pages.qw.home_page import HomePage
+from pages.factory import get_login_page_class, get_home_page_class
 from utils.screenshot_helper import get_screenshotter
+
+
+LoginPage = get_login_page_class("qw")
+HomePage = get_home_page_class("qw")
 
 
 @pytest.mark.p0

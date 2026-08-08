@@ -19,9 +19,12 @@ fixture 決策（LU-VIS-006）：
 
 import pytest
 from playwright.sync_api import Page
-from pages.lu.login_page import LoginPage
-from pages.lu.home_page import HomePage
+from pages.factory import get_login_page_class, get_home_page_class
 from utils.screenshot_helper import get_screenshotter
+
+
+LoginPage = get_login_page_class("lu")
+HomePage = get_home_page_class("lu")
 
 
 @pytest.mark.p2

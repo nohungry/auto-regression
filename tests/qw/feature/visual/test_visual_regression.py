@@ -15,10 +15,13 @@ QW 特性：
 
 import pytest
 from playwright.sync_api import Page
-from pages.qw.login_page import LoginPage
-from pages.qw.home_page import HomePage
+from pages.factory import get_login_page_class, get_home_page_class
 from tests.qw.feature.visual.helpers import BANNER_SELECTORS
 from utils.visual_helpers import save_vr_screenshot, screenshot_with_mask
+
+
+LoginPage = get_login_page_class("qw")
+HomePage = get_home_page_class("qw")
 
 
 @pytest.mark.p2

@@ -5,8 +5,11 @@ RE 視覺健康度驗證 (BeWin) — DOM metrics，非截圖比對
 
 import pytest
 from playwright.sync_api import Page, expect
-from pages.re.login_page import LoginPage
+from pages.factory import get_login_page_class
 from utils.screenshot_helper import get_screenshotter
+
+
+LoginPage = get_login_page_class("re")
 
 
 @pytest.mark.p2

@@ -5,8 +5,11 @@ RE 導覽列功能測試 (BeWin)
 import re
 import pytest
 from playwright.sync_api import Page, expect
-from pages.re.home_page import HomePage
+from pages.factory import get_home_page_class
 from utils.screenshot_helper import get_screenshotter
+
+
+HomePage = get_home_page_class("re")
 
 
 @pytest.mark.p1

@@ -16,9 +16,12 @@ RF P0 Smoke Test — 金爺娛樂城（rf / drf）
 
 import pytest
 from playwright.sync_api import Page, expect
-from pages.rf.login_page import LoginPage
-from pages.rf.home_page import HomePage
+from pages.factory import get_login_page_class, get_home_page_class
 from utils.screenshot_helper import get_screenshotter
+
+
+LoginPage = get_login_page_class("rf")
+HomePage = get_home_page_class("rf")
 
 
 @pytest.mark.p0

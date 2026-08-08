@@ -15,11 +15,14 @@ RC-GAME-001
 import re
 import pytest
 from playwright.sync_api import Page, expect, TimeoutError as PlaywrightTimeoutError
-from pages.rc.login_page import LoginPage
-from pages.rc.home_page import HomePage
+from pages.factory import get_login_page_class, get_home_page_class
 from utils.dialog_helper import wait_loading_if_present
 from utils.game_launch_helper import get_game_frame
 from utils.screenshot_helper import get_screenshotter
+
+
+LoginPage = get_login_page_class("rc")
+HomePage = get_home_page_class("rc")
 
 
 # 會員帳號從 .env 的 SITE_RC_USERNAME / SITE_RC_PASSWORD 讀取（透過 site_config）

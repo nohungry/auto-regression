@@ -14,9 +14,12 @@ LG 站差異：
 
 import pytest
 from playwright.sync_api import Page
-from pages.lg.login_page import LoginPage
-from pages.lg.home_page import HomePage
+from pages.factory import get_login_page_class, get_home_page_class
 from utils.screenshot_helper import get_screenshotter
+
+
+LoginPage = get_login_page_class("lg")
+HomePage = get_home_page_class("lg")
 
 
 @pytest.mark.p2
