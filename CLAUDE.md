@@ -184,7 +184,20 @@ dev-notes/                   — personal developer notes (gitignored except REA
 - **不使用 if/else fallback 到預設站台**；未註冊的 `site_id` 必須拋 `ValueError`，訊息包含可用站台列表
 - 新增站點只需在兩個 registry 各加一行，不動 function 邏輯
 
-測試檔**禁止**直接 `from pages.<site_id>.xxx import ...`，必須透過 factory 取得 class 以維持跨站復用彈性。
+測試檔**禁止**直接 `from pages.<site_id>.xxx import ...`，必須透過 factory 取得 class 以維持跨站復用彈性。**`tests/` 樹下的非 `test_` 開頭 helper 檔（如 `tests/lt/feature/i18n/_locale_helpers.py`）同受此規範**——判準是「在 `tests/` 下且被測試 import」，不是檔名。
+
+Canonical 寫法（module-level 綁定，全 repo 一致）：
+
+```python
+from pages.factory import get_login_page_class, get_home_page_class
+
+LoginPage = get_login_page_class("rc")
+HomePage = get_home_page_class("rc")
+```
+
+賦值必須早於該檔任何 module-level 使用點（例如函式簽名的型別註記），否則 `NameError`。
+
+守門：`.github/scripts/check-factory-import.sh`（PreToolUse hook + `docs-sync-check.yml` 的 CI job 雙保險，D-023）。判定採例外法——`tests/` 內只放行 `from pages.factory import` 與 `from pages.dashboard.factory import`，其餘 `from pages.` 一律違規。Override：commit message 加 `[skip-factory-check]` 或 env `SKIP_FACTORY_CHECK=1`。
 
 ## Agent Skills
 
