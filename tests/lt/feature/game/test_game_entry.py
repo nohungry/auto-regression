@@ -15,9 +15,12 @@ LT-GAME-001
 
 import pytest
 from playwright.sync_api import Page, expect
-from pages.lt.login_page import LoginPage
-from pages.lt.home_page import HomePage
+from pages.factory import get_login_page_class, get_home_page_class
 from utils.screenshot_helper import get_screenshotter
+
+
+LoginPage = get_login_page_class("lt")
+HomePage = get_home_page_class("lt")
 
 GAME_CARD = ".grid > .relative.cursor-pointer"
 BACK_TO_LOBBY = "回到大廳"  # 遊戲 wrapper 內返回鈕（tw locale；LT i18n 目前固定繁中）

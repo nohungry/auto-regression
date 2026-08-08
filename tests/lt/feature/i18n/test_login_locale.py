@@ -16,8 +16,11 @@ Desktop 實測 i18n 覆蓋現況（2026-05-18 換版後 probe）：
 
 import pytest
 from playwright.sync_api import Page, expect
-from pages.lt.login_page import LoginPage
+from pages.factory import get_login_page_class
 from utils.screenshot_helper import get_screenshotter
+
+
+LoginPage = get_login_page_class("lt")
 
 
 # (case_id, locale, username_placeholder_keyword, password_placeholder_keyword)

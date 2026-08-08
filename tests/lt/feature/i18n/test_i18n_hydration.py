@@ -13,8 +13,11 @@ WIN-I18N-HYDR-001~003：i18n 與資源 hydrate 健康度守門（desktop 版，2
 
 import pytest
 from playwright.sync_api import Page
-from pages.lt.login_page import LoginPage
+from pages.factory import get_login_page_class
 from utils.screenshot_helper import get_screenshotter
+
+
+LoginPage = get_login_page_class("lt")
 
 # Raw i18n key 格式：前綴小寫、後續以 . 分隔任意識別字（支援 camelCase 與 _）
 # 實例：front.category_icons.lobby / front.Footer.Tab.member_center

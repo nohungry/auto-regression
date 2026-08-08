@@ -17,8 +17,11 @@ desktop 版精簡了登入/首頁，下列元素**產品端已移除**，對應�
 
 import pytest
 from playwright.sync_api import Page, expect
-from pages.lt.login_page import LoginPage
+from pages.factory import get_login_page_class
 from utils.screenshot_helper import get_screenshotter
+
+
+LoginPage = get_login_page_class("lt")
 
 
 @pytest.mark.p2

@@ -20,8 +20,11 @@ from __future__ import annotations
 
 from playwright.sync_api import Page, TimeoutError as PlaywrightTimeoutError
 
-from pages.lt.login_page import LoginPage
-from pages.lt.home_page import HomePage
+from pages.factory import get_login_page_class, get_home_page_class
+
+
+LoginPage = get_login_page_class("lt")
+HomePage = get_home_page_class("lt")
 
 
 # 語系清單（id, 中文描述）

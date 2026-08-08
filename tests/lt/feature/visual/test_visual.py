@@ -12,9 +12,12 @@ WIN-VIS-001~007
 
 import pytest
 from playwright.sync_api import Page, expect
-from pages.lt.login_page import LoginPage
+from pages.factory import get_login_page_class
 from utils.screenshot_helper import get_screenshotter
 from tests.lt.feature.visual.helpers import BANNER_SELECTORS
+
+
+LoginPage = get_login_page_class("lt")
 
 
 @pytest.mark.p2
