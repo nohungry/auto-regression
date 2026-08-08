@@ -174,7 +174,7 @@
 
 ## D-023 tests/ 直接 import 站點 POM 由 hook + CI 雙保險擋
 
-- 狀態:proposed(2026-08-08 提出,待 nohungry 拍板)
+- 狀態:accepted(2026-08-08 nohungry 拍板)
 - 決策:新增 `.github/scripts/check-factory-import.sh`,採與 `check-docs-sync.sh` 相同的雙模式骨架(PreToolUse hook 檢 staged `tests/**/*.py`;CI 模式掃 `tests/` 全樹,能抓搬檔/改名逃逸)。判定採**例外法**:掃 `tests/` 內所有 `from pages.` 行,**僅字面放行 `from pages.factory import` 與 `from pages.dashboard.factory import`**,其餘一律違規 —— 同時涵蓋前台(D-001)與後台(D-002),**不硬編站點清單**,新增站點零維護。違規:hook exit 2 block、CI job 紅。Override:commit message 含 `[skip-factory-check]`,或 env `SKIP_FACTORY_CHECK=1`。CI job 掛在既有 `.github/workflows/docs-sync-check.yml`(該 workflow 已含與 docs 無關的 `uv-requirements-sync` job,事實上已是「PR 靜態檢查集」;加新 job 不動既有 job 名,不影響任何 required check)。掃描範圍嚴格限於 `tests/**`;`pages/` 內部的跨站 re-export / subclass 是 D-020 核可設計,不在守門範圍。
 - 理由:D-001 自 2026-07 追認以來明文禁止,但 2026-08-06 實測 `tests/` 仍有 **62 行 / 42 檔**違規(8 站 `test_p0_smoke.py` 與各站 `feature/visual/*` 幾乎一律違規,lt 站幾乎整站違規),證明純靠紀律與 code review 已失效;同期 `tests/dashboard/` 因無此類歷史包袱維持 0 違規。repo 已有兩個 deterministic 守門的成功前例(`check-docs-sync.sh` D-022、`check-commit-msg.sh` D-021),同骨架擴充成本極低。一次性清理若無守門,違規會再度長回 —— 尤其 LT 換版修復預期會大規模重寫 `tests/lt/`,守門須在修復動工前就位。
 - 替代方案:只做一次性清理不加守門(不採:違規是持續回流的,這正是這次要清 62 行的原因);ruff / flake8-tidy-imports `banned-api` 規則(不採:repo 目前無 linter 依賴,D-022 剛把依賴收斂成 uv 雙軌,為單一規則引入 linter 是更大的決策;未來若引入 linter 可再議遷移);conftest 匯入期 assert(不採:只在跑測試時才發現、耗一次 collection,且會誤傷 dev-notes 下合法的一次性 probe 腳本);只掛 CI 不掛 hook(不採:與既有雙保險慣例不一致,Claude 產出的違規要在本機 commit 前就擋);站點清單從 factory registry 動態推導(不採:漏掉 `pages.dashboard.<site>` 的 D-002 型違規,且 bash 讀 python registry 多一層耦合、hook 變慢)。
@@ -182,7 +182,7 @@
 
 ## D-024 Nuxt 前台 POM 不抽共用 base;跨站共用只走 utils 純函式
 
-- 狀態:proposed(2026-08-08 提出,待 nohungry 拍板)
+- 狀態:accepted(2026-08-08 nohungry 拍板)
 - 決策:**關閉** 2026-07-21 refactor-audit 的殘項「ks/lg/lu Nuxt HomePage 共用 base」(KS 已於 2026-08-06 PR #167 永久退役,候選縮為 lg/lu)。Nuxt 家族(本 repo 指 qw/lg/lu/rf 這組**前台 POM 結構相近**的站;LT 雖亦為 Nuxt SPA 但 POM 結構自成一格,不屬此家族)的前台 HomePage / LoginPage **不建立共用 base class、不建立 mixin、不做站對站 subclass**。跨站重複只在「與站點 DOM 無關的通用行為」層抽 `utils/` 純函式:本次抽 `utils/game_launch_helper.open_in_new_tab()`(點 launcher → 等新分頁 → maximize)與新增 `utils/menu_helper.leaf_menu_texts()`(選單容器葉節點短文字抽取),兩者皆由呼叫端傳入已定位好的 locator、函式內零站點 selector。**站點導覽語意**(分類入口、nav 點擊、選單開闔、彈窗清理、登入態信號、會員連結)一律 per-site 保留。新 Nuxt 站 onboarding 沿用此邊界。
 - 理由:實測(2026-08-06 逐段 diff)只有 LG/LU 的 5 支方法 body 完全相同、差異僅 docstring,合計約 31 行;且相同的部分全是通用 Playwright 行為,不是共用 DOM 契約。qw 的 `open_slots_category` 走 intro-platform tile 且不等 grid、rf 的 `launch_game` 是同分頁路由**回傳 str 而非 Page** —— 契約本質不同,納入 base 會變成 4 站覆寫 3/5,抽象反成負擔。`pages/lu/home_page.py` 檔頭與 `tests/lu/feature/visual/test_visual_regression.py` 皆明載「與姊妹站 LG 差異大,勿照抄」,兩站相同是兩份 Nuxt 樣板偶然收斂而非共同上游(LU sidebar 2026-07-23 改版、LG nav 分類新增,兩站已各自漂移)。且 `utils/game_launch_helper.launch_first_healthy_game` 早已用 duck typing(docstring 明寫「`home` 須提供 open_slots_category / launch_game」)承擔跨站共用,再加類別階層是第二層冗餘抽象。D-020 已對規模大 9 倍的重複(RC/RE dashboard 275 行)判過「抽獨立共用 base module 不採」。
 - 替代方案:建 `NuxtHomePageBase` 涵蓋 qw/lg/lu/rf(不採,如上);LU subclass LG(不採:LG 並非事實上的 base,語意錯置;與 D-020 的「RC 即事實 base」情境不同);完全不動、只寫決策關單(不採:兩段通用邏輯抽 utils 成本極低,且讓「新分頁必須 maximize」的踩坑教訓從兩份複製註解變成單點實作)。
