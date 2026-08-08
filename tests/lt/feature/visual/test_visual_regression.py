@@ -8,9 +8,12 @@ WIN-VR-001~003
 
 import pytest
 from playwright.sync_api import Page
-from pages.lt.login_page import LoginPage
+from pages.factory import get_login_page_class
 from tests.lt.feature.visual.helpers import BANNER_SELECTORS
 from utils.visual_helpers import save_vr_screenshot, screenshot_with_mask
+
+
+LoginPage = get_login_page_class("lt")
 
 
 @pytest.mark.p2

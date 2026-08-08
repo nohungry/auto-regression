@@ -11,8 +11,11 @@ WAP 改版後的差異（見 memory: project_lt_site_redesign.md）：
 import re
 import pytest
 from playwright.sync_api import Page, expect
-from pages.lt.home_page import HomePage
+from pages.factory import get_home_page_class
 from utils.screenshot_helper import get_screenshotter
+
+
+HomePage = get_home_page_class("lt")
 
 
 @pytest.mark.p1

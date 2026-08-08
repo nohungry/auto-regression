@@ -17,9 +17,12 @@ WAP 時期同檔驗 4 元素，現縮小到 2 元素；待 sidebar items 5 語�
 
 import pytest
 from playwright.sync_api import Page, expect
-from pages.lt.home_page import HomePage
+from pages.factory import get_home_page_class
 from utils.locale_helper import set_locale
 from utils.screenshot_helper import get_screenshotter
+
+
+HomePage = get_home_page_class("lt")
 
 
 # (case_id, locale, maintenance, logout)

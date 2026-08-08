@@ -19,8 +19,11 @@ import pytest
 from pathlib import Path
 from playwright.sync_api import Page
 
-from pages.lt.login_page import LoginPage
+from pages.factory import get_login_page_class
 from utils.layout_fingerprint import assert_fingerprint
+
+
+LoginPage = get_login_page_class("lt")
 
 from ._locale_helpers import (
     LOCALES,

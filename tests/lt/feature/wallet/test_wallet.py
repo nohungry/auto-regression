@@ -14,8 +14,11 @@ LT 為**信用板**站點（credit-based），前台**沒有存款流程**：
 
 import pytest
 from playwright.sync_api import Page, expect
-from pages.lt.home_page import HomePage
+from pages.factory import get_home_page_class
 from utils.screenshot_helper import get_screenshotter
+
+
+HomePage = get_home_page_class("lt")
 
 
 @pytest.mark.p1

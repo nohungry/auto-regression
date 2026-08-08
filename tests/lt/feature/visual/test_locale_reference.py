@@ -14,8 +14,11 @@ import os
 import pytest
 from playwright.sync_api import Page
 
-from pages.lt.login_page import LoginPage
+from pages.factory import get_login_page_class
 from utils.screenshot_helper import get_screenshotter
+
+
+LoginPage = get_login_page_class("lt")
 
 from tests.lt.feature.i18n._locale_helpers import (
     LOCALES,
