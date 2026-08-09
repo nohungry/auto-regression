@@ -48,7 +48,7 @@ GitHub Actions 自動跑測試：
 - `full-regression.yml`：每週一 08:00 台灣 / 手動 → 8 站全套（P0 + feature）
 
 > **KS（Super9娛樂城）已於 2026-07 永久退役**：站點下架，POM / 測試 / registry / marker / secrets 全數移除（本 repo 2026-08-05 清理）。歷史程式碼見 git 歷史（`git show 84bff6b:tests/ks/test_p0_smoke.py`）。
-- `docs-sync-check.yml`：PR 時檢查 code 變動是否有對應 .md 更新（hook 機制 + CI 雙保險）；另含 `uv-requirements-sync` job 驗 `requirements.txt` 與 `uv.lock` export 同步（`uv export --frozen` diff，不同步則紅）
+- `docs-sync-check.yml`（PR 靜態檢查集，三個 job）：`docs-sync-check` 驗 code 變動是否有對應 .md 更新（hook 機制 + CI 雙保險）；`factory-import-check` 驗 `tests/` 是否全走 factory（D-023，掃全樹）；`uv-requirements-sync` 驗 `requirements.txt` 與 `uv.lock` export 同步（`uv export --frozen` diff，不同步則紅）
 
 **觀測性**：`p0.yml` 與 `full-regression.yml` 跑完後都有 `aggregate-summary` job — `.github/scripts/aggregate_test_results.py` 解析各站 JUnit XML 聚合成跨站成績單（含 **🔁 Flaky 欄／清單**＝重跑後才通過的 test，資料來自 `conftest.py` sessionfinish hook 產出的 `junit/<site>-flaky.json` sidecar；寫進 run 的 Step Summary），並可選推 Slack 通知（設了 `SLACK_WEBHOOK` secret 才推；排程一定推、PR/push 則失敗才推）。
 
@@ -64,6 +64,17 @@ GitHub Actions 自動跑測試：
 確認**不**需要更新時的 override：
 - commit message 加 sentinel `[skip-docs-check]` 並附理由
 - 或設 env var `SKIP_DOCS_CHECK=1`
+
+## Factory import guard（hook + CI 雙保險）
+
+同款雙保險守 D-001 / D-002：`tests/` 內禁止直接 import 站點 POM（見 Multi-site Factory Pattern 段）。
+
+- **Hook**（`.claude/settings.json` + `.github/scripts/check-factory-import.sh`）：`git commit` 前檢 staged 的 `tests/**/*.py`，違規 block
+- **CI**（`docs-sync-check.yml` 的 `factory-import-check` job）：掃 `tests/` **全樹**（非 diff，可抓搬檔／改名逃逸），違規 → PR check 紅
+
+判定採**例外法**：只放行 `from pages.factory import` 與 `from pages.dashboard.factory import`，其餘 `from pages.` 一律違規 —— 不硬編站點清單，新增站點零維護。
+
+Override：commit message 加 `[skip-factory-check]` 並附理由，或設 env var `SKIP_FACTORY_CHECK=1`。
 
 ## 文檔維護對照表（code 變動 → 要同步的 doc）
 

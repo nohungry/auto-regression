@@ -29,6 +29,20 @@ jobs:
           # PR base commit SHA（GitHub Actions context 內建）
           bash .github/scripts/check-docs-sync.sh ${{ github.event.pull_request.base.sha }}
 
+  factory-import-check:
+    name: Factory import guard
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Verify tests/ route POM imports through factory
+        run: |
+          # CI 模式（傳 arg）掃 tests/ 全樹，非 diff —— 可抓搬檔/改名逃逸（D-023）
+          bash .github/scripts/check-factory-import.sh ci
+
   uv-requirements-sync:
     name: uv requirements export sync
     runs-on: ubuntu-latest

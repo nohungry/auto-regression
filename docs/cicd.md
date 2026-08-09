@@ -6,7 +6,7 @@ GitHub Actions 自動跑這個 repo 的測試。當前 3 個 workflow：
 |---|---|---|---|
 | `p0.yml` | PR（**draft 不跑**，轉 ready 才跑）/ push to main / daily cron / 手動 | 8 站 P0 smoke matrix（rc/lt/re/rd/qw/lg/lu/rf） | ~3 分（8 job 並行） |
 | `full-regression.yml` | weekly cron（週一） / 手動 | 8 站全套（P0 + feature） | ~17 分（8 job 並行） |
-| `docs-sync-check.yml` | PR | code 變動是否同步 docs + `requirements.txt` 與 `uv.lock` export 同步 | < 30 秒 |
+| `docs-sync-check.yml` | PR | PR 靜態檢查集（三 job）：code 變動是否同步 docs + `tests/` factory import 守門 + `requirements.txt` 與 `uv.lock` export 同步 | < 30 秒 |
 
 ## Cron 時段（台灣時區）
 
@@ -150,6 +150,50 @@ tests/*/conftest.py
 
 ```bash
 git commit -m "fix(test): typo in test docstring [skip-docs-check] 純註解錯字無需動 docs"
+```
+
+## Factory import guard（D-001 / D-002 守門）
+
+`tests/` 內禁止直接 import 站點 POM，必須走 factory（`docs/decisions.md` D-001 前台 / D-002 後台，守門機制本身為 D-023）。2026-08 清理時實測仍有 62 行 / 42 檔違規，證明純靠紀律與 code review 已失效。
+
+### 機制
+
+- **Hook**（`.claude/settings.json` + `.github/scripts/check-factory-import.sh`）：`git commit` 前檢 `git diff --cached` 的 `tests/**/*.py`，違規 exit 2 block
+- **CI**（`docs-sync-check.yml` 的 `factory-import-check` job）：掃 `tests/` **全樹**（非 diff），違規 exit 1 → PR check 紅
+- 兩者共用同一份 script，模式靠 stdin / arg 差異判斷（同 `check-docs-sync.sh` 骨架）
+
+> hook 檢 staged、CI 掃全樹是刻意的分工：hook 要快且不被存量違規卡住；CI 掃全樹才抓得到「搬檔／改名」這種 diff 看不出來的逃逸。
+
+### 判定規則（例外法）
+
+掃 `tests/` 內所有 `from pages.` 行，**僅字面放行**兩者：
+
+```
+from pages.factory import ...
+from pages.dashboard.factory import ...
+```
+
+其餘一律違規。這個寫法**不硬編站點清單** → 新增站點零維護，且同時涵蓋前台（`pages.<site>.x`）、後台（`pages.dashboard.<site>.x`）、以及 `from pages.rc import login_page` 這種單段逃逸型。
+
+> 不採「從 factory registry 動態推導站名」：會漏掉後台 D-002 型違規，且 bash 讀 python registry 會讓 hook 變慢。
+
+### 正確寫法
+
+```python
+from pages.factory import get_login_page_class, get_home_page_class
+
+LoginPage = get_login_page_class("rc")
+HomePage = get_home_page_class("rc")
+```
+
+賦值必須早於該檔任何 module-level 使用點（例如函式簽名的型別註記），否則 `NameError`。
+
+### Override
+
+```bash
+git commit -m "test(x): ... [skip-factory-check] <理由>"
+# 或
+SKIP_FACTORY_CHECK=1 git commit -m "..."
 ```
 
 ## uv requirements export sync（依賴雙軌守門）
