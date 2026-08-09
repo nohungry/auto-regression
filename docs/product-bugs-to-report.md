@@ -1,8 +1,8 @@
 # 待轉知產品/Luke 的站點 Bug 清單
 
 > 本清單彙整**自動化測試攔截到、且已實機 probe 確認**的產品/後端缺陷。
-> 每項皆由測試以 `xfail(strict)` 或 `skip` 守門 —— 產品修正後對應測試會自動 XPASS / 可 un-skip，形成回歸守門。
-> 維護方式：產品修好一項就移除該列並 un-gate 對應測試。最後更新：2026-07-23。
+> 每項皆有測試守門，兩種處置：①`xfail(strict)` / `skip` —— 產品修正後自動 XPASS / 可 un-skip；②**刻意不 gate、讓它 fail** —— 用於主流程斷裂（登入、遊戲入口）這類「不該被綠燈蓋掉」的缺陷（#8 / #9 / #11 / #12），修好即自動轉綠。兩者皆形成回歸守門。
+> 維護方式：產品修好一項就移除該列並 un-gate 對應測試。最後更新：2026-08-09。
 
 ## 一、確認的產品/前端 Bug（建議轉知產品修正）
 
@@ -17,11 +17,13 @@
 | 8 | **RC** | **登入 API 成功但 SPA 不轉場**：`/api/Member/memberLogin` 回 200 Success（含 token），前端停在 /login、表單保留、不進首頁 | 儀器化 probe 2026-07-21：API 200 + token 確認，15s 後仍 /login。WSL CDP 環境當日 4 連發重現，**傍晚起惡化到幾乎每次新登入都卡**（含 `test_login_success`，19:0x 起 smoke 內全部 logged_in 流程 ERROR/FAIL）；**CI headless 未重現**（同日 4 輪 CI rc smoke 全綠）→ 前端登入回應處理存在 timing 敏感 race 且持續劣化中 | `test_home_page_loads`（logged_in_page fixture 會 ERROR；**未加 xfail 守門**因 CI 綠、僅本機重現）；測試側已加送出 retry + 表單關閉守衛（PR #152），站點修復後自動轉綠 | 中（登入主流程間歇壞） |
 | 9 | **RD** | **遊戲 launch pipeline 惡化：點 .play 後新分頁完全不開**（15s 無 page event）。比 2026-05-11 記錄的「launchLoading 空白頁」更早一步壞掉 | 實測 2026-07-21：.play click 已送出（截圖 009），`expect_page` timeout。另 dev-rd 出現 **fade-leave 遮罩卡死攔導覽**（同 KS bug 家族），該部分已測試側清除（PR #152） | `test_enter_game`（刻意不 skip，以 fail 作 regression 訊號；launch 修復後 fail 點會回到 canvas 驗證或轉綠） | 中（遊戲入口全斷） |
 | 10 | **LG** | **首頁 15 張圖片 src 格式錯誤全數破圖**：src 為 `/dev-res.<平台domain>`（缺 `https://` 前綴與圖檔路徑，其中一張含前導空白）→ 被解析為站內相對路徑 404，naturalWidth=0 | Wave 3 DOM 健康度測試 2026-07-23 首跑即攔截，重跑穩定重現 15 張；src 樣態指向模板變數展開錯誤或 CMS 資料填錯 | `tests/lg/feature/visual/test_visual.py::test_home_no_broken_images`（xfail strict，修復自動 XPASS） | 中（首頁 15 處破圖，觀感直接受損） |
+| 11 | **LG** | **launch 失敗時前端不顯示錯誤、永遠停在空白 `/launchLoading`**。後端已明確回傳可讀錯誤訊息「轉點失敗，請洽客服人員」，但前端只寫進 console，畫面 `body` 文字為**空字串**、無錯誤提示、無返回入口 → 使用者看到永遠轉不完的空白頁（根因見「二、後端」#12） | probe 2026-08-09（`CI=true` headless，攔新分頁 network）：`launchGameBySeamless` 回 400 後，console 出現 `ResponseErrorMessage: 轉點失敗，請洽客服人員`，但 `gp.locator("body").inner_text()` 為 `''`，URL 60s 後仍停在 `/launchLoading`。**前端已拿到錯誤卻未渲染**，屬前端錯誤處理缺漏（與後端串接問題可分別修） | 同 #12 的 `test_launch_game_loads_provider`（刻意不 gate）；目前無專測「launch 失敗時應顯示錯誤」的 case，修復後可補 | 中（失敗無回饋，使用者只能自行關頁；後端錯誤已備妥、只差渲染） |
 
 ## 二、確認的後端 Bug
 
 | # | 站 | 問題 | 證據 | 測試守門 | 嚴重度 |
 |---|----|------|------|---------|--------|
+| 12 | **LG** | **遊戲轉點失敗：`POST /api/Game/launchGameBySeamless` 回 400 `ThirdPartyError`**，訊息「轉點失敗，請洽客服人員」。slots 分類**連續多款皆重現**，遊戲入口等同全斷 | probe 2026-08-09（`CI=true` headless）：payload `{"gamePlatformId":125,"gameId":186381,"gameName":"愛麗絲的奇境","isMobile":false,"haveLobby":true,"multiples":1,"category":0}` → `{"errorCode":"ThirdPartyError","errorMessage":"轉點失敗，請洽客服人員","status":"Error","data":null}`（server: Kestrel）。**回應約需 30～60s 才返回**（故前端逾時感受明顯）。對照組 **LU 同一支 test 全綠**（provider 為 royalgaming777）→ 非共用 launch helper 問題，為 LG 綁定的 `gamePlatformId=125` 該 provider 串接異常。同日 main 基準比對重現、失敗訊息一字不差 → 非測試側改動造成 | `tests/lg/feature/game/test_game_launch.py::TestGameLaunch::test_launch_game_loads_provider`（**刻意不 skip/xfail，以 fail 作 regression 訊號**，同 RD #9；`utils/game_launch_helper.py:123` 註明不掩蓋）。註：`P0 Smoke (lg)` 不含 feature/game，故 CI P0 仍綠 | 中（遊戲入口全斷，與 RD #9 同型；`ThirdPartyError` 指向上游 provider，我方可先確認串接設定/額度） |
 | 7 | **LT** | **`bet_record` API 回 500 InternalError**：同 token 打 `getBalance` 正常 200，唯獨此端點 500。疑後端額外 side-channel 檢查（IP 白名單 / TLS 指紋 / session cookie 綁定） | 帶完整瀏覽器 headers 仍重現 | `tests/api/lt/test_bet_record.py::test_get_bet_record`（xfail） | 中（API 自動化被擋） |
 
 ## 三、非產品 Bug — 測試端待穩定（我方處理，非轉知產品）
