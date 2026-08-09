@@ -145,7 +145,8 @@ utils/locale_helper.py       — set_locale(): injects i18n_locale cookie for lt
 utils/dialog_helper.py       — helpers: dismiss server error popups, wait for loading animation；wait_login_loading(): 登入 loading 等待＋截圖（rc/rd/re LoginPage 共用）；clear_stuck_leave_overlay_if_present(): 清卡死的 Vue fade-leave 全屏遮罩（rd dev bug 家族）
 utils/screenshot_helper.py   — element-highlight screenshot system, auto README.md generation; 圈選判定（scroll+bbox+視窗交集判 highlighted/reason/multi_match/oversize，寫 steps.json + README badge + PNG「未圈選」橫幅 + session _highlight_audit）+ written 缺圖自動回報（_write_screenshot 逾時 retry，未寫出標 ⚠️ 並列入 _highlight_audit）
 utils/totp_helper.py         — get_totp_code(): pyotp TOTP 產碼 + 30s 窗口過期緩衝（後台 2FA，首用於 lu dashboard）
-utils/game_launch_helper.py  — 遊戲啟動偵測共用 helper：new tab / provider 轉址判斷（lg/lu 型）+ get_game_frame() 同分頁 canvas iframe 等待（rc/rd/re 型）+ site_base_domain() 站點可註冊網域推導（斷言不硬編 domain）
+utils/game_launch_helper.py  — 遊戲啟動偵測共用 helper：new tab / provider 轉址判斷（lg/lu 型）+ open_in_new_tab() 點 launcher→等新分頁→maximize（lg/lu launch_game 共用，函式內零站點 selector）+ get_game_frame() 同分頁 canvas iframe 等待（rc/rd/re 型）+ site_base_domain() 站點可註冊網域推導（斷言不硬編 domain）
+utils/menu_helper.py         — leaf_menu_texts()：選單容器葉節點短文字抽取（去重、保序；lg/lu user_menu_item_texts 共用，呼叫端傳入已開啟的選單 locator）
 utils/layout_fingerprint.py  — 多語系版面健康度 DOM 指紋 + overflow 偵測（locale_layout / visual 用）
 utils/visual_helpers.py      — VR 共用邏輯：save_vr_screenshot() / screenshot_with_mask()（詳見 Visual Regression 段）
 utils/window_helper.py       — 另開分頁（遊戲 launch new tab）後 CDP 最大化視窗
