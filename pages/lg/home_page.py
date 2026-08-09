@@ -15,8 +15,9 @@ probe 結果（selector-explorer 2026-06-05）：
 
 import re
 from playwright.sync_api import Page, expect, TimeoutError as PlaywrightTimeoutError
+from utils.game_launch_helper import open_in_new_tab
+from utils.menu_helper import leaf_menu_texts
 from utils.screenshot_helper import get_screenshotter
-from utils.window_helper import maximize_page
 
 
 class HomePage:
@@ -166,18 +167,16 @@ class HomePage:
 
         LG 流程：點「開始遊戲」→ window.open 新分頁 → /launchLoading →
         轉址至第三方 provider launcher（gamelauncher，Slotmill 等）。
-        新分頁不繼承最大化視窗，故 maximize_page() 校正座標/截圖（[[feedback-new-tab-maximize]]）。
         index 用於跳過個別壞掉的遊戲（部分 provider 遊戲可能在 staging 啟動失敗）。
+
+        新分頁處理（等分頁 + maximize）走 utils.game_launch_helper.open_in_new_tab。
         """
-        sh = get_screenshotter(self.page)
-        launcher = self.page.locator(self.GAME_CARD).nth(index)
-        launcher.wait_for(state="attached", timeout=20000)
-        if sh: sh.full_page(f"click_啟動遊戲_第{index}款")
-        with self.page.context.expect_page(timeout=20000) as new_page_info:
-            launcher.dispatch_event("click")
-        game_page = new_page_info.value
-        maximize_page(game_page)
-        return game_page
+        return open_in_new_tab(
+            self.page,
+            self.page.locator(self.GAME_CARD).nth(index),
+            label=f"click_啟動遊戲_第{index}款",
+            screenshotter=get_screenshotter(self.page),
+        )
 
     # ------------------------------------------------------------------
     # 會員中心 / 錢包
@@ -203,18 +202,11 @@ class HomePage:
         """回傳已開啟 user menu 內的項目文字（葉節點短文字、去重）。
 
         供 sidebar feature 驗證選單結構完整性（與 member 的導航驗證區隔）。
-        呼叫前須先 open_user_menu()。
+        LG 的 user_menu 是 avatar dropdown panel，呼叫前須先 open_user_menu()。
+
+        葉節點文字抽取走 utils.menu_helper.leaf_menu_texts。
         """
-        return self.user_menu.evaluate(
-            """el => {
-                const out = [];
-                el.querySelectorAll('a,button,div,li,p').forEach(n => {
-                    const t = (n.textContent || '').trim().replace(/\\s+/g, ' ');
-                    if (t && t.length <= 12 && n.children.length <= 1) out.push(t);
-                });
-                return [...new Set(out)];
-            }"""
-        )
+        return leaf_menu_texts(self.user_menu)
 
     def click_member_link(self, type_key: str):
         """開 user menu 後點 member-center 連結（a[href*='type=<key>']）。

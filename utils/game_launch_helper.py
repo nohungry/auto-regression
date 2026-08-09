@@ -10,6 +10,8 @@ import time
 from urllib.parse import urlparse
 from playwright.sync_api import Frame, Page, TimeoutError as PlaywrightTimeoutError
 
+from utils.window_helper import maximize_page
+
 
 # Provider 端「啟動失敗」的明確錯誤詞（簡繁皆列）。只取「錯誤發生」語意的詞，
 # 不用「客服 / 联系」等遊戲頁常見字（避免把正常遊戲誤判成錯誤）。
@@ -48,6 +50,39 @@ def site_base_domain(site_url: str) -> str:
     """
     site_host = urlparse(site_url).hostname or ""
     return ".".join(site_host.split(".")[-2:])
+
+
+def open_in_new_tab(
+    page: Page,
+    launcher,
+    label: str = "",
+    trigger: str = "dispatch",
+    timeout: int = 20000,
+    screenshotter=None,
+) -> Page:
+    """點 launcher → 等 `window.open` 的新分頁 → 最大化後回傳（站點無關）。
+
+    抽自 LG/LU HomePage.launch_game 完全相同的新分頁流程（2026-08 收斂，D-024）。
+    新分頁**不繼承**最大化視窗，取得後必須 maximize_page()，否則座標/截圖錯位
+    （見 utils/window_helper.py）。
+
+    trigger="dispatch" 走 dispatch_event（LG/LU 遊戲卡的 overlay/hidden 元素慣例，
+    D-007）；trigger="click" 走原生 click（Vue handler 不吃 dispatch 的站點用）。
+
+    本函式**不含任何站點 selector**：呼叫端傳入已定位好的 launcher locator，
+    站點知識（GAME_CARD 等常數）留在各站 POM。
+    """
+    launcher.wait_for(state="attached", timeout=timeout)
+    if screenshotter and label:
+        screenshotter.full_page(label)
+    with page.context.expect_page(timeout=timeout) as new_page_info:
+        if trigger == "dispatch":
+            launcher.dispatch_event("click")
+        else:
+            launcher.click()
+    game_page = new_page_info.value
+    maximize_page(game_page)
+    return game_page
 
 
 def wait_for_provider_launch(
