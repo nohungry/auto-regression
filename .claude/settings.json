@@ -12,6 +12,10 @@
           {
             "type": "command",
             "command": "bash .github/scripts/check-commit-msg.sh"
+          },
+          {
+            "type": "command",
+            "command": "bash .github/scripts/check-factory-import.sh"
           }
         ]
       }

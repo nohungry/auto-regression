@@ -46,7 +46,7 @@ utils/api_helpers.py                 — API 測試共用邏輯（env 推導 / h
 utils/home_reset.py                  — go_home 共用邏輯（回首頁 + 清彈窗兩型：dialog-dismisser / HomePage.dismiss_any_popups）
 utils/dashboard_helpers.py           — 後台 login fixture 共用 generator（建 context + factory 登入 + 可選 screenshotter/2FA；各站 fixture 保持 per-site）+ sidebar_menu_tree()/sidebar_menu_tree_texts()：側欄選單樹 dump（入口檢測用；信用版 route id/href 結構性識別、LU 型現金版子入口以顯示文字識別）
 .github/workflows/                   — GitHub Actions（p0 / full-regression / docs-sync-check）
-.github/scripts/                     — CI 共用 script（check-docs-sync.sh + aggregate_test_results.py 跨站聚合成績單 + audit_highlights.py 離線截圖圈選稽核）
+.github/scripts/                     — CI 共用 script（check-docs-sync.sh + check-factory-import.sh factory import 守門 + aggregate_test_results.py 跨站聚合成績單 + audit_highlights.py 離線截圖圈選稽核）
 .claude/                             — Claude Code 配置（hooks / skills / agents，團隊共用）
 docs/                                — 團隊共用文件（追蹤於 git）
 dev-notes/                           — 個人開發筆記（gitignored，僅 README 追蹤）
@@ -115,7 +115,7 @@ GitHub Actions 自動跑測試與 docs 同步檢查：
 |---|---|---|
 | `.github/workflows/p0.yml` | PR（draft 不跑）/ push to main / daily 09:00 台灣 / 手動 | 8 站 P0 smoke matrix（rc/lt/re/rd/qw/lg/lu/rf） |
 | `.github/workflows/full-regression.yml` | 週一 08:00 台灣 / 手動 | 8 站全套（P0 + feature；不由 PR/push 觸發） |
-| `.github/workflows/docs-sync-check.yml` | PR | code 變動是否同步更新 docs |
+| `.github/workflows/docs-sync-check.yml` | PR | PR 靜態檢查集三 job：docs 同步 + factory import 守門（D-023）+ uv export 同步 |
 
 p0 / full-regression 跑完都會由 `aggregate-summary` job（`.github/scripts/aggregate_test_results.py`）把各站結果聚合成跨站成績單寫進 run Step Summary（含 **🔁 Flaky 欄**＝重跑後才通過的 test，來自 `conftest.py` 產出的 `junit/<site>-flaky.json` sidecar），並可選推 Slack（設 `SLACK_WEBHOOK` secret 才推；排程必推、PR/push 失敗才推）。
 
