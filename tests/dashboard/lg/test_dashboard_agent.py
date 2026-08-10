@@ -70,22 +70,6 @@ class TestAgentDashboardNavigation:
         url = mgmt.navigate_agent(parent_id)
         assert parent_id in url, f"導航後 URL 未含 {parent_id}：{url}"
 
-
-@pytest.mark.p1
-@pytest.mark.lg
-@pytest.mark.dashboard
-class TestAgentDashboardLogout:
-    """LG-DASH-AGENT-003：代理登出回登入頁。
-
-    使用 session agent_dashboard_page 並定義在導航之後 → 全域最後執行；
-    登出終結 session，後面不可再有依賴該 session 的測試。
-    """
-
-    def test_logout_returns_to_login(self, agent_dashboard_page: Page, site_config):
-        """點使用者選單 → Logout → 回 #/login，登入表單重現。"""
-        Mgmt = get_dashboard_management_page_class(site_config.site_id)
-        mgmt = Mgmt(agent_dashboard_page)
-        mgmt.logout()
-        assert "/login" in agent_dashboard_page.url, (
-            f"代理登出後未回登入頁：{agent_dashboard_page.url}"
-        )
+# 代理登出（*-DASH-AGENT-003）已移至 test_zz_dashboard_logout.py：
+# 登出終結 session-scoped 的 agent_dashboard_page，須排在所有依賴該 fixture
+# 的測試之後（pytest 依檔名字母序收集）。
