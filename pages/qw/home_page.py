@@ -21,6 +21,8 @@ probe 結果（2026-05-22；2026-06-25 補 sidebar/member）：
 注意：QW 無 KS 式右側 drawer；sidebar = avatar-menu__panel（hover dropdown）。
 """
 
+import re
+
 from playwright.sync_api import Page, expect, TimeoutError as PlaywrightTimeoutError
 from utils.screenshot_helper import get_screenshotter
 
@@ -33,6 +35,14 @@ class HomePage:
         # 登入後主要元素
         self.avatar = page.locator('img[alt="avatar"]')
         self.avatar_trigger = page.locator('.avatar-trigger')
+
+        # nav 餘額（2026-08-10 probe：登入後 avatar 區顯示 "$1000"）。
+        # 用**內容定位**而非 class：QW 該元素只掛任意 Tailwind 色票 class
+        # （text-[#FFC227]），色票會隨改版變動；「$ + 數字」是跨改版穩定的特徵。
+        # 同款作法見 pages/dashboard/lu/management_page.py 的 _wallet_amount_locator。
+        # 不加 ^$ 錨點：Playwright 的 regex 文字比對是對未 trim 的 textContent 做，
+        # 元素前後的換行/縮排會讓錨點永遠不成立（2026-08-10 實測）。
+        self.balance = page.get_by_text(re.compile(r"\$\s*[\d,]+")).first
 
         # 未登入狀態：登入入口按鈕（多語系：用 CSS class）
         # probe 確認 class 為 .outline-btn-shared 或 .active-btn-shadow

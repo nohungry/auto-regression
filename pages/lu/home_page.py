@@ -42,11 +42,19 @@ class HomePage:
         # 2026-07-23 站點改版：sidebar 容器改為 #sidebar（z-30 → z-[99]，icon-rail 設計）
         self.sidebar = page.locator("#sidebar").first
 
-        # 頂部 nav 存提入口（2026-07-24 probe：桌面皆可見；點擊開 max-w-[612px] 錢包
-        # dialog、URL 不變；LU 殘留 .dialog-mask 攔 pointer → 互動用 dispatch_event 站慣例）
+        # 頂部 nav 存提入口（2026-07-24 probe：桌面皆可見；點擊開錢包 dialog、URL 不變；
+        # LU 殘留 .dialog-mask 攔 pointer → 互動用 dispatch_event 站慣例）
         self.deposit_btn = page.locator(".fixed.top-0.z-50 button.neon-btn").first
         self.withdraw_btn = page.locator(".fixed.top-0.z-50 button", has_text="提現").first
-        self.wallet_dialog = page.locator(".dialog-container.max-w-\\[612px\\]").first
+        # 2026-08-10 改版：容器寬度 class 由 max-w-[612px] 改為
+        # min-w-full lg:min-w-[600px] lg:max-w-[600px]；取 lg:max-w-[600px] 定位。
+        self.wallet_dialog = page.locator(".dialog-container.lg\\:max-w-\\[600px\\]").first
+        # 錢包 dialog 內部（2026-08-10 probe）：存款/提現分頁、付款平台格線、送出鈕。
+        # 格線為 grid grid-cols-3，每格一個付款平台（無 id/data-*，以結構定位）。
+        self.wallet_tabs = self.wallet_dialog.locator("div.cursor-pointer p.font-bold")
+        self.payment_platform_grid = self.wallet_dialog.locator("div.grid.grid-cols-3").first
+        self.payment_platforms = self.payment_platform_grid.locator("> div")
+        self.wallet_submit_btn = self.wallet_dialog.locator("button.main-btn").first
         # user menu 容器別名（sidebar feature 用；LU 即左側 sidebar）
         self.user_menu = self.sidebar
         # 登出 button（sidebar 展開後唯一 button，class 含 border-shade04）
@@ -211,7 +219,7 @@ class HomePage:
     # ------------------------------------------------------------------
 
     def open_deposit_dialog(self):
-        """點頂部 nav 儲值 +（neon-btn）開錢包 dialog（max-w-[612px]，URL 不變）。"""
+        """點頂部 nav 儲值 +（neon-btn）開錢包 dialog（in-page modal，URL 不變）。"""
         sh = get_screenshotter(self.page)
         if sh: sh.capture(self.deposit_btn, "click_儲值入口")
         self.deposit_btn.dispatch_event("click")
@@ -219,12 +227,30 @@ class HomePage:
         if sh: sh.full_page("verify_錢包dialog_儲值")
 
     def open_withdraw_dialog(self):
-        """點頂部 nav 提現 button 開錢包 dialog（同 612px 容器）。"""
+        """點頂部 nav 提現 button 開錢包 dialog（與儲值共用同一容器）。"""
         sh = get_screenshotter(self.page)
         if sh: sh.capture(self.withdraw_btn, "click_提現入口")
         self.withdraw_btn.dispatch_event("click")
         self.wallet_dialog.wait_for(state="visible", timeout=8000)
         if sh: sh.full_page("verify_錢包dialog_提現")
+
+    def wallet_tab_texts(self) -> list:
+        """回傳錢包 dialog 分頁文字（預期 ['存款', '提現']）。"""
+        return [
+            self.wallet_tabs.nth(i).inner_text().strip()
+            for i in range(self.wallet_tabs.count())
+        ]
+
+    def payment_platform_texts(self) -> list:
+        """回傳付款平台格線內各平台的顯示文字（含金額區間行，如 'GrabPay\\n1 - 50000'）。
+
+        存款分頁專屬；提現分頁無此格線。呼叫端須先 open_deposit_dialog()。
+        """
+        self.payment_platform_grid.wait_for(state="visible", timeout=8000)
+        return [
+            self.payment_platforms.nth(i).inner_text().strip()
+            for i in range(self.payment_platforms.count())
+        ]
 
     def logout(self):
         """登出：點 hamburger 展開左側 sidebar → click 登出 button → 驗證登出。
