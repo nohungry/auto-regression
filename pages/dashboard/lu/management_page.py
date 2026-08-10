@@ -285,3 +285,34 @@ class ManagementPage:
             "end_balance": _parse_amount(c.nth(5).inner_text()),
             "remark": c.nth(6).inner_text().strip(),
         }
+
+    # ------------------------------------------------------------------
+    # 站長：金流頁泛用導航 + 欄位 dump（會員存提審核頁 / 金流報表頁的入口檢測）
+    #
+    # 現金版側欄葉節點無 href（Vue @click 程式化導航），故一律用 route hash 直接
+    # goto——與 goto_member_management / goto_balance_adjustment_report 同款作法，
+    # 且不受側欄收合/展開狀態影響。route 來源：2026-08-10 實機 probe（三站全等）。
+    # ------------------------------------------------------------------
+
+    def goto_money_flow_page(self, base_url: str, route: str):
+        """前往指定金流頁（route 形如 '/report/wallet-history'）並等內容容器可見。"""
+        sh = get_screenshotter(self.page)
+        self.page.goto(f"{base_url}#{route}", wait_until="domcontentloaded")
+        self.sidebar.first.wait_for(state="attached", timeout=15000)
+        self.content.first.wait_for(state="visible", timeout=15000)
+        self.page.locator("table thead th").first.wait_for(state="attached", timeout=20000)
+        if sh:
+            sh.full_page(f"verify_金流頁_{route.strip('/').replace('/', '_')}")
+
+    def table_headers(self) -> list:
+        """回傳內容區表格的 thead 欄位文字清單（去除空白欄）。
+
+        欄位增刪／改名＝後台改版或權限異動的第一訊號，故以全等 spec 比對。
+        後台為固定英文顯示（非多語系切換場景），文字是穩定識別。
+        """
+        th = self.content.locator("table thead th")
+        return [
+            t for t in (
+                th.nth(i).inner_text().strip() for i in range(th.count())
+            ) if t
+        ]

@@ -42,20 +42,9 @@ class TestDashboardNavigation:
         assert route in go_dashboard.url, f"導航後 URL 未含 {route}：{go_dashboard.url}"
 
 
-@pytest.mark.p1
-@pytest.mark.lu
-@pytest.mark.dashboard
-class TestDashboardLogout:
-    """LU-DASH-003：後台登出回登入頁。
 
-    使用 session dashboard_page 並定義在導航之後 → globally 最後執行；
-    登出會終結 session，故後面不可再有依賴該 session 的測試。
-    （刻意不另起 fresh-login fixture：與 session 同帳號會互踢，見 single-session 規則。）
-    """
-
-    def test_logout_returns_to_login(self, dashboard_page: Page, site_config):
-        """點使用者選單 → Logout → 回 #/login，登入表單重現。"""
-        Mgmt = get_dashboard_management_page_class(site_config.site_id)
-        mgmt = Mgmt(dashboard_page)
-        mgmt.logout()
-        assert "/login" in dashboard_page.url, f"登出後未回登入頁：{dashboard_page.url}"
+# LU-DASH-003（登出）已移至 test_zz_dashboard_logout.py：
+# 登出會終結 session-scoped 的 dashboard_page，而 pytest 依**檔名字母序**收集，
+# 原本放在本檔會讓字母序在後的 test_menu_entries.py / test_money_flow_pages.py
+# 拿到已登出的 page 而失敗（2026-08-10 全目錄實跑確認：12 passed / 1 failed）。
+# 檔名前綴 zz 確保「終結 session」永遠是最後一步。
