@@ -2,7 +2,7 @@
 
 > 本清單彙整**自動化測試攔截到、且已實機 probe 確認**的產品/後端缺陷。
 > 每項皆有測試守門，兩種處置：①`xfail(strict)` / `skip` —— 產品修正後自動 XPASS / 可 un-skip；②**刻意不 gate、讓它 fail** —— 用於主流程斷裂（登入、遊戲入口）這類「不該被綠燈蓋掉」的缺陷（#8 / #9 / #11 / #12），修好即自動轉綠。兩者皆形成回歸守門。
-> 維護方式：產品修好一項就移除該列並 un-gate 對應測試。最後更新：2026-08-09。
+> 維護方式：產品修好一項就移除該列並 un-gate 對應測試。最後更新：2026-08-10。
 
 ## 一、確認的產品/前端 Bug（建議轉知產品修正）
 
@@ -18,6 +18,7 @@
 | 9 | **RD** | **遊戲 launch pipeline 惡化：點 .play 後新分頁完全不開**（15s 無 page event）。比 2026-05-11 記錄的「launchLoading 空白頁」更早一步壞掉 | 實測 2026-07-21：.play click 已送出（截圖 009），`expect_page` timeout。另 dev-rd 出現 **fade-leave 遮罩卡死攔導覽**（同 KS bug 家族），該部分已測試側清除（PR #152） | `test_enter_game`（刻意不 skip，以 fail 作 regression 訊號；launch 修復後 fail 點會回到 canvas 驗證或轉綠） | 中（遊戲入口全斷） |
 | 10 | **LG** | **首頁 15 張圖片 src 格式錯誤全數破圖**：src 為 `/dev-res.<平台domain>`（缺 `https://` 前綴與圖檔路徑，其中一張含前導空白）→ 被解析為站內相對路徑 404，naturalWidth=0 | Wave 3 DOM 健康度測試 2026-07-23 首跑即攔截，重跑穩定重現 15 張；src 樣態指向模板變數展開錯誤或 CMS 資料填錯 | `tests/lg/feature/visual/test_visual.py::test_home_no_broken_images`（xfail strict，修復自動 XPASS） | 中（首頁 15 處破圖，觀感直接受損） |
 | 11 | **LG** | **launch 失敗時前端不顯示錯誤、永遠停在空白 `/launchLoading`**。後端已明確回傳可讀錯誤訊息「轉點失敗，請洽客服人員」，但前端只寫進 console，畫面 `body` 文字為**空字串**、無錯誤提示、無返回入口 → 使用者看到永遠轉不完的空白頁（根因見「二、後端」#12） | probe 2026-08-09（`CI=true` headless，攔新分頁 network）：`launchGameBySeamless` 回 400 後，console 出現 `ResponseErrorMessage: 轉點失敗，請洽客服人員`，但 `gp.locator("body").inner_text()` 為 `''`，URL 60s 後仍停在 `/launchLoading`。**前端已拿到錯誤卻未渲染**，屬前端錯誤處理缺漏（與後端串接問題可分別修） | 同 #12 的 `test_launch_game_loads_provider`（刻意不 gate）；目前無專測「launch 失敗時應顯示錯誤」的 case，修復後可補 | 中（失敗無回饋，使用者只能自行關頁；後端錯誤已備妥、只差渲染） |
+| 13 | **LU / LG / QW**（現金版後台） | **後台「一般存款」動了錢卻不留任何稽核紀錄**：Main wallet 彈窗選 `General deposit`（一般存款）送出後，會員主錢包餘額確實增加，但**9 個金流頁全數查無該筆紀錄** —— 等於資金異動出現稽核斷點 | probe 2026-08-10（LU 站長帳號）：存款 +1 使餘額 1000→1001；以唯一 remark token 搜遍 `wallet-history` / `balance-adjustment-report` / `member-deposit`(報表與審核頁) / `member-deposit-payment-report` / `memberPointRecord` / `member-deposit-store` 全部 0 命中。**入帳有獨立佐證**：緊接著的「額度調整-減少」紀錄其 `Starting balance` 為 1001。對照組：同彈窗的 `increase` / `reduce` 兩種模式**都有**在 `balance-adjustment-report` 留痕 → 非報表整體失效，而是 General deposit 這條路徑漏寫紀錄 | `tests/dashboard/{lu,lg,qw}/test_general_deposit.py::TestGeneralDepositAudit::test_general_deposit_leaves_audit_record`（**xfail strict**，產品補上紀錄後自動 XPASS） | **高**（現金版資金異動無稽核軌跡，對帳與爭議處理皆無依據） |
 
 ## 二、確認的後端 Bug
 

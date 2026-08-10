@@ -220,13 +220,42 @@ class ManagementPage:
         """讀彈窗內 Balance（現有餘額）欄；disabled inputs：[0]=Member、[1]=Balance。"""
         return _parse_amount(self.wallet_dialog.locator("input[disabled]").nth(1).input_value())
 
-    def adjust_main_wallet(self, mode: str, amount, remark: str = ""):
+    def platform_bank_options(self) -> list:
+        """回傳彈窗 Platform bank 下拉的選項文字（僅 General deposit 模式會帶出內容）。
+
+        彈窗有三個 select：[0]=Deposit/Withdrawal 模式、[1]=Platform bank、[2]=Member bank。
+        模式為 increase/reduce 時 [1] 選項為空；切到 General deposit(value=3) 後才由
+        後台渠道設定回填（實機 probe 2026-08-10：自動預選第一項「後臺補單」）。
+        """
+        opts = self.wallet_dialog.locator("select").nth(1).locator("option")
+        return [opts.nth(i).inner_text().strip() for i in range(opts.count())]
+
+    def adjust_main_wallet(self, mode: str, amount, remark: str = "", platform_bank: str = ""):
         """於已開啟的彈窗執行額度調整：選 mode（increase/reduce/deposit）→ 填 Amount
         → 填 Remark（選填）→ Confirm → 等彈窗關閉。
+
+        mode="deposit"（General deposit／一般存款）會由後台非同步回填 Platform bank
+        下拉；本方法會**等該下拉有選項**再送出，避免在回填前 Confirm。
+        platform_bank 給定時依 label 選取，否則沿用系統自動預選的第一項
+        （dev 環境為「後臺補單」＝後台補單渠道，正是測試要走的路徑）。
         """
         sh = get_screenshotter(self.page)
         dlg = self.wallet_dialog
         dlg.locator("select").first.select_option(value=WALLET_ADJUST_MODES[mode])
+
+        if mode == "deposit":
+            # 等 Platform bank 回填（option 數 > 0）；不可在回填前送出
+            bank_select = dlg.locator("select").nth(1)
+            self.page.wait_for_function(
+                "el => el.options.length > 0",
+                arg=bank_select.element_handle(),
+                timeout=10000,
+            )
+            if platform_bank:
+                bank_select.select_option(label=platform_bank)
+            if sh:
+                sh.capture(bank_select, "verify_Platform_bank_已回填")
+
         amount_input = dlg.locator("input[type='number']")
         amount_input.fill(str(amount))
         if remark:
@@ -303,6 +332,76 @@ class ManagementPage:
         self.page.locator("table thead th").first.wait_for(state="attached", timeout=20000)
         if sh:
             sh.full_page(f"verify_金流頁_{route.strip('/').replace('/', '_')}")
+
+    def goto_wallet_records(self, base_url: str):
+        """前往主錢包異動紀錄（會員報表 > Wallet records，`#/report/wallet-history`）。
+
+        欄位（實機 probe 2026-08-10）：
+        [0]Operate [1]Member [2]Date [3]Starting balance [4]>Amount [5]Ending balance [6]Remark
+
+        與 goto_balance_adjustment_report 同款 settle 策略：元件 mount 後會跑預設查詢，
+        Search 點太早會在 filter 回填前送出 → goto 後與 Search 後各留 settle。
+        """
+        self.page.goto(f"{base_url}#/report/wallet-history", wait_until="domcontentloaded")
+        self.sidebar.first.wait_for(state="attached", timeout=15000)
+        self.content.first.wait_for(state="visible", timeout=15000)
+        self.page.wait_for_timeout(1500)
+        search = self.page.get_by_role("button", name="Search").first
+        if search.count():
+            search.click()
+        self.page.wait_for_timeout(1500)
+        self.page.locator("table tbody tr").first.wait_for(state="visible", timeout=15000)
+
+    def get_wallet_record(self, remark: str, timeout: int = 8000) -> dict | None:
+        """以 Remark 鎖定主錢包異動紀錄，回傳 {member, start_balance, amount, end_balance, remark}。
+
+        remark 應為呼叫端產生的唯一 token（避免命中歷史殘留同文案）；查無回 None。
+        """
+        row = self.page.locator(f"table tbody tr:has-text('{remark}')").first
+        try:
+            row.wait_for(state="visible", timeout=timeout)
+        except PlaywrightTimeoutError:
+            return None
+        c = row.locator("td")
+        return {
+            "member": c.nth(1).inner_text().strip(),
+            "start_balance": _parse_amount(c.nth(3).inner_text()),
+            "amount": _parse_amount(c.nth(4).inner_text()),
+            "end_balance": _parse_amount(c.nth(5).inner_text()),
+            "remark": c.nth(6).inner_text().strip(),
+        }
+
+    # 金流稽核可能落點（會員存提審核頁 + 金流報表頁；route 同 test_money_flow_pages spec）
+    MONEY_FLOW_AUDIT_ROUTES = (
+        "/report/balance-adjustment-report",
+        "/report/wallet-history",
+        "/report/member-deposit",
+        "/report/member-deposit-payment-report",
+        "/report/memberPointRecord",
+        "/member/member-deposit",
+        "/member/member-deposit-store",
+    )
+
+    def find_audit_record_route(self, base_url: str, token: str) -> str | None:
+        """在所有金流稽核落點搜尋含 token 的紀錄，回傳第一個命中的 route；全無命中回 None。
+
+        用於驗證「動了錢就該留痕」：呼叫端以唯一 token 當 remark 送出金流操作後，
+        本方法逐頁查詢（每頁按一次 Search 觸發查詢）並比對內容區文字。
+        """
+        for route in self.MONEY_FLOW_AUDIT_ROUTES:
+            try:
+                self.page.goto(f"{base_url}#{route}", wait_until="domcontentloaded")
+                self.content.first.wait_for(state="visible", timeout=20000)
+                self.page.wait_for_timeout(1500)  # 等元件 mount + 預設查詢
+                search = self.page.get_by_role("button", name="Search").first
+                if search.count():
+                    search.click()
+                self.page.wait_for_timeout(2000)  # 等查詢結果回填
+                if token in self.content.inner_text():
+                    return route
+            except PlaywrightTimeoutError:
+                continue  # 單一報表載入逾時不阻斷其餘落點的搜尋
+        return None
 
     def table_headers(self) -> list:
         """回傳內容區表格的 thead 欄位文字清單（去除空白欄）。
