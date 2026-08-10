@@ -270,6 +270,20 @@ def go_management(dashboard_page, site_config):
 
 ---
 
+## 現金版 Main wallet 彈窗的三種模式（2026-08-10 probe）
+
+彈窗 `select` 有三個：`[0]` = Deposit/Withdrawal 模式、`[1]` = Platform bank、`[2]` = Member bank。
+
+| 模式 | value | 行為 | 稽核落點 |
+|------|-------|------|---------|
+| Amount adjustment increased | `1` | 直接加額度 | `#/report/balance-adjustment-report`（type `Credit adjustment increased`） |
+| Amount adjustment reduce | `2` | 直接減額度 | 同上（`Credit adjustment reduced`） |
+| **General deposit（一般存款）** | `3` | 加額度；選取後**非同步回填 Platform bank** 下拉（dev 環境 3 個渠道，自動預選第一項＝後台補單渠道），Member bank 維持 None | 🛑 **無任何紀錄**（見下） |
+
+**送出前必須等 Platform bank 回填**：`select[1]` 在模式切換前選項為空，切到 `3` 後才由後台渠道設定填入。POM `adjust_main_wallet()` 對 `mode="deposit"` 會 `wait_for_function(el => el.options.length > 0)` 後才 Confirm，否則會在渠道未定時送出。
+
+> ⚠️ **General deposit 是稽核斷點（產品 bug 清單 #13）**：實測存款 +1 使餘額 1000→1001（由後續額度調整紀錄的 `Starting balance = 1001` 獨立佐證），但以唯一 remark token 搜遍 9 個金流頁（`wallet-history` / `balance-adjustment-report` / `member-deposit` 報表與審核頁 / `member-deposit-payment-report` / `memberPointRecord` / `member-deposit-store`）**全數 0 命中**。同彈窗的 `increase` / `reduce` 都有留痕 → 不是報表整體失效，是 General deposit 這條路徑漏寫紀錄。守門：`tests/dashboard/{lu,lg,qw}/test_general_deposit.py::TestGeneralDepositAudit`（xfail strict，修好自動 XPASS）。
+
 ## 測試資料管理
 
 ### 規則 7：充值後必須 cleanup 歸零
