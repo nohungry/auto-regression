@@ -321,9 +321,16 @@ def test_deposit_and_verify(self, dashboard_page, site_config):
 |---------|------|
 | 後台會員列表額度欄位 | UI 即時驗證（主要）|
 | API 查詢餘額 | 資料層 double check（防 UI 快取/延遲問題）|
-| 前台登入查看錢包 | 留給跨前後台 e2e 測試（較重）|
+| 前台登入查看錢包 | **現金版三站已落地**：`tests/dashboard/{lu,lg,qw}/test_frontend_balance_sync.py` |
 
 僅用 UI 驗證可能漏掉後端 cache 或 UI 同步延遲問題。
+
+**跨前後台 e2e 實作要點（2026-08-10）**：
+
+- 前台用 root conftest 的 `class_logged_in_page`（`tests/dashboard/<site>/conftest.py` 已把 `site_config` 指向本站，故不必另建 fixture）；後台用 session `dashboard_page`。**兩者是不同帳號**（會員 vs 站長），不觸發同帳號互踢。
+- 目標會員即前台帳號本人（`site_config.username`）。三站實測皆可在站長後台會員管理搜到 —— 注意 LU 的 `SITE_LU_DASHBOARD_TARGET_MEMBER` 是**另一個**會員，跨前後台測試不可沿用。
+- 前台餘額是非同步取得，`reload()` 後直接讀會拿到舊值 → 用 `wait_helpers.wait_for_text_matches` 等目標數字出現再讀。
+- **千分位格式各站不一**（實測 LG 顯示 `1001` 無逗號），比對 pattern 須把逗號設為選擇性（`",?".join(digits)`），否則會誤判成「前台沒同步」。
 
 ---
 
