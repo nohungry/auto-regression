@@ -23,6 +23,8 @@ Key `.env` variables:
 - `CDP_URL` — Chrome remote debug URL (WSL/Linux only; e.g. `http://<WINDOWS_IP>:9223`)
 - `SITE_<NAME>_URL/USERNAME/PASSWORD` — per-site credentials
 
+> **CDP 故障排除**：本機（WSL/CDP）跑測試若整批秒殺、錯誤為 `BrowserType.connect_over_cdp: Connection closed while reading from the driver`，**多半不是 Chrome 掛了**，而是 Chrome 上殘留 stuck service worker target（造訪過註冊 SW 的站就會留下）撞到 Playwright 的 assert。`conftest.py` 的 `_patch_playwright_crbrowser_sw_assert()` 會在每次啟動時自動 patch 本機 venv 的 driver 容忍它（**patch 不進 git，venv 重建 / Playwright 升版後會自動重套**）。若 Playwright 又改了 driver 版面導致 patch 失效，啟動時會印出提示，需更新該函式的 `_SW_PATCH_CANDIDATES` / `_SW_ASSERT_RE`。註：CI 走 `chromium.launch()` headless，不碰 CDP，不受影響。
+
 ## Running Tests
 
 **Always use the project's virtualenv** located at `.venv/`:

@@ -16,6 +16,7 @@ Fixture 選用指引：
 """
 
 import os
+import re
 import sys
 import json
 import socket
@@ -60,6 +61,27 @@ def _is_cdp_ready(cdp_url: str) -> bool:
         return False
 
 
+# Playwright driver 中 `_onAttachedToTarget` 的 assert 呼叫；不同版本的檔案版面不同：
+# - 舊版：拆分模組 `lib/server/chromium/crBrowser.js`，寫法 `(0, import_assert.assert)(...)`
+# - 新版：全部打包進 `lib/coreBundle.js`，寫法 `assert(...)`
+# 兩者都找，找到哪個就 patch 哪個（未來若再改版面，加一列即可）。
+_SW_PATCH_CANDIDATES = (
+    os.path.join('driver', 'package', 'lib', 'server', 'chromium', 'crBrowser.js'),
+    os.path.join('driver', 'package', 'lib', 'coreBundle.js'),
+)
+
+# 抓 assert 呼叫本身（含前置縮排），兩種寫法都涵蓋
+_SW_ASSERT_RE = re.compile(
+    r'(?P<indent>[ \t]*)'
+    r'(?P<call>(?:\(0, import_assert\.assert\)|assert)\(\s*targetInfo\.browserContextId,\s*'
+    r'"targetInfo: " \+ JSON\.stringify\(targetInfo, null, 2\)\);)'
+)
+# assert 之前建立的 child session 變數（新版被 minify 成 session2）——detach 要用它
+_SW_SESSION_RE = re.compile(r'const (\w+) = this\._session\.createChildSession\(sessionId\);')
+
+_SW_PATCH_MARKER = '__PW_SW_NO_CTX_PATCH__'
+
+
 def _patch_playwright_crbrowser_sw_assert() -> bool:
     """
     Patch Playwright driver：讓 pre-existing service_worker target（沒有 browserContextId）
@@ -67,11 +89,19 @@ def _patch_playwright_crbrowser_sw_assert() -> bool:
 
     背景：若 Chrome 曾造訪過註冊 Service Worker 的站（例：RC 站前台），SW target
     在日後 CDP 重連時會被列出但 `browserContextId` 為空（default context，Chrome 不填該欄位）。
-    Playwright crBrowser.js line 147 的 `assert(targetInfo.browserContextId, ...)` 因此 throw，
-    整個 connect_over_cdp 掛掉，使用者被迫重啟 Chrome。
+    Playwright `_onAttachedToTarget` 的 `assert(targetInfo.browserContextId, ...)` 因此 throw，
+    整個 connect_over_cdp 掛掉（錯誤訊息是 "Connection closed while reading from the driver"，
+    看起來像 Chrome 掛了，實際不是），使用者被迫重啟 Chrome。
 
-    本函式 idempotent：只在未 patch 時寫一次；已 patch 的 driver 直接 skip。
-    若找不到目標行（例：Playwright 升版、檔案格式變動），安全跳過不阻擋測試。
+    **本函式只影響本機 venv 的 driver，不進 git**；venv 重建 / Playwright 升版後會失效，
+    下次 pytest 啟動時本函式會自動重新套用。
+
+    版面相容：新舊兩種 driver 檔案版面都試（見 `_SW_PATCH_CANDIDATES`）。2026-08-10 起
+    Playwright 把 driver 打包進 `coreBundle.js`，原本只找 `crBrowser.js` 的版本會靜默失效，
+    導致「有 stuck SW 就整批 CDP 測試全滅」且無任何提示。
+
+    本函式 idempotent：已 patch 的 driver 直接回 True。
+    找不到目標（Playwright 再改版面）時安全跳過並印出提示，不阻擋測試。
     """
     import importlib.util
 
@@ -83,45 +113,59 @@ def _patch_playwright_crbrowser_sw_assert() -> bool:
     except Exception:
         return False
 
-    cr_browser = os.path.join(
-        pw_root, 'driver', 'package', 'lib', 'server', 'chromium', 'crBrowser.js'
+    tried = []
+    for rel_path in _SW_PATCH_CANDIDATES:
+        path = os.path.join(pw_root, rel_path)
+        if not os.path.isfile(path):
+            continue
+        tried.append(rel_path)
+
+        try:
+            with open(path, 'r', encoding='utf-8') as f:
+                content = f.read()
+        except Exception:
+            continue
+
+        if _SW_PATCH_MARKER in content:
+            return True  # 已 patch 過
+
+        m = _SW_ASSERT_RE.search(content)
+        if not m:
+            continue
+
+        # detach 用的 child session 變數名由檔案現況推導（新版 minify 成 session2），不寫死
+        sess = _SW_SESSION_RE.search(content, 0, m.start())
+        if not sess:
+            continue
+        session_var = sess.group(1)
+
+        indent = m.group('indent')
+        replacement = (
+            f'{indent}// {_SW_PATCH_MARKER} — 容忍 pre-existing service_worker target 缺 browserContextId\n'
+            f'{indent}if (!targetInfo.browserContextId) {{\n'
+            f'{indent}  if (targetInfo.type === "service_worker") '
+            f'{{ {session_var}.detach().catch(() => {{}}); return; }}\n'
+            f'{indent}  {m.group("call")}\n'
+            f'{indent}}}'
+        )
+        new_content = content[:m.start()] + replacement + content[m.end():]
+
+        try:
+            with open(path, 'w', encoding='utf-8') as f:
+                f.write(new_content)
+            print(f'[CDP] Playwright driver patched：容忍 stuck service worker（{path}）')
+            return True
+        except Exception as e:
+            print(f'[CDP] Playwright driver patch 失敗，略過：{type(e).__name__}: {e}')
+            return False
+
+    print(
+        '[CDP] 找不到可 patch 的 Playwright driver assert（已試：'
+        f'{tried or list(_SW_PATCH_CANDIDATES)}）。'
+        '若之後 connect_over_cdp 出現 "Connection closed while reading from the driver"，'
+        '多半是 stuck service worker，需更新 _SW_PATCH_CANDIDATES / _SW_ASSERT_RE。'
     )
-    if not os.path.isfile(cr_browser):
-        return False
-
-    try:
-        with open(cr_browser, 'r', encoding='utf-8') as f:
-            content = f.read()
-    except Exception:
-        return False
-
-    marker = '__PW_SW_NO_CTX_PATCH__'
-    if marker in content:
-        return True  # 已 patch 過
-
-    target_line = '(0, import_assert.assert)(targetInfo.browserContextId, "targetInfo: " + JSON.stringify(targetInfo, null, 2));'
-    if target_line not in content:
-        return False  # Playwright 版本不同，不動它
-
-    replacement = (
-        f'// {marker} — 容忍 pre-existing service_worker target 缺 browserContextId\n'
-        '    if (!targetInfo.browserContextId) {\n'
-        '      if (targetInfo.type === "service_worker") { session.detach().catch(() => {}); return; }\n'
-        '      ' + target_line + '\n'
-        '    }'
-    )
-    new_content = content.replace(target_line, replacement, 1)
-    if new_content == content:
-        return False
-
-    try:
-        with open(cr_browser, 'w', encoding='utf-8') as f:
-            f.write(new_content)
-        print(f'[CDP] Playwright driver patched：容忍 stuck service worker（{cr_browser}）')
-        return True
-    except Exception as e:
-        print(f'[CDP] Playwright driver patch 失敗，略過：{type(e).__name__}: {e}')
-        return False
+    return False
 
 
 def _detach_stuck_service_workers(cdp_url: str) -> int:
@@ -135,11 +179,16 @@ def _detach_stuck_service_workers(cdp_url: str) -> int:
 
     實作：用 Chrome DevTools HTTP endpoint `/json` 列舉 targets，對 type=service_worker
     的項目呼叫 `/json/close/<targetId>`（HTTP，不需 WebSocket、不受 Chrome 的
-    --remote-allow-origins 限制），關閉後 SW 就不再是 attached 狀態。
+    --remote-allow-origins 限制）。
+
+    ⚠️ `/json/close/<id>` 對 service_worker target **常常回 200 但實際關不掉**
+    （2026-08-10 實測：回報關閉 4 個，重新列舉仍是 4 個）。因此本函式**以重新列舉為準**
+    回報真正消失的數量，不用 HTTP 200 當成功——否則訊息會誤導人以為 SW 已清乾淨，
+    往錯的方向查連線問題。真正的防線是 `_patch_playwright_crbrowser_sw_assert()`。
 
     失敗一律 silent（例：CDP 未開、網路錯）。
 
-    Returns: 成功關閉的 SW 數量（0 代表沒 SW 或整段被跳過）。
+    Returns: **實際消失**的 SW 數量（0 代表沒 SW、關不掉、或整段被跳過）。
     """
     try:
         import json
@@ -147,33 +196,43 @@ def _detach_stuck_service_workers(cdp_url: str) -> int:
     except Exception:
         return 0
 
-    try:
+    def _list_sw_ids():
         list_url = cdp_url.rstrip('/') + '/json'
         with urllib.request.urlopen(list_url, timeout=2) as resp:
             targets = json.loads(resp.read())
+        return {t.get('id') for t in targets if t.get('type') == 'service_worker' and t.get('id')}
+
+    try:
+        before = _list_sw_ids()
     except Exception as e:
         print(f'[CDP] service worker 列舉失敗，略過：{type(e).__name__}: {e}')
         return 0
 
-    sw_targets = [t for t in targets if t.get('type') == 'service_worker']
-    if not sw_targets:
+    if not before:
         return 0
 
-    closed = 0
-    for t in sw_targets:
-        target_id = t.get('id')
-        if not target_id:
-            continue
+    for target_id in before:
         try:
             close_url = cdp_url.rstrip('/') + f'/json/close/{target_id}'
-            with urllib.request.urlopen(close_url, timeout=2) as resp:
-                if resp.status == 200:
-                    closed += 1
+            with urllib.request.urlopen(close_url, timeout=2):
+                pass
         except Exception:
             pass  # 單一 SW 關不掉不影響整體流程
 
+    try:
+        after = _list_sw_ids()
+    except Exception:
+        return 0  # 複查失敗就不宣稱關掉了任何東西
+
+    closed = len(before - after)
+    remaining = len(after)
     if closed:
         print(f'[CDP] 已關閉 {closed} 個 stuck service worker target')
+    if remaining:
+        print(
+            f'[CDP] 仍有 {remaining} 個 service worker target 關不掉（Chrome 不接受對 SW 的 '
+            '/json/close）；改由 driver patch 容忍，不影響連線'
+        )
     return closed
 
 
