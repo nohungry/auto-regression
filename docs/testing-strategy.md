@@ -139,16 +139,16 @@ class TestI18NHome:
 | LT   | 112    | 14  | 4    | 130  |
 | RE   | 63     | 11  | 4    | 78   |
 | RD   | 58     | 11  | 4    | 73   |
-| QW   | 50     | 11  | 18   | 79   |
-| LG   | 45     | 11  | 19   | 75   |
-| LU   | 46     | 11  | 24   | 81   |
+| QW   | 50     | 11  | 19   | 80   |
+| LG   | 45     | 11  | 20   | 76   |
+| LU   | 46     | 11  | 25   | 82   |
 | RF   | 48     | 11  | 15   | 74   |
-| **合計** | **485** | **91** | **92** | **668** |
+| **合計** | **485** | **91** | **95** | **671** |
 
 > **KS 已於 2026-07 永久退役**（站點下架）。2026-08-05 將其 POM / 測試 / registry / marker / secrets 自 HEAD 全數移除，歷史程式碼見 git 歷史。退役前為 UI 43 / API 11 / 後台 6。
 
 - **testcase 數量級拉平（2026-07-22 收官）**：後進 Nuxt 站（QW 48 / LG 44 / LU 43 / RF 48）已補齊至與 RC 系（58~63）同量級。
-- **後台覆蓋**：信用版 RC / RE / LT / RD 為總代→代理 / 站長→會員 top_up；現金版 LU / LG / QW 站長主錢包 top_up（含 TOTP 2FA）+ 代理 read-only smoke + **金流頁入口檢測 9 條**（存提審核頁 3 + 金流報表頁 6，route hash + 表格欄位全等 spec）+ **一般存款（General deposit）可逆流程 2 條**（真實存款路徑，對稱可逆；其中稽核留痕一條為 xfail strict —— 產品缺陷 #13：動錢不留痕）；RF 信用版站長 + 代理 top_up。詳見 `docs/dashboard-technical-notes.md`。
+- **後台覆蓋**：信用版 RC / RE / LT / RD 為總代→代理 / 站長→會員 top_up；現金版 LU / LG / QW 站長主錢包 top_up（含 TOTP 2FA）+ 代理 read-only smoke + **金流頁入口檢測 9 條**（存提審核頁 3 + 金流報表頁 6，route hash + 表格欄位全等 spec）+ **一般存款（General deposit）可逆流程 2 條**（真實存款路徑，對稱可逆；其中稽核留痕一條為 xfail strict —— 產品缺陷 #13：動錢不留痕）+ **跨前後台餘額一致性 1 條**（後台調整 → 前台會員 reload 驗同步 → 還原，落實 dashboard-technical-notes 規則 9 的前台驗證層）；RF 信用版站長 + 代理 top_up。詳見 `docs/dashboard-technical-notes.md`。
 - **後台測試檔名排序約束**：登出測試會終結 session-scoped 的後台 page fixture，而 pytest 依**檔名字母序**收集 → 登出一律放 `test_zz_dashboard_logout.py`（`zz` 前綴是刻意的排序控制）。2026-08-10 前 LU / LG 因登出併在 `test_dashboard_navigation.py` / `test_dashboard_agent.py`，全目錄跑時字母序在後的 `test_menu_entries.py` 固定失敗（單檔跑則綠，故長期未被發現）。新增依賴 `dashboard_page` / `agent_dashboard_page` 的測試檔前，確認自己排在 `test_zz_*` 之前。
 - **API**：9 站結構齊備，各站 11 case（LT 14）。
 
