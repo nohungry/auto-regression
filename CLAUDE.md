@@ -107,6 +107,8 @@ Override：commit message 加 `[skip-factory-check]` 並附理由，或設 env v
 
 各站點測試放在 `tests/<site_id>/` 下；smoke 測試統一命名 `test_p0_smoke.py`，功能型測試放 `tests/<site_id>/feature/<feature_name>/`。
 
+**現金版前台存款覆蓋邊界**（LU/LG/QW）：一律不送出存款單（不可對稱回復，違反 D-015）、不為測試帳號綁銀行卡（單向操作且汙染共用帳號）。LU 無綁卡守衛可直接驗付款平台清單；LG/QW 未綁卡時存款頁會在約 1 秒後被導向銀行卡管理，故改驗「最終落點提供可操作下一步」。細節與 fail 判讀見 [`docs/testing-strategy.md`](docs/testing-strategy.md) 站點覆蓋邊界段。
+
 ## 測試結果判讀（Result Interpretation）
 
 當測試失敗時，先區分「測試問題」還是「真實 FAIL」：

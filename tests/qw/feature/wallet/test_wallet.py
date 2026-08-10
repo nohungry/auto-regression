@@ -113,3 +113,51 @@ class TestWallet:
         assert f"type={type_key}" in current_url, (
             f"預期 URL 含 type={type_key}，實際 URL：{current_url}"
         )
+
+    def test_deposit_entry_offers_next_step(self, class_logged_in_page: Page, go_home):
+        """QW-WALLET-005：點存款入口後，頁面提供明確可操作的下一步（probe 2026-08-10）
+
+        WALLET-002 只驗「URL 瞬間變成 type=Deposit」——實測那之後約 1 秒，未綁銀行卡的
+        帳號會被 toast「請先綁定銀行卡」導向 type=Withdrawal 的銀行卡管理區。也就是說
+        WALLET-002 綠燈並不代表存款頁真的可用，本條補上「最終落點可操作」這一層。
+
+        斷言策略：不斷言瞬時 toast（生命週期約 1 秒，硬等會 flaky），改等最終落點的
+        可操作元素——「新增銀行卡」入口可見。這同時守住 bug #11 那類缺陷
+        （前端拿到錯誤卻不渲染、留下空白頁無下一步）。
+
+        ⚠️ 現況綁定：本條反映「測試帳號未綁卡」的守衛路徑。若日後帳號綁了銀行卡，
+        存款頁不再被導走，本條會 fail —— 屆時應重新 probe 存款渠道 DOM，改驗渠道呈現
+        （LU 已有該路徑的模板：LU-WALLET-006）。fail 即為測試資料變更的訊號，不是誤報。
+        """
+        page = class_logged_in_page
+        home = HomePage(page)
+        sh = get_screenshotter(page)
+
+        home.click_shortcut_tile("Deposit")
+
+        add_bank_btn = page.locator("button.add-bank").first
+        expect(add_bank_btn).to_be_visible(timeout=15000)
+        if sh: sh.capture(add_bank_btn, "verify_存款守衛_導向綁卡入口")
+
+        assert "/member-center" in page.url, f"預期停在會員中心，實際 URL：{page.url}"
+
+    def test_balance_displayed(self, class_logged_in_page: Page, go_home):
+        """QW-WALLET-006：nav 餘額登入後可見且為合法金額字串（probe 2026-08-10）
+
+        補齊與 LU-WALLET-001/002、LG-WALLET-001 的對齊（QW 先前無餘額斷言，
+        已登入信號只有 avatar）。餘額元素用**內容定位**（"$" + 數字），不綁色票 class
+        ——QW 該元素僅掛任意 Tailwind 色票，色票會隨改版變動。
+
+        斷言只驗「非空 + 含數字」，不寫死金額：餘額會被後台 top_up 測試改動。
+        """
+        page = class_logged_in_page
+        home = HomePage(page)
+        sh = get_screenshotter(page)
+
+        expect(home.balance).to_be_visible(timeout=10000)
+        home.balance.scroll_into_view_if_needed()
+        text = home.balance.inner_text().strip()
+        if sh: sh.capture(home.balance, f"verify_餘額顯示_{text}")
+
+        assert text, "餘額文字為空"
+        assert any(c.isdigit() for c in text), f"餘額文字不含數字：{text!r}"
