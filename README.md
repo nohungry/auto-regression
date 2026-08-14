@@ -47,7 +47,7 @@ utils/api_helpers.py                 — API 測試共用邏輯（env 推導 / h
 utils/home_reset.py                  — go_home 共用邏輯（回首頁 + 清彈窗兩型：dialog-dismisser / HomePage.dismiss_any_popups）
 utils/dashboard_helpers.py           — 後台 login fixture 共用 generator（建 context + factory 登入 + 可選 screenshotter/2FA；各站 fixture 保持 per-site）+ sidebar_menu_tree()/sidebar_menu_tree_texts()：側欄選單樹 dump（入口檢測用；信用版 route id/href 結構性識別、LU 型現金版子入口以顯示文字識別）
 .github/workflows/                   — GitHub Actions（p0 / full-regression / docs-sync-check）
-.github/scripts/                     — CI 共用 script（check-docs-sync.sh + check-factory-import.sh factory import 守門 + aggregate_test_results.py 跨站聚合成績單 + audit_highlights.py 離線截圖圈選稽核）
+.github/scripts/                     — CI 共用 script（check-docs-sync.sh + check-factory-import.sh factory import 守門 + aggregate_test_results.py 跨站聚合成績單 + audit_highlights.py 離線截圖圈選稽核 + preflight-browser.sh 瀏覽器管道逐層診斷）
 .claude/                             — Claude Code 配置（hooks / skills / agents，團隊共用）
 docs/                                — 團隊共用文件（追蹤於 git）
 dev-notes/                           — 個人開發筆記（gitignored，僅 README 追蹤）
@@ -162,6 +162,12 @@ ip route show | grep -i default | awk '{print $3}'   # WSL 預設 gateway = Wind
 
 > `BROWSER_MODE=local` 用於 CDP 管道被外部因素切斷時（Hyper-V 防火牆、portproxy、Chrome 沒開）。
 > 它用的是 Playwright 內建 chromium 而非 Windows 真 Chrome，行為可能有細微差異，**CDP 仍是主管道**。
+
+CDP 連不上時，先跑診斷再修：
+
+```bash
+.github/scripts/preflight-browser.sh    # 逐層檢查並指名阻塞層；exit 0 = 可以跑測試
+```
 
 ## 測試分級與 Markers
 

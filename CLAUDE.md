@@ -26,6 +26,8 @@ Key `.env` variables:
 
 > **CDP 故障排除**：本機（WSL/CDP）跑測試若整批秒殺、錯誤為 `BrowserType.connect_over_cdp: Connection closed while reading from the driver`，**多半不是 Chrome 掛了**，而是 Chrome 上殘留 stuck service worker target（造訪過註冊 SW 的站就會留下）撞到 Playwright 的 assert。`conftest.py` 的 `_patch_playwright_crbrowser_sw_assert()` 會在每次啟動時自動 patch 本機 venv 的 driver 容忍它（**patch 不進 git，venv 重建 / Playwright 升版後會自動重套**）。若 Playwright 又改了 driver 版面導致 patch 失效，啟動時會印出提示，需更新該函式的 `_SW_PATCH_CANDIDATES` / `_SW_ASSERT_RE`。註：CI 走 `chromium.launch()` headless，不碰 CDP，不受影響。
 
+> **CDP 連不上先跑診斷**：`.github/scripts/preflight-browser.sh` 逐層檢查（Chrome process → 監聽位址 → portproxy → 傳統防火牆 → Hyper-V 防火牆 → 封包丟棄／VPN）並指名阻塞層，`exit 0` 才代表可以跑測試；細節見 [`docs/cicd.md`](docs/cicd.md)。
+>
 > **CDP 整條管道不通時的備援**：症狀是 WSL 連不到 `CDP_URL`（curl timeout），且**不只 9223、連 ping Windows host 都不通**——那就不是 Chrome 或 portproxy 的問題，而是 WSL→Windows 的 inbound 被擋。2026-08-14 實例：Windows 更新（KB5121003 等）重開機後，WSL 網卡被納入 **Hyper-V 防火牆**（網卡名變成 `vEthernet (WSL (Hyper-V firewall))`），該層 `DefaultInboundAction = Block` 且與傳統 `netsh advfirewall` 規則是**兩套獨立系統**，舊規則管不到 → 設定看似都在卻全不通。修復需管理員權限的 `New-NetFirewallHyperVRule`（見 [`PORTS_AND_SETUP.md`](PORTS_AND_SETUP.md) Step 6）。**在修好之前，用 `BROWSER_MODE=local` 走本機內建 chromium 即可照常跑測試**（WSL 有 WSLg 就看得到視窗；實測前台與後台皆可跑）。
 
 ## Running Tests
@@ -176,6 +178,7 @@ utils/dashboard_helpers.py   — 後台 login fixture 共用 generator dashboard
 .github/scripts/aggregate_test_results.py  — 跨站 JUnit 聚合成績單（含 🔁 flaky 欄，讀 <site>-flaky.json sidecar；p0/full-regression 的 aggregate-summary job 共用）
 .github/scripts/audit_highlights.py        — 離線重掃截圖圈選稽核（讀 steps.json 重建 _highlight_audit.md/.json，--fail-threshold 供 CI 門檻；與 write_highlight_audit 共用 _render_audit）
 .github/scripts/check-docs-sync.sh         — docs sync check（hook + CI 共用）
+.github/scripts/preflight-browser.sh       — 瀏覽器管道逐層診斷（CDP L1~L6 指名阻塞層；本機用，不掛 CI）
 screenshots/<site_id>/<timestamp>/<smoke|feature>/<test_name>/  — per-test screenshot folders, auto-categorized (in .gitignore)
 screenshots/lt/vr_reference/                    — VR reference screenshots (no comparison, manual review only)
 docs/                        — team-shared documentation (tracked in git)

@@ -85,6 +85,28 @@ run 頁面看得到：
 
 跑測試時 `conftest.py` `pytest_sessionfinish` 會呼叫 `write_highlight_audit()`，把「呼叫了 `sh.capture` 卻沒真的圈到元素」的步驟彙整成 `screenshots/<site>/<ts>/_highlight_audit.md`/`.json`（取代人工逐張翻圖找失準截圖）。`audit_highlights.py <dir>` 可離線重掃既有 `steps.json` 重建同樣報告（不必重跑），`--fail-threshold N` 在失敗步驟數超標時回傳非 0 exit code，供未來接入 CI 門檻。詳見 CLAUDE.md「Screenshot System → 圈選判定」。
 
+### 瀏覽器管道 preflight（`.github/scripts/preflight-browser.sh`）
+
+本機診斷用（不掛在任何 workflow 上；CI 走 `chromium.launch()` 不需要它）。CDP 模式的路徑是
+WSL → Windows 主機 → portproxy → Chrome，中間任一層斷掉，pytest 只會丟一句含糊的連線錯誤。
+本腳本逐層檢查並**指名阻塞層**：
+
+| 層 | 檢查內容 |
+|----|---------|
+| L1 | Windows 端是否有帶 `--remote-debugging-port` 的 Chrome |
+| L2 | 該 port 是否 LISTENING、綁 `127.0.0.1` 還是 `0.0.0.0` |
+| L3 | `netsh interface portproxy` 轉發是否存在（Chrome 已綁 0.0.0.0 時自動略過） |
+| L4 | 傳統防火牆（`netsh advfirewall`）是否放行 |
+| L5 | **Hyper-V 防火牆**（WSL 專屬層，與 L4 是兩套獨立系統）的 `DefaultInboundAction` 與放行規則 |
+| L6 | ARP 可達性 + TCP 行為（逾時＝靜默丟棄／refused＝路徑通）+ 啟用中的 VPN 介面 |
+
+結論分兩類：**有缺件**就指名缺件並附修復指令；**各層齊全卻仍被丟包**則報「阻擋在防火牆規則之下的
+WFP 層」並列出可疑 VPN，不硬指某層——這正是 2026-08-14 排查的教訓：當時只看了截斷的規則清單，
+誤判成「缺 Hyper-V 規則」，實際規則早就存在。**沒有證據就不下結論**是這支腳本的設計前提。
+
+`exit 0` = 可以跑測試（CDP 通、或 local/CI 模式的本機 chromium 就緒）；`exit 1` = 管道不通。
+不想等修復時，`BROWSER_MODE=local` 可完全繞過 CDP（見 D-025）。
+
 ## 手動觸發
 
 任一 workflow 的「Actions」頁面右上有「Run workflow」按鈕。
