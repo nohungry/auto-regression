@@ -190,6 +190,32 @@ New-NetFirewallRule -DisplayName "WSL CDP 9223" -Direction Inbound -Protocol TCP
 ```
 新增後重新執行 Step 4 確認連線，有回應即可執行 `pytest`。
 
+**Step 6：Step 5 做了還是 timeout — 檢查 Hyper-V 防火牆（WSL 專屬那一層）**
+
+判斷特徵：**不只 9223 不通，連 `ping <WINDOWS_HOST_IP>` 都 100% loss**，且 Windows 本機
+`curl http://127.0.0.1:9223/json/version` 是正常的 → 斷點在 WSL→Windows 的 inbound 整段。
+
+Windows 會把 WSL 網卡納入獨立的 **Hyper-V 防火牆**（網卡名稱會變成
+`vEthernet (WSL (Hyper-V firewall))`），它與 Step 5 的 `netsh advfirewall` 規則是**兩套獨立系統**，
+舊規則管不到 —— 所以會出現「規則都在、portproxy 也在，就是不通」。
+
+檢查（唯讀，不需管理員）：
+```powershell
+Get-NetFirewallHyperVVMSetting -PolicyStore ActiveStore | Select-Object Name,DefaultInboundAction
+```
+`DefaultInboundAction : Block` 即為此症。修復（**需系統管理員**，`VMCreatorId` 用上一行查到的 `Name`）：
+```powershell
+New-NetFirewallHyperVRule -Name "WSL-CDP-9223" -DisplayName "WSL CDP 9223" `
+  -Direction Inbound -VMCreatorId '{40E0AC32-46A5-438A-A0B2-2B479E8F2E90}' `
+  -Protocol TCP -LocalPorts 9223 -Action Allow
+```
+把 `9223` 換成 `9224` 再跑一次，可一併救回 chrome-devtools MCP / playwright MCP（兩者都指向 9224）。
+規則會持久保留，不需每次重開機重設。
+
+> 這層是 Windows 更新後才生效的（2026-08-14 KB5121003 等重開機後首次踩到）：
+> **使用者沒改任何設定，原本可用的 CDP 也會突然全斷**。
+> 在補規則之前，`BROWSER_MODE=local .venv/bin/pytest ...` 可直接用本機內建 chromium 跑，不必等修復。
+
 ---
 
 ## .env 完整範例

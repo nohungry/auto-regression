@@ -100,6 +100,7 @@ python -m venv .venv && .venv/bin/pip install -r requirements.txt
 .venv/bin/pytest -m "lt and i18n"                                        # lt 多語系測試
 .venv/bin/pytest tests/rc/test_p0_smoke.py::TestLogin::test_login_success # 單一測試
 CI=true .venv/bin/pytest tests/rc/test_p0_smoke.py                       # 模擬 CI 模式：headless chromium 直接 launch（無 CDP）
+BROWSER_MODE=local .venv/bin/pytest tests/rc/test_p0_smoke.py            # 本機內建 chromium 有頭跑（不碰 CDP；CDP 斷線時的備援）
 ```
 
 ### 查看 HTML 報表
@@ -157,6 +158,10 @@ ip route show | grep -i default | awk '{print $3}'   # WSL 預設 gateway = Wind
 | WSL | 自動啟動 Windows Chrome，CDP 連接（port 9223） | `_is_wsl()` |
 | 純 Linux（非 CI） | 手動啟動 Chrome `--remote-debugging-port=9222`，設 `CDP_URL` | else |
 | **CI（GitHub Actions）** | **Playwright 內建 chromium headless（無需 CDP）** | **`_is_ci()` → 由 `CI=true` env var 觸發** |
+| **本機備援（任一環境）** | **Playwright 內建 chromium，預設有頭（WSL 走 WSLg），不碰 CDP** | **`_use_local_browser()` → 由 `BROWSER_MODE=local` 觸發** |
+
+> `BROWSER_MODE=local` 用於 CDP 管道被外部因素切斷時（Hyper-V 防火牆、portproxy、Chrome 沒開）。
+> 它用的是 Playwright 內建 chromium 而非 Windows 真 Chrome，行為可能有細微差異，**CDP 仍是主管道**。
 
 ## 測試分級與 Markers
 
