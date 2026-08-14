@@ -21,9 +21,12 @@ uv sync                # 推薦；或無 uv 時：python -m venv .venv && .venv/
 Key `.env` variables:
 - `DEFAULT_SITE` — which site config to use (e.g. `rc`)
 - `CDP_URL` — Chrome remote debug URL (WSL/Linux only; e.g. `http://<WINDOWS_IP>:9223`)
+- `BROWSER_MODE` — 留空＝依環境自動偵測；設 `local` 改用本機 Playwright 內建 chromium（不碰 CDP，見下方備援路徑）
 - `SITE_<NAME>_URL/USERNAME/PASSWORD` — per-site credentials
 
 > **CDP 故障排除**：本機（WSL/CDP）跑測試若整批秒殺、錯誤為 `BrowserType.connect_over_cdp: Connection closed while reading from the driver`，**多半不是 Chrome 掛了**，而是 Chrome 上殘留 stuck service worker target（造訪過註冊 SW 的站就會留下）撞到 Playwright 的 assert。`conftest.py` 的 `_patch_playwright_crbrowser_sw_assert()` 會在每次啟動時自動 patch 本機 venv 的 driver 容忍它（**patch 不進 git，venv 重建 / Playwright 升版後會自動重套**）。若 Playwright 又改了 driver 版面導致 patch 失效，啟動時會印出提示，需更新該函式的 `_SW_PATCH_CANDIDATES` / `_SW_ASSERT_RE`。註：CI 走 `chromium.launch()` headless，不碰 CDP，不受影響。
+
+> **CDP 整條管道不通時的備援**：症狀是 WSL 連不到 `CDP_URL`（curl timeout），且**不只 9223、連 ping Windows host 都不通**——那就不是 Chrome 或 portproxy 的問題，而是 WSL→Windows 的 inbound 被擋。2026-08-14 實例：Windows 更新（KB5121003 等）重開機後，WSL 網卡被納入 **Hyper-V 防火牆**（網卡名變成 `vEthernet (WSL (Hyper-V firewall))`），該層 `DefaultInboundAction = Block` 且與傳統 `netsh advfirewall` 規則是**兩套獨立系統**，舊規則管不到 → 設定看似都在卻全不通。修復需管理員權限的 `New-NetFirewallHyperVRule`（見 [`PORTS_AND_SETUP.md`](PORTS_AND_SETUP.md) Step 6）。**在修好之前，用 `BROWSER_MODE=local` 走本機內建 chromium 即可照常跑測試**（WSL 有 WSLg 就看得到視窗；實測前台與後台皆可跑）。
 
 ## Running Tests
 
@@ -38,6 +41,7 @@ Key `.env` variables:
 .venv/bin/pytest -m login                                               # by marker
 .venv/bin/pytest tests/rc/test_p0_smoke.py::TestLogin::test_login_success # single test
 CI=true .venv/bin/pytest tests/rc/test_p0_smoke.py                      # 模擬 CI 模式：headless chromium 直接 launch（無 CDP）
+BROWSER_MODE=local .venv/bin/pytest tests/rc/test_p0_smoke.py           # 備援管道：本機內建 chromium 有頭跑（不碰 CDP）
 ```
 
 Reports are written to `reports/report.html` (self-contained HTML).

@@ -188,3 +188,11 @@
 - 替代方案:建 `NuxtHomePageBase` 涵蓋 qw/lg/lu/rf(不採,如上);LU subclass LG(不採:LG 並非事實上的 base,語意錯置;與 D-020 的「RC 即事實 base」情境不同);完全不動、只寫決策關單(不採:兩段通用邏輯抽 utils 成本極低,且讓「新分頁必須 maximize」的踩坑教訓從兩份複製註解變成單點實作)。
 - 併記(本次刻意不做,列 backlog):① **base_url 尾斜線正規化四站不一致**(qw 只在 auth_url rstrip、lg/lu/rf 在 `__init__` `rstrip("/") + "/"`、rc/re/rd/lt 完全不處理;`config/settings.py` 的 SiteConfig 不 normalize)—— 實測 repo 內**不存在任何 `site_config.url + "..."` 裸拼接**,所有消費端不是 rstrip 就是 urlparse,goto 本身對尾斜線不敏感,故統一 normalize 是**零風險但也零收益的純 churn**(不是高風險);若未來出現裸拼接需求再議。② **goto 策略不統一**(qw networkidle / lg,lu,rf domcontentloaded+60s / rc,re,rd domcontentloaded + networkidle fallback 8s + dialog dismiss / lt 同型 12s)—— 每一種都是實機踩坑調出來的(見 `pages/rc/login_page.py` goto docstring:dev 站背景 WebSocket 心跳使 load event 常不觸發),統一等於拿穩定度換整齊,**不做**。
 - 影響:`pages/lg/home_page.py`、`pages/lu/home_page.py`、`utils/game_launch_helper.py`、新增 `utils/menu_helper.py`、`CLAUDE.md` Architecture utils 區、`README.md` utils 清單;`dev-notes/refactor-audit-2026-07-21.md` §1a 與 §動工結果第 4 項殘項關閉。
+
+## D-025 瀏覽器管道用顯式 BROWSER_MODE 切換,不由 CI 旗標兼差
+
+- 狀態:accepted(2026-08-14 nohungry 拍板)
+- 決策:`conftest.py` 新增 `BROWSER_MODE` 環境變數(目前唯一值 `local`)控制「用 Playwright 內建 chromium 直接 launch」;並新增 `_is_launched_browser()`(= CI 或 local)取代原本兩處以 `_is_ci()` 判斷 viewport 策略與 CDP 視窗操作的寫法。判準改為**瀏覽器是不是 launch 出來的**,而非「是否在 CI」。CDP 分支(Windows / WSL / 純 Linux)行為完全不變,**CDP 仍是本機主管道**,`BROWSER_MODE=local` 定位為備援與應急路徑。
+- 理由:2026-08-14 Windows 更新(KB5121003 等)重開機後,WSL 網卡被納入 Hyper-V 防火牆(`DefaultInboundAction = Block`),使用者未改任何設定,pytest 的 CDP 9223 與兩個 MCP 的 9224 同時全斷,且傳統 `netsh advfirewall` 規則管不到該層。跨界管道(WSL→Windows)可被 OS 單方面切斷,測試套件需要一條零外部依賴的執行路徑。實測(2026-08-14)前台 RC smoke 8/8 綠、後台 LU login(2FA + 大 bundle)綠,舊有「現金版後台 23MB bundle 在 WSL 內 goto 逾時」的顧慮僅存在於 headless,有頭(WSLg)不成立。
+- 替代方案:① 繼續借 `CI=true` 跑本機(不採:語意錯誤——本機不是 CI 環境;且該旗標同時綁死 viewport 策略,兩件事耦合在一個變數上,日後任一方要調整都會誤傷另一方)。② 只修防火牆不加備援(不採:同一類 OS 變更會再發生,且修復需管理員權限,不是每次都能立刻取得)。③ 全面改用 WSL 內建 chromium 取代 CDP(不採:內建 chromium 非 Windows 真 Chrome,與線上使用者實際環境有差異,主管道仍應是真 Chrome)。
+- 影響:`conftest.py`(`_use_local_browser` / `_is_launched_browser` / `browser` fixture / `_new_configured_page` / `pytest_configure`)、`.env.example`、`CLAUDE.md` Setup 與 CDP 故障排除段、`README.md` 執行指令與環境對照表、`PORTS_AND_SETUP.md` Step 6(Hyper-V 防火牆排查與修復)。`utils/window_helper.py` 已全程 try/except,兩模式皆安全,不需改。

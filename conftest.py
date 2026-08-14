@@ -7,6 +7,8 @@ pytest 全域設定
 執行環境自動偵測：
 - Windows：Playwright 直接啟動 Chrome（無需手動開瀏覽器）
 - WSL/Linux：透過 CDP 連線到已開啟的 Windows Chrome（需設定 CDP_URL）
+- 任一環境設 `BROWSER_MODE=local`：改用本機 Playwright 內建 chromium（不碰 CDP），
+  作為 CDP 管道不可用時的備援；預設有頭，`HEADLESS=true` 轉無頭
 
 Fixture 選用指引：
   page                  — 每個測試獨立 context，測試後自動登出。適合 Smoke test。
@@ -47,6 +49,25 @@ def _is_wsl() -> bool:
 def _is_ci() -> bool:
     """偵測是否在 CI 環境（GitHub Actions / 通用 CI runner 皆 export `CI=true`）"""
     return os.getenv("CI", "").lower() == "true"
+
+
+def _use_local_browser() -> bool:
+    """是否改用本機 Playwright 內建 chromium（`BROWSER_MODE=local`）。
+
+    用於 CDP 管道不可用時（例如 OS 更新後 WSL→Windows 的 inbound 被新的 Hyper-V
+    防火牆擋掉）仍能跑測試：直接在 WSL 內 launch chromium，零跨界依賴。
+    預設**有頭**（WSLg 提供顯示），`HEADLESS=true` 可轉無頭。
+    """
+    return os.getenv("BROWSER_MODE", "").lower() == "local"
+
+
+def _is_launched_browser() -> bool:
+    """瀏覽器是否由 Playwright 自己 launch（相對於 connect_over_cdp 接既有 Chrome）。
+
+    viewport 策略、CDP 視窗操作、service worker patch 的真正判準是這個，
+    而不是「是否在 CI」——CI 只是 launch 模式的其中一種情境。
+    """
+    return _is_ci() or _use_local_browser()
 
 
 def _is_cdp_ready(cdp_url: str) -> bool:
@@ -287,17 +308,19 @@ def _new_configured_page(browser, install_toast_observer=True):
     `page` fixture 偵測到該 marker 時傳 `install_toast_observer=False`，**完全不安裝**
     observer（而非弱化其邏輯）→ toast 不再被秒關，斷言確定性成立，不需 rerun 吸收。
     """
-    if _is_ci():
-        # CI 用 explicit viewport（headless 無 window manager 不支援 setWindowBounds maximize）
+    if _is_launched_browser():
+        # launch 模式（CI headless / BROWSER_MODE=local）用 explicit viewport：
+        # headless 無 window manager 不支援 setWindowBounds maximize，
+        # 有頭的 WSLg 視窗尺寸也不穩定 → 固定 1920×1080 讓截圖尺寸可預期
         context = browser.new_context(viewport={"width": 1920, "height": 1080})
     else:
-        # 本地（Windows / WSL / Linux + CDP）：no_viewport + CDP maximize
+        # CDP 模式（Windows / WSL / Linux 接既有 Chrome）：no_viewport + CDP maximize
         context = browser.new_context(no_viewport=True)
 
     try:
         page = context.new_page()
 
-        if not _is_ci():
+        if not _is_launched_browser():
             cdp = context.new_cdp_session(page)
             window_id = cdp.send("Browser.getWindowForTarget")["windowId"]
             cdp.send("Browser.setWindowBounds", {
@@ -327,6 +350,14 @@ def browser(playwright: Playwright):
         # CI（GitHub Actions / 等）：直接 launch Playwright 內建 chromium，無需 CDP / Windows Chrome
         # 預設 headless（CI 無顯示），可用 HEADLESS=false 環境變數覆寫做 debug
         headless = os.getenv("HEADLESS", "true").lower() == "true"
+        browser = playwright.chromium.launch(headless=headless)
+        yield browser
+        browser.close()
+    elif _use_local_browser():
+        # BROWSER_MODE=local：本機 launch Playwright 內建 chromium，完全不碰 CDP。
+        # CDP 管道被外部因素切斷（Hyper-V 防火牆 / portproxy / Windows Chrome 沒開）時的備援路徑。
+        # 預設有頭（WSLg 顯示視窗，畫面可目視），HEADLESS=true 轉無頭。
+        headless = os.getenv("HEADLESS", "false").lower() == "true"
         browser = playwright.chromium.launch(headless=headless)
         yield browser
         browser.close()
@@ -364,7 +395,13 @@ def pytest_configure(config):
     套用 Playwright driver patch（crBrowser.js 容忍 pre-existing SW target）。
     必須在此時 patch，因為 Node driver 一啟動就會 require crBrowser.js 並快取，
     改在 browser fixture 裡 patch 已經太晚。
+
+    launch 模式（CI / BROWSER_MODE=local）用的是全新臨時 profile 的 chromium，
+    不會有 pre-existing service worker target，patch 無用武之地 → 直接略過，
+    以免 patch 失敗時印出與當次執行無關的警示訊息。
     """
+    if _is_launched_browser():
+        return
     _patch_playwright_crbrowser_sw_assert()
 
 
