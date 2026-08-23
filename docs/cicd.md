@@ -94,15 +94,25 @@ WSL → Windows 主機 → portproxy → Chrome，中間任一層斷掉，pytest
 | 層 | 檢查內容 |
 |----|---------|
 | L1 | Windows 端是否有帶 `--remote-debugging-port` 的 Chrome |
-| L2 | 該 port 是否 LISTENING、綁 `127.0.0.1` 還是 `0.0.0.0` |
-| L3 | `netsh interface portproxy` 轉發是否存在（Chrome 已綁 0.0.0.0 時自動略過） |
+| L2 | listener 是否綁在 **`CDP_URL` 指定的位址**（或 `0.0.0.0`）——只綁 `127.0.0.1` 即判定 **portproxy 綁定失敗** |
+| L3 | `netsh interface portproxy` 轉發規則是否存在；規則在但 L2 沒綁上 → 標記「規則存在但未生效」 |
 | L4 | 傳統防火牆（`netsh advfirewall`）是否放行 |
-| L5 | **Hyper-V 防火牆**（WSL 專屬層，與 L4 是兩套獨立系統）的 `DefaultInboundAction` 與放行規則 |
-| L6 | ARP 可達性 + TCP 行為（逾時＝靜默丟棄／refused＝路徑通）+ 啟用中的 VPN 介面 |
+| L5 | Hyper-V 防火牆的 `DefaultInboundAction`（**僅供參考，不列為缺件**——見下方 NAT 註記） |
+| L6 | ARP 可達性 + TCP 行為（逾時＝靜默丟棄／refused＝路徑通）+ **對照組 port 試連** + 啟用中的 VPN 介面 |
 
-結論分兩類：**有缺件**就指名缺件並附修復指令；**各層齊全卻仍被丟包**則報「阻擋在防火牆規則之下的
-WFP 層」並列出可疑 VPN，不硬指某層——這正是 2026-08-14 排查的教訓：當時只看了截斷的規則清單，
-誤判成「缺 Hyper-V 規則」，實際規則早就存在。**沒有證據就不下結論**是這支腳本的設計前提。
+結論分三類：**有缺件**→ 指名缺件與修復指令；**對照組 port 連得上**→ 路徑正常、問題只在該 port
+這條路徑（優先 `Restart-Service iphlpsvc`）；**對照組也不通**→ 整條路徑被擋，往 WFP 層（VPN
+kill switch、Hyper-V 整層）找。**沒有證據就不下結論**是這支腳本的設計前提。
+
+> **兩個關鍵事實（2026-08-14~21 事故實證，皆為腳本設計依據）**
+>
+> 1. **真兇通常是 portproxy 的 listener 沒綁起來**：`netsh ... show` 只印設定檔、不驗證綁定結果，
+>    規則列得出來 ≠ 綁定成功。重開機後 IP Helper 先於 WSL 網卡 IP 就緒 → 綁定失敗。
+>    修復＝`Restart-Service iphlpsvc`。腳本初版的 L2 只看「port 號有沒有人監聽」，
+>    在這個情境下給了**假綠燈**（Chrome 的 `127.0.0.1:9223` 讓它標綠），已於本次修正。
+> 2. **Hyper-V 防火牆的 inbound 規則對 WSL 不適用**：WSL 是 NAT 型網路，建規則時 Windows 直接回
+>    `EnforcementStatus: NATInboundRuleNotApplicable`。因此 L5 只印資訊、不列缺件，
+>    也不再建議加規則——當時據此誤判並寫進文件，實測完全無效。
 
 `exit 0` = 可以跑測試（CDP 通、或 local/CI 模式的本機 chromium 就緒）；`exit 1` = 管道不通。
 不想等修復時，`BROWSER_MODE=local` 可完全繞過 CDP（見 D-025）。

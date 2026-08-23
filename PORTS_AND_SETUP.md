@@ -190,27 +190,57 @@ New-NetFirewallRule -DisplayName "WSL CDP 9223" -Direction Inbound -Protocol TCP
 ```
 新增後重新執行 Step 4 確認連線，有回應即可執行 `pytest`。
 
-**Step 6：Step 5 做了還是 timeout — 檢查 Hyper-V 防火牆（WSL 專屬那一層）**
+**Step 6：Step 5 做了還是 timeout — 檢查 portproxy 的 listener 有沒有真的綁起來**
 
-判斷特徵：**不只 9223 不通，連 `ping <WINDOWS_HOST_IP>` 都 100% loss**，且 Windows 本機
-`curl http://127.0.0.1:9223/json/version` 是正常的 → 斷點在 WSL→Windows 的 inbound 整段。
+> 先跑 `.github/scripts/preflight-browser.sh`，它會自動做完以下判斷並直接指名阻塞層。
+> 以下是手動版與原理說明。
 
-Windows 會把 WSL 網卡納入獨立的 **Hyper-V 防火牆**（網卡名稱會變成
-`vEthernet (WSL (Hyper-V firewall))`），它與 Step 5 的 `netsh advfirewall` 規則是**兩套獨立系統**，
-舊規則管不到 —— 所以會出現「規則都在、portproxy 也在，就是不通」。
+`netsh interface portproxy show` **只印設定檔內容，不驗證綁定是否成功** —— 規則列得出來
+不代表 listener 真的建起來了。實際檢查（唯讀）：
 
-檢查（唯讀，不需管理員）：
 ```powershell
-Get-NetFirewallHyperVVMSetting -PolicyStore ActiveStore | Select-Object Name,DefaultInboundAction
+Get-NetTCPConnection -State Listen -LocalPort 9223,9224 | Select-Object LocalAddress, LocalPort
 ```
-`DefaultInboundAction : Block` 即為此症。修復（**需系統管理員**，`VMCreatorId` 用上一行查到的 `Name`）：
+
+- 看得到 **`<WINDOWS_HOST_IP>`（如 `172.30.80.1`）** → 綁定正常，問題不在這
+- **只看得到 `127.0.0.1`** → **portproxy 的 listener 沒建起來**，這就是斷點：
+  封包到得了主機，但那個位址上沒有任何 socket 在接，所以永遠 timeout
+
+修復（**需系統管理員**）：
+
 ```powershell
-New-NetFirewallHyperVRule -Name "WSL-CDP-9223" -DisplayName "WSL CDP 9223" `
-  -Direction Inbound -VMCreatorId '{40E0AC32-46A5-438A-A0B2-2B479E8F2E90}' `
-  -Protocol TCP -LocalPorts 9223 -Action Allow
+Restart-Service iphlpsvc
 ```
-把 `9223` 換成 `9224` 再跑一次，可一併救回 chrome-devtools MCP / playwright MCP（兩者都指向 9224）。
-規則會持久保留，不需每次重開機重設。
+
+IP Helper 就是負責建立 portproxy listener 的服務，重啟它會重新讀規則並綁定，
+三個 port（9223/9224/9225）一次全部建起來。不需重開 Chrome、不需重開機。
+
+**成因是開機時序**：IP Helper 啟動時 WSL 虛擬網卡的 IP 還沒配好 → 綁定失敗。
+所以**重開機後可能再次發生**，症狀一模一樣。往後遇到直接跑 preflight，
+它指出 portproxy 沒綁上就重啟 iphlpsvc，不必再逐層排查。
+
+**Step 7：以上都做了還是不通 — 確認是不是整條路徑被擋**
+
+找主機上另一個綁在 `0.0.0.0` 的 port 當對照組試連：
+
+```bash
+# 找對照組（在 Windows PowerShell 執行）
+# Get-NetTCPConnection -State Listen | Where-Object { $_.LocalAddress -eq '0.0.0.0' } | Select -First 5 LocalPort
+timeout 4 bash -c 'exec 3<>/dev/tcp/<WINDOWS_HOST_IP>/<對照組 port>' && echo 通 || echo 不通
+```
+
+- **對照組通** → WSL→主機路徑正常，問題只在該 port 這條路徑上（回頭看 Step 3/6）
+- **對照組也不通** → 整條路徑被擋，往 WFP 層找：VPN 用戶端的 kill switch / 區網阻擋，
+  或 Hyper-V 防火牆整層（`Get-NetFirewallHyperVVMSetting` 的 `DefaultInboundAction`）
+
+> ⚠️ **不要在 Hyper-V 防火牆加 inbound 規則**：WSL 是 NAT 型網路，該層 inbound 規則
+> **不適用**，建立時 Windows 會直接回 `EnforcementStatus: NATInboundRuleNotApplicable`，
+> 加了不會有任何效果。真要測這層是否有影響，只能整層放行
+> （`Set-NetFirewallHyperVVMSetting -Name '<VMCreatorId>' -DefaultInboundAction Allow`），
+> **測完務必改回 `Block`**，不要長期敞開。
+>
+> 這段是 2026-08-14~21 實際排查的結論。當時本文件曾一度寫成「加 Hyper-V 規則」，
+> 實測證明無效；真兇是 Step 6 的 portproxy 綁定失敗。
 
 > 這層是 Windows 更新後才生效的（2026-08-14 KB5121003 等重開機後首次踩到）：
 > **使用者沒改任何設定，原本可用的 CDP 也會突然全斷**。
