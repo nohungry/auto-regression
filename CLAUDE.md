@@ -28,7 +28,11 @@ Key `.env` variables:
 
 > **CDP 連不上先跑診斷**：`.github/scripts/preflight-browser.sh` 逐層檢查（Chrome process → 監聽位址 → portproxy → 傳統防火牆 → Hyper-V 防火牆 → 封包丟棄／VPN）並指名阻塞層，`exit 0` 才代表可以跑測試；細節見 [`docs/cicd.md`](docs/cicd.md)。
 >
-> **CDP 整條管道不通時的備援**：症狀是 WSL 連不到 `CDP_URL`（curl timeout），且**不只 9223、連 ping Windows host 都不通**——那就不是 Chrome 或 portproxy 的問題，而是 WSL→Windows 的 inbound 被擋。2026-08-14 實例：Windows 更新（KB5121003 等）重開機後，WSL 網卡被納入 **Hyper-V 防火牆**（網卡名變成 `vEthernet (WSL (Hyper-V firewall))`），該層 `DefaultInboundAction = Block` 且與傳統 `netsh advfirewall` 規則是**兩套獨立系統**，舊規則管不到 → 設定看似都在卻全不通。修復需管理員權限的 `New-NetFirewallHyperVRule`（見 [`PORTS_AND_SETUP.md`](PORTS_AND_SETUP.md) Step 6）。**在修好之前，用 `BROWSER_MODE=local` 走本機內建 chromium 即可照常跑測試**（WSL 有 WSLg 就看得到視窗；實測前台與後台皆可跑）。
+> **最常見的斷線原因＝portproxy listener 沒綁起來**（2026-08-14~21 實際事故）：重開機後 IP Helper 服務啟動時，WSL 虛擬網卡的 IP 還沒配好 → 綁定失敗。`netsh interface portproxy show` **只印設定檔、不驗證綁定結果**，所以規則看起來都在、實際上 `<HOST_IP>:9223` 沒有任何 socket 在接，封包到得了主機卻沒人接。修復＝管理員權限 `Restart-Service iphlpsvc`（見 [`PORTS_AND_SETUP.md`](PORTS_AND_SETUP.md) Step 6）。**成因是開機時序，重開機後可能再犯**。
+>
+> ⚠️ 別被防火牆帶偏：WSL 是 NAT 型網路，**Hyper-V 防火牆的 inbound 規則對它不適用**（建規則會回 `NATInboundRuleNotApplicable`），加規則不會有任何效果。判斷整條路徑是否真被擋，用「主機上另一個 `0.0.0.0` port 當對照組」試連即可（preflight 的 L6 已自動做）。
+>
+> **修好之前，用 `BROWSER_MODE=local` 走本機內建 chromium 即可照常跑測試**（WSL 有 WSLg 就看得到視窗；實測前台與後台皆可跑）。
 
 ## Running Tests
 
