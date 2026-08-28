@@ -66,10 +66,32 @@ code = get_totp_code(site_config.dashboard_totp, min_remaining=5)
 
 實戰教訓（2026-06-12）：短時間內對同一後台帳號反覆登入（probe 多輪 + session fixture
 登入失敗被每個 test 重試 + `--reruns`）會觸發後端 **2FA 鎖定 / 登入頻率限制**，之後每次
-TOTP 都被拒（OTP 元件填滿自動送出 → 清空 → 停在 `#/login`）。對策：
+TOTP 都被拒（停在 `#/login`）。對策：
 - session-scoped `dashboard_page` 全套只登入一次；probe 期間節制登入次數。
+  → **已落地**：各站 `tests/dashboard/<id>/conftest.py` 的 login fixture 皆 session-scoped。
 - 連續兩次登入間隔 > 30s（避免同 TOTP 窗口重放被拒）。
+  → **已落地（2026-08-28，D-026）**：`utils/dashboard_helpers.py` 的 `_throttle_2fa_login()`
+    在 `dashboard_login_session()` 建 context 前強制補等至 `TWOFA_LOGIN_MIN_INTERVAL_S = 35.0`
+    秒間隔（只 gate 帶 TOTP 的登入；狀態 module-level、不持久化到磁碟）。
 - 疑似鎖定時**停手等冷卻 ~20-30 分鐘**再跑，不要繼續重試（會延長鎖定）。
+  → 仍是人為紀律；程式端的守衛是「重送上限 1 次且必須跨 TOTP 窗口」，見下。
+
+**2026-08-28 補正（實測推翻兩項舊記載）**：
+- 「OTP 元件**填滿自動送出**」**不成立** —— 實測填滿 6 格產生零個 Verify 請求，
+  必須點 Confirm 才會送出。
+- 2026-07-30 起 lu / qw 代理的 `POST /api/TwoFactorAuth/Verify` 400
+  `{"error":{"code":"AuthenticationFailed"}}`，曾歸因為「secret 遭伺服器端重綁」，
+  **實測證實 secret 正確**（站長與代理各自成功登入過，使用者手動登入亦成功）。
+  真因＝登入頻率（兩次 2FA 登入間隔僅數秒）＋ 產碼到送出的過期競態。
+
+失敗處理（`pages/dashboard/lu/login_page.py`，**LU/LG/QW 三站共用**）：
+- `_submit_totp_code()` 以 `expect_response("/TwoFactorAuth/Verify")` 包住 Confirm 點擊
+  （`VERIFY_RESPONSE_TIMEOUT = 15000`），**判 HTTP 結果**而非盲點。
+- 非 ok → `utils/totp_helper.get_next_window_totp_code()` 跨窗口取新碼，清空 6 格後
+  重送**恰好一次**（同窗口重放必被拒，故一定要跨窗口）。
+- 第二發仍非 ok → 截圖 `2FA_Verify_二次失敗` + `RuntimeError`（訊息含兩次 HTTP status、
+  第二次 body 前 200 字與冷卻提示），**絕不第三次**。
+- `verify_login_success()` 逾時先截 `verify_後台登入失敗` 再拋，讓登入失敗有證據。
 
 ---
 

@@ -35,3 +35,28 @@ def get_totp_code(secret: str, min_remaining: int = 5) -> str:
         # 非 UI 等待：對齊 TOTP 30s 旋轉窗口，避免提交瞬間驗證碼失效
         time.sleep(remaining + 1)
     return totp.now()
+
+
+def get_next_window_totp_code(secret: str) -> str:
+    """等到**下一個** TOTP 窗口再產碼，保證與當前窗口的碼不同。
+
+    重送專用：2FA Verify 被後端拒絕（400）後若拿同一窗口的碼重送，等同同碼
+    重放，後端必然再拒；必須跨過 30s 旋轉窗口取得全新的碼才有意義。
+    與 `get_totp_code` 的差別：後者只在「快過期」時才等窗口（樂觀取當前碼），
+    本函式**無條件**等到窗口翻轉。
+
+    Args:
+        secret: base32 TOTP 金鑰
+
+    Returns:
+        6 位數字字串（保證來自新的 30s 窗口）
+    """
+    if not secret:
+        raise ValueError("TOTP secret 為空，請確認 .env 的 SITE_<ID>_DASHBOARD_TOTP 已設定")
+
+    totp = pyotp.TOTP(secret)
+    remaining = totp.interval - (time.time() % totp.interval)
+    # 非 UI 等待：對齊 TOTP 30s 旋轉窗口（D-006 核可例外，同上方 get_totp_code 先例）。
+    # 窗口翻轉是純 wall-clock 條件，沒有任何 UI / API 信號可 poll。+1s 為跨越邊界的裕度。
+    time.sleep(remaining + 1)
+    return totp.now()
