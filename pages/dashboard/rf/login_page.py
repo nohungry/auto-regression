@@ -16,6 +16,10 @@ URL 差異：
 from playwright.sync_api import Page
 from utils.screenshot_helper import get_screenshotter
 
+# 登入 → 後台落地頁側欄渲染的等待上限。理由同 pages/dashboard/lu/login_page.py：
+# 實測現金版後台落地需 7~12s（機器閒置），原 15s 在全量跑時會假性失敗。
+LOGIN_LANDING_TIMEOUT = 45000
+
 
 class DashboardLoginPage:
 
@@ -62,7 +66,9 @@ class DashboardLoginPage:
         用 visible（非 attached）避免登入失敗但 DOM 殘留 .sidebar-nav 時誤判成功（假綠燈）。
         """
         sh = get_screenshotter(self.page)
-        self.page.locator(".sidebar-nav").first.wait_for(state="visible", timeout=15000)
+        self.page.locator(".sidebar-nav").first.wait_for(
+            state="visible", timeout=LOGIN_LANDING_TIMEOUT
+        )
         if sh:
             sh.full_page("verify_後台登入成功")
 

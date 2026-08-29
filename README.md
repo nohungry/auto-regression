@@ -37,7 +37,7 @@ utils/locale_helper.py               — set_locale()：注入 `i18n_locale` coo
 utils/dialog_helper.py               — 伺服器錯誤彈窗、公告彈窗（含 MutationObserver enforce killer）、Loading 等待；wait_login_loading()：登入 loading 等待＋截圖（RC/RD/RE LoginPage 共用）；clear_stuck_leave_overlay_if_present()：清卡死的 Vue fade-leave 遮罩（RD dev bug 家族）
 utils/screenshot_helper.py           — 截圖系統（元素高亮 + 自動產生繁中 README；圈選判定：scroll+bbox 判是否真圈到，寫 steps.json / README badge / PNG「未圈選」橫幅 / session _highlight_audit）+ written 缺圖自動回報（寫檔逾時 retry，未寫出標 ⚠️ 並列入稽核）
 utils/visual_helpers.py              — VR reference 截圖 + 動態元素遮蔽
-utils/totp_helper.py                 — get_totp_code()：後台 2FA TOTP 產碼（pyotp + 30s 窗口緩衝）
+utils/totp_helper.py                 — get_totp_code()：後台 2FA TOTP 產碼（pyotp + 30s 窗口緩衝）；get_next_window_totp_code()：無條件等到下一窗口產新碼（2FA Verify 被拒後重送專用，同窗口重放必被拒）
 utils/game_launch_helper.py          — 遊戲啟動偵測：new tab / provider 轉址判斷（LG/LU 型）+ open_in_new_tab() 點 launcher→等新分頁→maximize（LG/LU launch_game 共用）+ get_game_frame() 同分頁 canvas iframe 等待（RC/RD/RE 型）+ site_base_domain() 站點可註冊網域推導（斷言不硬編 domain）
 utils/menu_helper.py                 — leaf_menu_texts()：選單容器葉節點短文字抽取（LG/LU user_menu_item_texts 共用；呼叫端傳入已開啟的選單 locator）
 utils/layout_fingerprint.py          — 多語系版面健康度 DOM 指紋 + overflow 偵測
@@ -45,7 +45,7 @@ utils/window_helper.py               — 另開分頁後 CDP 最大化視窗
 utils/wait_helpers.py                — 可判定等待（wait_for_text_matches / wait_for_nonempty_text：讀值前等文字符合/非空，取代硬等）
 utils/api_helpers.py                 — API 測試共用邏輯（env 推導 / headers / 登入拿 token；各站 conftest fixture 保持 per-site）
 utils/home_reset.py                  — go_home 共用邏輯（回首頁 + 清彈窗兩型：dialog-dismisser / HomePage.dismiss_any_popups）
-utils/dashboard_helpers.py           — 後台 login fixture 共用 generator（建 context + factory 登入 + 可選 screenshotter/2FA；各站 fixture 保持 per-site）+ sidebar_menu_tree()/sidebar_menu_tree_texts()：側欄選單樹 dump（入口檢測用；信用版 route id/href 結構性識別、LU 型現金版子入口以顯示文字識別）
+utils/dashboard_helpers.py           — 後台 login fixture 共用 generator（建 context + factory 登入 + 可選 screenshotter/2FA；各站 fixture 保持 per-site；含 _throttle_2fa_login() 2FA 登入間隔節流 >=35s，D-026）+ sidebar_menu_tree()/sidebar_menu_tree_texts()：側欄選單樹 dump（入口檢測用；信用版 route id/href 結構性識別、LU 型現金版子入口以顯示文字識別）
 .github/workflows/                   — GitHub Actions（p0 / full-regression / docs-sync-check）
 .github/scripts/                     — CI 共用 script（check-docs-sync.sh + check-factory-import.sh factory import 守門 + aggregate_test_results.py 跨站聚合成績單 + audit_highlights.py 離線截圖圈選稽核 + preflight-browser.sh 瀏覽器管道逐層診斷）
 .claude/                             — Claude Code 配置（hooks / skills / agents，團隊共用）

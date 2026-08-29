@@ -14,8 +14,10 @@ spec 來源：2026-07-30 實機 probe（headless chromium 直連 dev 站）。
 ⚠️ lu / qw / lg 共用同一套 Vue admin 後台，三站站長 spec 逐字相同；
    後台選單改版時三個 test_menu_entries.py 要一起改（漏改的站會單獨紅）。
 ⚠️ 帳號層級：dashboard_page = 站長（SITE_QW_DASHBOARD_USER，TOTP 2FA）。
-   代理層級待代理 TOTP 重新綁定後補（2026-07-30 起 TwoFactorAuth/Verify 400），
-   本檔不含代理層級。
+   本檔不含代理層級（待補）。2026-07-30 起代理 TwoFactorAuth/Verify 400 曾被歸因
+   為「secret 遭伺服器端重綁」，**2026-08-28 實測證實 secret 正確**（站長與代理各自
+   成功登入過，含使用者手動登入驗證）；400 真因是登入頻率 + TOTP 碼過期競態，
+   已由 D-026（>=35s 登入節流 + 跨窗口重送一次）處理，非 secret 問題。
 """
 
 import pytest

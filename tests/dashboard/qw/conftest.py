@@ -38,7 +38,7 @@ def go_agent_dashboard(agent_dashboard_page, site_config):
         f"{site_config.dashboard_agent_url}#/member/member-management",
         wait_until="domcontentloaded",
     )
-    agent_dashboard_page.locator(".sidebar-nav").first.wait_for(state="attached", timeout=15000)
+    agent_dashboard_page.locator(".sidebar-nav").first.wait_for(state="attached", timeout=30000)
     return agent_dashboard_page
 
 

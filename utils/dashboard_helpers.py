@@ -14,7 +14,12 @@ pytest 對單一 FixtureDef 整 session 只快取一次 → 多站同 session �
 context 建立複用根 conftest `_new_configured_page(install_toast_observer=False)`：
 與前台一致的 CI viewport / 本機 CDP maximize 分支，且**不注入** toast observer
 （後台不需要，且避免誤關後台彈窗）。
+
+另含 **2FA 登入頻率節流**（`_throttle_2fa_login`，D-026）：帶 TOTP 的登入之間強制
+>= 35s 間隔，避免觸發後端 2FA 頻率風控（docs/dashboard-technical-notes.md 規則 2b）。
 """
+
+import time
 
 from pages.dashboard.factory import get_dashboard_login_page_class
 from utils.screenshot_helper import (
@@ -22,6 +27,47 @@ from utils.screenshot_helper import (
     attach_screenshotter,
     detach_screenshotter,
 )
+
+# 兩次 2FA 登入之間的最小間隔（秒）。
+# docs/dashboard-technical-notes.md 規則 2b 要求「連續兩次登入間隔 > 30s」；35s = 該
+# 下限 + 裕度。>30s 同時保證跨過一個 TOTP 旋轉窗口，故第二次登入不會拿到與前一次
+# 相同的碼（同碼重放後端必拒）。
+TWOFA_LOGIN_MIN_INTERVAL_S = 35.0
+
+# 上一次 2FA 登入（嘗試）的時間戳，`time.monotonic()`（不受系統時間校正影響）。
+# **刻意不持久化到磁碟**：跨 process 的節流狀態需要 lock / 檔案清理 / 陳舊值失效等
+# 機制，複雜度遠高於收益；且 CI 各站分開 job、本機遵守 D-011 同帳號不並行，單一
+# pytest session 內節流即可覆蓋實際的連續登入場景。跨 session 的頻率節制仍靠
+# 規則 2b 的人為紀律（疑似鎖定就停手冷卻 20-30 分鐘）。
+_last_2fa_login_at = None
+
+
+def _throttle_2fa_login():
+    """確保與上一次 2FA 登入相隔 >= TWOFA_LOGIN_MIN_INTERVAL_S，不足則補等。
+
+    **D-006（禁裸 time.sleep）的核可例外**，援引該決策「僅 LU 因真守衛硬等 + 2FA
+    風險刻意保留」既有的框架（docs/decisions.md D-006 影響欄）：後端 2FA 頻率風控
+    是純 wall-clock 條件 —— 沒有任何 UI 元素、API 回應或 DOM 狀態可以 poll 出
+    「現在再登入不會被鎖」，可判定等待在此無從建立。詳見 D-026。
+
+    時間戳在**檢查點**就更新（而非登入成功後），使失敗的 attempt 也計入間隔 ——
+    被拒的登入同樣會累積後端的頻率計數，正是最需要節流的情況。
+    """
+    global _last_2fa_login_at
+
+    now = time.monotonic()
+    if _last_2fa_login_at is not None:
+        elapsed = now - _last_2fa_login_at
+        wait = TWOFA_LOGIN_MIN_INTERVAL_S - elapsed
+        if wait > 0:
+            print(
+                f"[2FA throttle] 距上次 2FA 登入僅 {elapsed:.1f}s，"
+                f"等待 {wait:.1f}s 以滿足 >{TWOFA_LOGIN_MIN_INTERVAL_S}s 間隔（規則 2b）",
+                flush=True,
+            )
+            time.sleep(wait)
+            now = time.monotonic()
+    _last_2fa_login_at = now
 
 # 側欄選單樹 dump（入口檢測用）：一次 evaluate 取回整棵樹，避免逐項 locator round-trip。
 # 結構假設（信用版 rc/re/lt/rd/rf 全家 + LU 型站長側欄皆適用，2026-07-30 實機 probe）：
@@ -126,6 +172,14 @@ def dashboard_login_session(
       - (label, desc) tuple → 登入流程掛 ScreenshotHelper 逐步截圖（現金版 + rf）。
       - None → 不截（信用版 rc/re/lt/rd）。
     """
+    # 2FA 登入頻率節流（規則 2b / D-026）：只有真的帶了 TOTP secret 的登入才 gate。
+    # 條件本身不硬編站點清單（新站零維護）——今日實際命中的是現金版的 5 個登入：
+    # LG 站長、LU 站長 + 代理、QW 站長 + 代理；信用版 rc/re/lt/rd 傳空字串、rf 走
+    # _OMIT 兩引數路徑，皆不進 gate，行為零改變。
+    # 放在建 context **之前**：等待期間不佔著瀏覽器 context 與 CDP 連線。
+    if totp is not _OMIT and totp:
+        _throttle_2fa_login()
+
     # lazy import：本模組被 pages/ 層 POM import（sidebar_menu_tree），
     # 頂層 import conftest 會把 pages 層耦合到 pytest 環境 → 延到呼叫時才 import
     from conftest import _new_configured_page
