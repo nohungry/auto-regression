@@ -114,7 +114,7 @@ Override：commit message 加 `[skip-factory-check]` 並附理由，或設 env v
 
 | 測試類型 | Fixture | Scope | 適用情境 |
 |---------|---------|-------|---------|
-| Smoke | `page` | function | 每次測試獨立 context，各自登入登出。驗證核心流程（登入/登出/首頁元素）。LT smoke 不使用 `logged_in_page`，避免 fixture 的 drawer 開關汙染截圖流程。 |
+| Smoke | `page` | function | 每次測試獨立 context，各自登入登出。驗證核心流程（登入/登出/首頁元素）。LT smoke 不使用 `logged_in_page`，各 test 內自行走完整登入流程（截圖步驟才完整）。 |
 | Functional | `class_logged_in_page` + `go_home` | class | 一個 class 只登入一次，測試間共用 session，`go_home` 每個測試前回首頁。適合功能驗證。 |
 
 各站點測試放在 `tests/<site_id>/` 下；smoke 測試統一命名 `test_p0_smoke.py`，功能型測試放 `tests/<site_id>/feature/<feature_name>/`。
@@ -140,7 +140,7 @@ config/settings.py           — multi-site SiteConfig dataclass loaded from .en
 pages/factory.py             — frontend: routes site_id → LoginPage/HomePage class via registry dict (no if/else fallback; unknown site_id raises ValueError)
 pages/dashboard/factory.py   — backend dashboard: routes site_id → DashboardLoginPage/ManagementPage class (independent registry from frontend; no cross-import)
 pages/rc/                   — rc site Page Objects (LoginPage, HomePage) — 王老吉娛樂城
-pages/lt/                   — lt site Page Objects (LoginPage, HomePage) — LT來財
+pages/lt/                   — lt site Page Objects (LoginPage, HomePage) — LT來財（2026-07-23 第三次換版後前台改用與 RC 同一套模板：`/login` 獨立路由 + 用戶協議彈窗、`.popup-announcement-mask` 進站公告、`.sidebar-item` CSS 隱藏側欄、`button.toast-confirm-btn` 錯誤彈窗；POM 於 2026-09-13 依實機 probe 重寫）
 pages/re/                   — re site Page Objects (LoginPage, HomePage) — BeWin
 pages/rd/                   — rd site Page Objects (LoginPage, HomePage) — 狗狗娛樂城
 pages/qw/                   — qw site Page Objects (LoginPage, HomePage) — LM來財娛樂城（Nuxt/Vue，多語系 cookie 但無切換 UI＝實質單語系顯示）
@@ -153,7 +153,7 @@ tests/dashboard/<site_id>/   — backend dashboard tests (rc/re/lt/rd 代理 top
 tests/rc/                   — rc site tests (test_p0_smoke.py p0, feature/<name>/ p1: announcement_popup, i18n, navigation, wallet)
 tests/rc/conftest.py        — rc-specific overrides: site_config=rc, go_home (+ dismiss announcement popup)
 tests/lt/                   — lt site tests (test_p0_smoke.py p0, test_locale_visual_matrix.py p2 [skipped], feature/<name>/ p1: auth, copy, i18n, member, public, visual, wallet)
-tests/lt/conftest.py        — lt-specific overrides: site_config=lt, page fixture without MutationObserver
+tests/lt/conftest.py        — lt-specific overrides: site_config=lt, go_home (+ dismiss announcement popup)；2026-09-13 起不再覆寫 page fixture（改與 RC 一致：負向登入測試掛 `@pytest.mark.no_toast_observer`）
 tests/re/                   — re site tests (test_p0_smoke.py p0, feature/<name>/ p1: announcement_popup, copy, game, home_sections, i18n, member, navigation, sidebar, visual, wallet)
 tests/re/conftest.py        — re-specific overrides: site_config=re, go_home
 tests/rd/                   — rd site tests (test_p0_smoke.py p0, feature/<name>/ p1: announcement_popup, i18n, navigation)
@@ -381,8 +381,8 @@ element.click()
 | 情境 | Selector 範例 | 原因 |
 |------|---------------|------|
 | RC CSS-hidden sidebar | `.sidebar-item.*`（`width=0` 容器） | 永遠在 viewport 外 |
-| LT member drawer 按鈕（如登出） | drawer 內按鈕 | 渲染位置在 viewport 外 |
-| 常駐 overlay backdrop 攔截點擊 | 如 LT drawer closed 狀態 | Pointer events 被攔截 |
+| LT CSS-hidden sidebar | `.sidebar-item.*`（`.sidebar-wrap` `width=0` 容器） | 永遠在 viewport 外（2026-07-23 換版後與 RC 同結構；舊 drawer 已不存在） |
+| 常駐 overlay 攔截點擊 | 未清除的 `.popup-announcement-mask`（RC/LT 共用） | Pointer events 被攔截；用 dialog_helper 的 CSS killer 清除 |
 
 ### 其他互動規則
 - **DOM re-render 後不要對舊 locator 呼叫 `scroll_into_view_if_needed()`**（element 可能 detached）。改用 `page.evaluate("window.scrollBy(0, N)")`。
@@ -390,12 +390,17 @@ element.click()
 - 禁止裸 `time.sleep()`，優先使用 Playwright `expect` 與可判定事件等待。
 
 ### Selector 規則
-- **避免綁死文案**：placeholder / button name / footer tab 文字會隨 locale 變化（LT 多語系站），且即使單語系站台（RE/QW）也有 i18n hydration race 風險（placeholder 短暫為空）。使用 CSS-based selector（如 LT `input.input-style:not(.password-input)`、QW `input.auth-input__field[type='password']`、RE `input.input-style[type='text']`、`button.base-btn.type1`）或結構化 locator（如 `.footer-bg .content` 取 `.last`/`.nth(0)`）。
+- **避免綁死文案**：placeholder / button name / footer tab 文字會隨 locale 變化（LT 多語系站），且即使單語系站台（RE/QW）也有 i18n hydration race 風險（placeholder 短暫為空）。使用 CSS-based selector（如 LT `input.input-style[type='text']` / `button.primary-btn`、QW `input.auth-input__field[type='password']`、RE `input.input-style[type='text']`、`button.base-btn.type1`）或結構化 locator（如 LT 導覽列以 href 定位 `ul.nav-item a[href^='/Categories/casino']`、首頁區塊標題 `.group > p.tip-single.whitespace-nowrap`）。
 - **`.first` / `.last` 是 property，不是 method**：寫成 `.first()` 會觸發 `__call__` 錯誤。
 - Selector 優先順序：穩定屬性 > role/結構化 locator > 穩定文案 > nth-child/深 CSS 鏈。
 
-### LT SPA Login：必須等 `networkidle`
-LT 使用 React SPA。若 form 在 `networkidle` 前被填入，登入 API 會成功但 SPA 不會離開 `/login`。前往 `/login` 時必須使用 `wait_until="networkidle"`。
+### LT Login（2026-09-13 換版後現況）
+LT 為 Nuxt/Vue SPA，`/login` 是獨立路由（首頁 navbar `button.nav-login-btn` 進入）。
+`goto` 用 `domcontentloaded` + best-effort `networkidle`（SPA 的 `load` / `networkidle`
+偶爾 30s 不觸發），再等表單元素 visible 才操作。送出後會跳「用戶協議」彈窗
+（確定＝`.dialog-container button.black-btn`），按確定才轉回 `/`；登入完成判定＝
+**離開 `/login` 且 `DLT` cookie 存在**。從首頁 CTA 進登入頁需比照 RC 做 hydration
+retry（button 早於 click handler 進 DOM，太早點會靜默失效）。
 
 ### Exception Handling
 只在預期元素缺席或 timeout 時 catch `PlaywrightTimeoutError`（`from playwright.sync_api import TimeoutError as PlaywrightTimeoutError`）。禁止 `except Exception: pass` 靜默 playwright 操作錯誤。

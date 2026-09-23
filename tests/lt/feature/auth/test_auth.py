@@ -1,11 +1,11 @@
 """
-登入後功能測試（WAP 版，2026-04-21 rewrite）
+登入後功能測試
 WIN-AUTH-002, 004
 
-WAP 改版後的差異（見 memory: project_lt_site_redesign.md）：
-- 會員區塊入口：底部 tabbar「個人」→ `/member-center`（取代桌機版 drawer）
-- 分類切換：`.cat-btn` 同頁狀態切換，不改 URL；驗 `.cat-btn--selected` class
-  - WAP 分類：遊戲大廳 / 我的最愛 / 台灣真人 / 國際真人 / 更多（無「真人/電子」桌機分類）
+2026-09-13 第三次換版（RC 模板化）後：
+- 會員區塊入口：右側側欄 `.sidebar-item.user` → 開「個人資訊」彈窗（`.dialog-mask`）
+- 彈窗內登出鈕為 `.dialog-container button.dark-red-btn`（HomePage.member_panel_logout_btn）；
+  navbar 頭像下拉另有一個登出鈕（HomePage.logout_btn），兩者為不同入口
 """
 
 import re
@@ -30,20 +30,20 @@ class TestAuthFeatures:
         home.open_member_center()
 
         sh = get_screenshotter(logged_in_page)
-        # 核心必須存在：登出按鈕（POM 已確保 visible）
-        expect(home.logout_btn).to_be_visible(timeout=5000)
-        home.logout_btn.scroll_into_view_if_needed()
-        if sh: sh.capture(home.logout_btn, "verify_登出按鈕")
+        # 核心必須存在：彈窗內登出按鈕（POM 已確保 panel visible）
+        home.member_panel_logout_btn.scroll_into_view_if_needed()
+        if sh: sh.capture(home.member_panel_logout_btn, "verify_彈窗登出按鈕")
+        expect(home.member_panel_logout_btn).to_be_visible(timeout=5000)
 
         # 其他常見功能文案：存在即 capture（不存在則記錄但不失敗）
         # 原 desktop drawer 的 [投注紀錄/會員訊息/維護時間]，WAP member-center 實際項目由下方 scan 決定
-        expected_labels = ["投注紀錄", "會員訊息", "維護時間"]
+        # 2026-09-13 換版：彈窗欄位改為 帳號 / 暱稱 / 密碼 / 餘額封頂 / 真人限紅
+        expected_labels = ["帳號", "暱稱", "密碼"]
         page_body_text = logged_in_page.locator("body").inner_text()
         missing = [t for t in expected_labels if t not in page_body_text]
         if missing:
             pytest.skip(
-                f"WAP /member-center 尚未發現文案：{missing}；WAP member-center 項目可能與桌機 drawer 不同，"
-                f"待實測盤點後補強斷言"
+                f"個人資訊彈窗未發現文案：{missing}；欄位組成可能隨產品調整，待重新盤點後補強斷言"
             )
         for text in expected_labels:
             el = logged_in_page.get_by_text(text, exact=False).first

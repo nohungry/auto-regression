@@ -9,7 +9,7 @@
 | 站台 ID | 網址 | 測試數 |
 |---------|------|--------|
 | `rc` | 見 .env `SITE_RC_URL` | 63 |
-| `lt` | 見 .env `SITE_LT_URL` | 112 |
+| `lt` | 見 .env `SITE_LT_URL` | 111 |
 | `re` | 見 .env `SITE_RE_URL` | 63 |
 | `rd` | 見 .env `SITE_RD_URL` | 58 |
 | `qw` | 見 .env `SITE_QW_URL` | 50 |
@@ -218,7 +218,7 @@ CDP 連不上時，先跑診斷再修：
 ## 說明
 
 - **多站台支援**：在 `.env` 增加 `SITE_<X>_URL / USERNAME / PASSWORD`，於 `pages/<site_id>/` 建立 Page Objects，在 `pages/factory.py` 的 registry dict 註冊，再於 `tests/<site_id>/` 建立測試目錄即可（dashboard 走 `pages/dashboard/factory.py` 同模式）
-- **伺服器錯誤彈窗**：`conftest.py` 內建 MutationObserver 注入，自動處理 rc 站的伺服器錯誤彈窗；lt 站在 `tests/lt/conftest.py` 覆寫 `page` fixture 關閉此注入（避免 lt 錯誤 dialog 撞同 selector）
+- **伺服器錯誤彈窗**：`conftest.py` 內建 MutationObserver 注入，自動處理 rc / lt 型站台的伺服器錯誤彈窗；需斷言錯誤彈窗可見的測試（rc / lt 的錯誤帳密登入）掛 `@pytest.mark.no_toast_observer`，該測試不注入 observer
 - **截圖系統**：每個測試自動截圖並高亮操作元素（紅框），存於 `screenshots/<site_id>/<timestamp>/<smoke|feature>/<test_name>/`，自動依測試路徑分類，並產生繁中操作流程 README
 - **報表與截圖**：`reports/`、`screenshots/` 均已加入 `.gitignore`
 - **Docs sync check**：commit 時自動檢查 code 變動有沒有對應 .md 更新（hook + CI 雙保險），見 [`docs/cicd.md`](docs/cicd.md)

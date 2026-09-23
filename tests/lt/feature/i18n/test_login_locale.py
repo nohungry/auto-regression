@@ -24,15 +24,16 @@ LoginPage = get_login_page_class("lt")
 
 
 # (case_id, locale, username_placeholder_keyword, password_placeholder_keyword)
-# 只檢查關鍵字（非全字比對），避免半形/全形空格、數字中橫線變體造成 flaky。
-# 2026-05-18 換版後產品動詞改了（請填寫→請輸入 / Please enter→Enter / Vui lòng điền→Vui lòng nhập），
-# 改用更穩定的「該語系代表字」作 keyword，可同時 cover 新舊兩種動詞。
+# 只檢查關鍵字（非全字比對），避免半形/全形空格、標點變體造成 flaky。
+# 2026-09-13 第三次換版（RC 模板化）後 placeholder 由「動詞句」改為「名詞」
+# （請填寫8-20位的字母或數字 → 用戶名 / 密碼），舊的動詞 keyword（請/请/Enter/
+# กรุณา/Vui lòng）全部失效。實機 probe 確認 5 語系皆有翻譯，故改用各語系名詞。
 _PLACEHOLDER_CHECKS = [
-    ("WIN-I18N-LOGIN-001", "tw", "請",        "請"),
-    ("WIN-I18N-LOGIN-002", "cn", "请",        "请"),
-    ("WIN-I18N-LOGIN-003", "en", "Enter",     "Enter"),
-    ("WIN-I18N-LOGIN-004", "th", "กรุณา",     "กรุณา"),
-    ("WIN-I18N-LOGIN-005", "vn", "Vui lòng",  "Vui lòng"),
+    ("WIN-I18N-LOGIN-001", "tw", "用戶名",          "密碼"),
+    ("WIN-I18N-LOGIN-002", "cn", "用户名",          "密码"),
+    ("WIN-I18N-LOGIN-003", "en", "Username",       "Password"),
+    ("WIN-I18N-LOGIN-004", "th", "ชื่อผู้ใช้",          "รหัสผ่าน"),
+    ("WIN-I18N-LOGIN-005", "vn", "Tên người dùng", "Mật khẩu"),
 ]
 
 
@@ -52,7 +53,7 @@ class TestI18NLoginPage:
         login.goto_login(locale=locale)
 
         sh = get_screenshotter(page)
-        # 2026-05-18 換版：input.login-input → input.input-style(text) / input.password-input
+        # 2026-09-13 換版：改用 POM 的 input.input-style[type=text|password]
         username_input = login.username_input
         password_input = login.password_input
 
@@ -80,15 +81,16 @@ class TestI18NLoginPage:
 class TestI18NLangSwitcher:
     """WIN-I18N-LANG：登入頁左上角語系切換按鈕文案應隨 locale 變化。
 
-    產品現況（2026-04-22 probe）：`span.lang-text` 所有語系都固定顯示「繁中」，
-    此測試以 xfail(strict=True) 形式登錄在案：當產品端修正 i18n 後，斷言會轉為 pass，
-    strict xfail 會將 XPASS 視為失敗，提醒移除 xfail marker 並正式 enforce。
+    產品現況（2026-09-13 probe 更新）：第三次換版後**登入頁已完全沒有語系切換入口**
+    （`span.lang-text` count=0，語系切換只剩首頁 navbar `img[alt="global"]`），
+    斷言必然失敗故維持 xfail(strict=True)。語意已從「i18n 未實作」變成「入口被移除」，
+    是否要改為驗首頁 globe 切換待產品/測試設計確認（見本次 LT 換版報告 (b) 類）。
     """
 
     @pytest.mark.xfail(
         strict=True,
-        reason="產品缺口：登入頁 span.lang-text i18n 未實作，所有語系固定繁中（probe 2026-06-27 確認）。"
-               "見 docs/product-bugs-to-report.md。產品修正後本 xfail(strict) 會 XPASS 觸發失敗，提醒拿掉 xfail。"
+        reason="登入頁語系切換入口已於 2026-07-23 換版移除（probe 2026-09-13：span.lang-text count=0），"
+               "斷言恆失敗故維持 xfail(strict)。待決定改驗首頁 navbar globe 切換後再重寫本測試。"
     )
     def test_lang_text_reflects_locale(self, page: Page, site_config):
         """切換 5 語系後，左上角 span.lang-text 應顯示對應語系名稱（至少與 tw 不同）"""

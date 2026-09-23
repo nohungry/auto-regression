@@ -119,8 +119,8 @@ class TestVisual:
     def test_login_form_alignment(self, page: Page, site_config):
         """WIN-VIS-006：登入表單對齊 — inputs 與 buttons 分群對齊。
 
-        2026-05-18 換版：用 POM 新版 selector（input.input-style / .password-input、
-        button.base-btn.type1 / .type2），不再寫死舊 `login-input` / `btn-login` 等 class。
+        2026-09-13 換版：登入頁只剩 1 個按鈕（`button.primary-btn`；「先去逛逛」已移除），
+        故「按鈕彼此對齊」一項不再適用，改驗 inputs 對齊 + 按鈕與 inputs 的水平關係。
         """
         login = LoginPage(page, site_config.url)
         login.goto_login()
@@ -130,7 +130,6 @@ class TestVisual:
             (login.username_input, "verify_login_username_input對齊"),
             (login.password_input, "verify_login_password_input對齊"),
             (login.login_btn,      "verify_login_登入按鈕對齊"),
-            (login.browse_btn,     "verify_login_先去逛逛按鈕對齊"),
         ]:
             loc.scroll_into_view_if_needed()
             if sh: sh.capture(loc, label)
@@ -140,35 +139,30 @@ class TestVisual:
                 const box = el.getBoundingClientRect();
                 return { x: box.x, width: box.width };
             };
-            const username  = document.querySelector('input.input-style:not(.password-input)');
-            const password  = document.querySelector('input.password-input');
-            const loginBtn  = document.querySelector('button.base-btn.type1');
-            const browseBtn = document.querySelector('button.base-btn.type2');
+            const username  = document.querySelector("input.input-style[type='text']");
+            const password  = document.querySelector("input.input-style[type='password']");
+            const loginBtn  = document.querySelector('button.primary-btn');
             return {
                 username:  rect(username),
                 password:  rect(password),
                 loginBtn:  rect(loginBtn),
-                browseBtn: rect(browseBtn),
             };
         }""")
         input_xs     = [metrics["username"]["x"],     metrics["password"]["x"]]
         input_widths = [metrics["username"]["width"], metrics["password"]["width"]]
-        btn_xs       = [metrics["loginBtn"]["x"],     metrics["browseBtn"]["x"]]
-        btn_widths   = [metrics["loginBtn"]["width"], metrics["browseBtn"]["width"]]
-        padding      = metrics["username"]["x"] - metrics["loginBtn"]["x"]
+        # 按鈕置中於 inputs 區塊：比較兩者中心線
+        input_center = metrics["username"]["x"] + metrics["username"]["width"] / 2
+        btn_center   = metrics["loginBtn"]["x"] + metrics["loginBtn"]["width"] / 2
+        center_diff  = input_center - btn_center
 
-        if sh: sh.full_page(f"verify_login表單整體對齊檢測_padding{padding}px")
+        if sh: sh.full_page(f"verify_login表單整體對齊檢測_center_diff{round(center_diff)}px")
 
         # inputs 之間：左邊界嚴格對齊；寬度允許 ≤ 30px 差異（password 右側 toggle 眼睛 icon 擠壓視覺寬度）
         assert max(input_xs)     - min(input_xs)     <= 2,  f"inputs 左邊界未對齊：{metrics}"
         assert max(input_widths) - min(input_widths) <= 30, f"inputs 寬度差異超過 icon 擠壓容忍（30px）：{metrics}"
 
-        # buttons 之間嚴格對齊
-        assert max(btn_xs)     - min(btn_xs)     <= 2, f"buttons 左邊界未對齊：{metrics}"
-        assert max(btn_widths) - min(btn_widths) <= 2, f"buttons 寬度未一致：{metrics}"
-
-        # inputs 左邊界相對 buttons 的 padding 落在合理範圍（desktop responsive 寬鬆些）
-        assert abs(padding) <= 40, f"inputs/buttons 左邊界差距超過合理 padding：{padding}px"
+        # 送出按鈕應與 inputs 區塊置中對齊（容忍 4px）
+        assert abs(center_diff) <= 4, f"登入按鈕未與 inputs 置中對齊：center_diff={center_diff}，{metrics}"
 
     @pytest.mark.skip(reason="DEFER：desktop 版首頁為長捲動單頁（hero swipe sections + .footer-bg 5 tab），舊 .cat-btn/.shadow-menubar viewport 驗證不適用。新版 viewport 驗證低優先；且底部中央 footer tab 有站點 bug（破 icon，見 docs/product-bugs-to-report.md），待產品修後再設計。")
     def test_home_navbar_and_login_in_viewport(self, page: Page, site_config):

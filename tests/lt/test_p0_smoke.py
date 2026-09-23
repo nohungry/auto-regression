@@ -1,13 +1,18 @@
 """
-lt 站點 P0 Smoke Test（desktop responsive 版，2026-05-18 rewrite）
+lt 站點 P0 Smoke Test（LM來財信用網；2026-09-13 rewrite，第三次換版）
 
-每次 Release 必跑，驗證核心功能正常。Desktop 設計要點（換版後）：
-- 無 hamburger / drawer — 會員入口為底部 tabbar「個人」→ 開 .dialog-mask-full overlay panel
-- Navbar 已登入顯示 username pill (.user-info-bg p.tip-single) + 信用額度 (.coin-wrap-bg span)
-- 登入完成判斷：DLT cookie 存在；page.url 不可靠（Nuxt pushState 不更新 url 對象）
-- 個人中心非獨立路由（無 /member-center），URL 維持 /
-- 錯誤 dialog 確定按鈕：button.toast-confirm-btn（替代舊 button.confirm-btn）
-- 舊 .cat-btn 分類 tab 已消失，改為 swipe sections (span.category-title)
+dev-lt 自 2026-07-23 起改用與 RC（王老吉）相同的前台模板。本檔依 2026-09-13 實機
+probe 重寫（probe 筆記：dev-notes/lt-redesign-v3-probe-2026-09-13.md）。
+
+新版設計要點：
+- 登入為獨立路由 `/login`（首頁 navbar `button.nav-login-btn` 進入），非 modal
+- 登入送出後出現「用戶協議」彈窗（`.dialog-container button.black-btn` 確定）
+- 登入完成＝離開 /login 且 DLT cookie 存在
+- 已登入 navbar：帳號 `p.name-shadow`、信用額度 `.coin-wrap-bg span`、頭像 `img[alt="avatar"]`
+- 登出：頭像下拉 → 登出（HomePage.logout()）
+- 個人中心＝側欄 `.sidebar-item.user` 開的 `.dialog-mask` 彈窗（含帳號欄位）
+- 錯誤提示彈窗 `button.toast-confirm-btn`（密碼錯誤 / 帳號不存在）；空欄位則前端擋下無彈窗
+- 首頁有 RC 型進站公告 `.popup-announcement-mask`（POM 內已清）
 
 執行方式：
     .venv/bin/pytest tests/lt/test_p0_smoke.py -v
@@ -44,50 +49,55 @@ class TestLogin:
         home = HomePage(page)
         home.verify_login_success(site_config.username)
 
+    @pytest.mark.no_toast_observer
     def test_login_wrong_password(self, page: Page, site_config):
-        """TC-002：正確帳號 + 錯誤密碼應失敗，並出現錯誤提示彈窗"""
+        """TC-002：正確帳號 + 錯誤密碼應失敗，並出現「密碼錯誤」提示彈窗
+
+        no_toast_observer：停用根 conftest 的全域 MutationObserver（它會秒關所有
+        toast-confirm-btn），否則斷言不到彈窗（與 RC 同作法）。
+        """
         login = LoginPage(page, site_config.url)
         login.goto_login()
-        login.username_input.scroll_into_view_if_needed()
-        login.username_input.fill(site_config.username)
-        login.password_input.scroll_into_view_if_needed()
-        login.password_input.fill("wrong_password_123")
-        # 用 dispatch_event 觸發 Vue handler（與 LoginPage.login() 一致）
-        login.login_btn.dispatch_event("click")
+        login.login(site_config.username, "wrong_password_123", expect_success=False)
 
-        # 錯誤 dialog：button.toast-confirm-btn 為穩定 anchor
-        login.error_confirm_btn.wait_for(state="visible", timeout=8000)
         sh = get_screenshotter(page)
+        error_msg = page.locator("p", has_text="密碼錯誤")
         if sh: sh.capture(login.error_confirm_btn, "verify_錯誤提示彈窗_確定按鈕")
+        if sh: sh.capture(error_msg, "verify_密碼錯誤訊息")
+        expect(login.error_confirm_btn).to_be_visible(timeout=10000)
+        expect(error_msg).to_be_visible()
         expect(login.username_input).to_be_visible(timeout=5000)
 
+    @pytest.mark.no_toast_observer
     def test_login_wrong_username(self, page: Page, site_config):
-        """TC-003：不存在帳號應失敗，並出現錯誤提示彈窗"""
+        """TC-003：不存在帳號應失敗，並出現「帳號不存在」提示彈窗
+
+        no_toast_observer：同 test_login_wrong_password。
+        """
         login = LoginPage(page, site_config.url)
         login.goto_login()
-        login.username_input.scroll_into_view_if_needed()
-        login.username_input.fill("nonexistent_user_xyz")
-        login.password_input.scroll_into_view_if_needed()
-        login.password_input.fill(site_config.password)
-        login.login_btn.dispatch_event("click")
+        login.login("nonexistent_user_xyz", site_config.password, expect_success=False)
 
-        login.error_confirm_btn.wait_for(state="visible", timeout=8000)
         sh = get_screenshotter(page)
+        error_msg = page.locator("p", has_text="帳號不存在")
         if sh: sh.capture(login.error_confirm_btn, "verify_錯誤提示彈窗_確定按鈕")
+        if sh: sh.capture(error_msg, "verify_帳號不存在訊息")
+        expect(login.error_confirm_btn).to_be_visible(timeout=10000)
+        expect(error_msg).to_be_visible()
         expect(login.username_input).to_be_visible(timeout=5000)
 
     def test_login_empty_fields(self, page: Page, site_config):
-        """空白帳號密碼不應登入成功"""
+        """TC-004：空白帳號密碼不應登入成功（probe 2026-09-13：前端擋下，無彈窗、停在 /login）"""
         login = LoginPage(page, site_config.url)
         login.goto_login()
 
         sh = get_screenshotter(page)
         if sh: sh.capture(login.login_btn, "click_送出登入_空白欄位")
-        login.login_btn.dispatch_event("click")
+        login.login_btn.click()
 
-        # 不應跳轉，仍在登入頁
         if sh: sh.capture(login.username_input, "verify_仍在登入頁")
-        expect(login.username_input).to_be_visible(timeout=3000)
+        expect(login.username_input).to_be_visible(timeout=5000)
+        expect(page).to_have_url(re.compile(r"/login"))
 
     def test_logout(self, page: Page, site_config):
         """TC-005：可登出並回到未登入狀態（DLT cookie 被清除）"""
@@ -98,14 +108,12 @@ class TestLogin:
         home.verify_logged_in()
         home.logout()
 
-        # 驗證 DLT cookie 已消失（登入成功標記）
-        cookies = page.context.cookies()
-        cookie_names = [c["name"] for c in cookies]
+        cookie_names = [c["name"] for c in page.context.cookies()]
         assert "DLT" not in cookie_names, "登出後 DLT cookie 仍存在"
 
 
 # ─────────────────────────────────────────────────────────────
-# 首頁核心（未登入）
+# 首頁核心
 # ─────────────────────────────────────────────────────────────
 
 @pytest.mark.p0
@@ -118,46 +126,46 @@ class TestHomePage:
         """TC-006：首頁可正常開啟"""
         login = LoginPage(page, site_config.url)
         login.goto()
-        # 驗證 URL 包含 site_config 中設定的域名
         domain = site_config.url.split("//")[-1].rstrip("/")
         sh = get_screenshotter(page)
         if sh: sh.full_page("verify_首頁載入檢測")
         expect(page).to_have_url(re.compile(re.escape(domain)))
 
     def test_navigation_visible(self, page: Page, site_config):
-        """TC-007：首頁顯示主要 section 標題（來財獨家 / 爆分精選 / 活動專區）。
+        """TC-007：navbar 導覽列顯示主要分類入口（真人 / 電子 / 捕魚）。
 
-        2026-05-18 換版：舊 .cat-btn 分類 tab 已消失，改為 swipe sections。
-        改驗 span.category-title 文字呈現（未登入即可見）。
+        2026-09-13 換版：改為 `ul.nav-item` 連結，以 href 定位（locale-agnostic），
+        不綁文案（LT 為多語系站）。
         """
         login = LoginPage(page, site_config.url)
         login.goto()
         sh = get_screenshotter(page)
-        for label in ["來財獨家", "爆分精選", "活動專區"]:
-            el = page.locator("span.category-title", has_text=label).first
+        for label, route in [("真人", "casino"), ("電子", "slots"), ("捕魚", "fishing")]:
+            el = page.locator(f"ul.nav-item a[href^='/Categories/{route}']").first
             el.scroll_into_view_if_needed()
+            if sh: sh.capture(el, f"verify_導覽列_{label}")
             expect(el).to_be_visible()
-            if sh: sh.capture(el, f"verify_section_{label}")
 
     def test_login_page_elements_exist(self, page: Page, site_config):
-        """TC-008：登入頁元素存在（帳號 input / 密碼 input / 會員登入按鈕）"""
+        """TC-008：登入頁元素存在（帳號 input / 密碼 input / 登入按鈕）"""
         set_locale(page, site_config.url)
-        page.goto(site_config.url.rstrip("/") + "/login", wait_until="networkidle")
+        page.goto(site_config.url.rstrip("/") + "/login", wait_until="domcontentloaded")
         sh = get_screenshotter(page)
 
-        username_input = page.locator("input.input-style:not(.password-input)").first
-        password_input = page.locator("input.password-input").first
-        login_btn = page.locator("button.base-btn.type1").first
+        username_input = page.locator("input.input-style[type='text']").first
+        password_input = page.locator("input.input-style[type='password']").first
+        login_btn = page.locator("button.primary-btn").first
 
+        username_input.wait_for(state="visible", timeout=15000)
+        if sh: sh.capture(username_input, "verify_帳號欄位")
+        if sh: sh.capture(password_input, "verify_密碼欄位")
+        if sh: sh.capture(login_btn,      "verify_登入按鈕")
         expect(username_input).to_be_visible()
         expect(password_input).to_be_visible()
         expect(login_btn).to_be_visible()
-        if sh: sh.capture(username_input, "verify_帳號欄位")
-        if sh: sh.capture(password_input, "verify_密碼欄位")
-        if sh: sh.capture(login_btn,      "verify_會員登入按鈕")
 
     def test_login_cta_navigates_to_login_page(self, page: Page, site_config):
-        """TC-009：首頁 tap「個人」tab 可進入登入頁（未登入狀態）"""
+        """TC-009：首頁 navbar「登入」CTA 可進入 /login（未登入狀態）"""
         login = LoginPage(page, site_config.url)
         login.goto()
         sh = get_screenshotter(page)
@@ -165,84 +173,79 @@ class TestHomePage:
         login.open_login_form()
 
         if sh: sh.full_page("verify_進入登入頁")
-        expect(page).to_have_url(re.compile(r"/login"), timeout=8000)
-        expect(page.locator("input.input-style:not(.password-input)").first).to_be_visible()
+        expect(page).to_have_url(re.compile(r"/login"), timeout=10000)
+        expect(login.username_input).to_be_visible()
 
     def test_balance_visible(self, page: Page, site_config):
-        """TC-010：登入後 navbar 直接顯示帳號 pill 與信用額度（無需開 panel）"""
+        """TC-010：登入後 navbar 顯示帳號與信用額度。
+
+        信用額度為動態值，只驗「非空」不寫死數值；截圖 label 帶當前值僅供人工 review。
+        """
         login = LoginPage(page, site_config.url)
         login.goto_and_login(site_config.username, site_config.password)
 
         home = HomePage(page)
         sh = get_screenshotter(page)
 
-        # navbar 帳號 pill
-        expect(home.navbar_login_pill).to_have_text(site_config.username, timeout=10000)
-        if sh: sh.capture(home.navbar_login_pill, f"verify_navbar_帳號顯示_{site_config.username}")
+        expect(home.navbar_login_pill).to_have_text(site_config.username, timeout=15000)
+        if sh: sh.capture(home.navbar_login_pill, f"verify_navbar帳號_{site_config.username}")
 
-        # navbar 信用額度（非空）
-        expect(home.navbar_balance).to_be_visible(timeout=5000)
+        expect(home.navbar_balance).to_be_visible(timeout=10000)
         balance_text = (home.navbar_balance.text_content() or "").strip()
-        if sh: sh.capture(home.navbar_balance, f"verify_navbar_信用額度非空_{balance_text}")
+        if sh: sh.capture(home.navbar_balance, f"verify_navbar信用額度非空_{balance_text}")
         assert balance_text != "", "navbar 信用額度欄位不應為空"
 
-    @pytest.mark.skip(reason="desktop 版首頁無公告跑馬燈（probe 2026-06-26 確認）；公告已改隸右側 sidebar（.sidebar-item.announce），改由 feature/sidebar 涵蓋。此 marquee 測試永久不適用。")
+    @pytest.mark.skip(reason="首頁無公告跑馬燈元件（probe 2026-06-26 確認、2026-09-13 換版後複驗仍無）；公告入口為右側側欄 .sidebar-item.announce，由 feature 層涵蓋。此 marquee 測試永久不適用。")
     def test_announcement_marquee(self, page: Page, site_config):
-        """TC-011：[OBSOLETE] 首頁公告跑馬燈 — desktop 已移除，公告移入 sidebar（見 feature/sidebar）"""
+        """TC-011：[OBSOLETE] 首頁公告跑馬燈 — 已移除，公告改隸側欄"""
 
     def test_hot_games_section(self, page: Page, site_config):
-        """TC-012：首頁顯示 hero section 標題與遊戲卡片。
+        """TC-012：首頁顯示區塊標題與遊戲卡片。
 
-        2026-05-18 換版：舊 .game-slot / .section-title 已被新版 grid 卡片取代。
-        改驗 hero section 的 span.category-title（來財獨家/爆分精選/活動專區）
-        + 任一遊戲卡片（.grid > .relative.cursor-pointer，全站 82 張）。
+        2026-09-13 換版：區塊標題改為 `.group > p.tip-single.whitespace-nowrap`
+        （來財獨家/活動專區/熱門遊戲/最新遊戲/爆分精選），舊 `span.category-title`
+        已不存在。標題文案隨語系變動，故以結構定位、不綁文字，只驗 ≥1 個可見；
+        卡片仍為 `.grid > .relative.cursor-pointer`（張數隨後台設定變動，只驗 ≥1）。
         """
         login = LoginPage(page, site_config.url)
         login.goto_and_login(site_config.username, site_config.password)
 
         sh = get_screenshotter(page)
-        # hero section title anchor（locale-agnostic via .first）
-        section_title = page.locator('span.category-title').first
-        expect(section_title).to_be_visible(timeout=5000)
-        if sh: sh.capture(section_title, "verify_hero_section_標題")
+        section_titles = page.locator(".group > p.tip-single.whitespace-nowrap")
+        section_title = section_titles.first
+        section_title.scroll_into_view_if_needed()
+        if sh: sh.capture(section_title, f"verify_首頁區塊標題_count{section_titles.count()}")
+        expect(section_title).to_be_visible(timeout=10000)
 
-        # 遊戲卡片（至少一張可見）— grid 卡片是 cursor-pointer 的 .relative div
-        game_card = page.locator('.grid > .relative.cursor-pointer').first
-        game_card.scroll_into_view_if_needed()
-        if sh: sh.capture(game_card, "verify_遊戲卡片")
+        game_cards = page.locator(".grid > .relative.cursor-pointer")
+        card = game_cards.first
+        card.scroll_into_view_if_needed()
+        if sh: sh.capture(card, f"verify_遊戲卡片_count{game_cards.count()}")
+        expect(card).to_be_visible(timeout=10000)
 
     def test_casino_halls_visible(self, page: Page, site_config):
-        """TC-013：首頁顯示真人廳館 section（casino_banner + 至少一張廳館卡片）。
+        """TC-013：首頁顯示真人廳館卡片。
 
-        2026-05-18 換版：廳館卡片 alt 全為空字串，無法用 img[alt="T9真人"] 等斷言。
-        產品變動：RC 真人廳館已下架，現存 T9 / DG / MT / AB（歐博）四廳。
-        改驗 casino banner 可見 + section 內 ≥1 張卡片，避免硬寫廳數。
+        2026-09-23 複驗：廳館圖已改為 `/img/casino/<hall>.webp`（t9/ob/dg/rc/mt），
+        舊 `img[src*="HomePageImgcasino_"]` 命中 0。改以**路徑前綴**定位而非廳名，
+        廳別與廳數都會隨後台設定變動（本次複驗 rc 廳即重新上架），故只驗 ≥1 張可見。
         """
         login = LoginPage(page, site_config.url)
         login.goto_and_login(site_config.username, site_config.password)
 
         sh = get_screenshotter(page)
-
-        # casino section banner（image src 包含 category_banner_casino 為 anchor）
-        casino_banner = page.locator("img[src*='category_banner_casino']").first
-        casino_banner.scroll_into_view_if_needed()
-        if sh: sh.capture(casino_banner, "verify_真人廳館_banner")
-        expect(casino_banner).to_be_visible(timeout=5000)
-
-        # section 內至少一張廳館卡片可見（含 T9/DG/MT/AB；RC 已下架）
-        casino_cards = (
-            page.locator("img[src*='category_banner_casino']")
-            .locator("xpath=../..")
-            .locator(".relative.cursor-pointer")
-        )
-        if sh: sh.full_page("verify_真人廳館_section_整體")
-        assert casino_cards.count() >= 1, "真人廳館 section 應至少有 1 張卡片"
+        halls = page.locator("img[src^='/img/casino/']")
+        hall = halls.first
+        hall.scroll_into_view_if_needed()
+        if sh: sh.capture(hall, f"verify_真人廳館卡片_count{halls.count()}")
+        if sh: sh.full_page("verify_真人廳館_整體版面")
+        expect(hall).to_be_visible(timeout=10000)
 
     def test_member_center_opens(self, page: Page, site_config):
-        """TC-014：tap 底部「個人」tab 開啟 .dialog-mask-full overlay panel 並顯示帳號。
+        """TC-014：側欄「個人資訊」可開啟會員彈窗並顯示登入帳號。
 
-        2026-05-18 換版：個人中心改為 SPA inline panel，URL 維持 /。
-        不再斷言 URL 變化，改驗 panel visible + 登出按鈕可見。
+        2026-09-13 換版：會員中心改為側欄 `.sidebar-item.user` 開的 `.dialog-mask` 彈窗
+        （舊底部 tabbar + `.dialog-mask-full` panel 已移除），URL 維持 `/`。
         """
         login = LoginPage(page, site_config.url)
         login.goto_and_login(site_config.username, site_config.password)
@@ -251,33 +254,42 @@ class TestHomePage:
         sh = get_screenshotter(page)
 
         home.open_member_center()
-        if sh: sh.full_page("verify_member_center_panel開啟")
+        if sh: sh.full_page("verify_個人資訊彈窗_開啟")
+        expect(home.member_panel).to_be_visible(timeout=10000)
 
-        # panel 已開
-        expect(home.member_panel).to_be_visible(timeout=5000)
+        if sh: sh.capture(home.member_account_input, f"verify_彈窗帳號欄_{site_config.username}")
+        expect(home.member_account_input).to_have_value(site_config.username, timeout=10000)
 
-        # 登出按鈕可見代表 panel 已載入
-        if sh: sh.capture(home.logout_btn, "verify_登出按鈕可見")
-        expect(home.logout_btn).to_be_visible(timeout=5000)
+        if sh: sh.capture(home.member_panel_logout_btn, "verify_彈窗登出按鈕可見")
+        expect(home.member_panel_logout_btn).to_be_visible(timeout=5000)
 
 
 # ─────────────────────────────────────────────────────────────
-# 導覽列分類切換（2026-05-18 換版後 .cat-btn 已不存在）
+# 導覽列分類切換
 # ─────────────────────────────────────────────────────────────
 
 @pytest.mark.p0
 @pytest.mark.lt
 class TestNavigation:
-    """TC-015：原 `.cat-btn` 分類 tab 在 2026-05-18 換版已被 swipe sections 取代，
-    `.cat-btn--selected` 切換機制不存在。整組 skip 待產品決定新版分類互動模式後重寫。
-    """
+    """TC-015：導覽列分類入口可跳轉到對應分類頁"""
 
-    @pytest.mark.skip(reason="desktop 版分類 tab 切換機制（.cat-btn--selected）已由產品移除（probe 2026-06-26 確認），改為單頁 3 個 swipe sections（span.category-title：來財獨家/爆分精選/活動專區），無 tab 切換互動。section 存在性已由 TestHome::test_hot_games_section 涵蓋。此測試永久不適用。")
-    @pytest.mark.parametrize("nav_item", [
-        "我的最愛",
-        "台灣真人",
-        "國際真人",
-        "更多",
+    @pytest.mark.parametrize("nav_item,route", [
+        ("真人", "casino"),
+        ("電子", "slots"),
+        ("捕魚", "fishing"),
     ])
-    def test_nav_cat_btn_switches_selected(self, page: Page, site_config, nav_item):
-        """TC-015：tap `.cat-btn` 後該項目有 `.cat-btn--selected` class（已過時）"""
+    def test_nav_item_navigates_to_category(self, page: Page, site_config, nav_item, route):
+        """TC-015：點 navbar 分類入口後 URL 進入對應 /Categories/<route>。
+
+        2026-09-13 換版：舊 `.cat-btn--selected` 切換機制已不存在，改為 navbar 連結導覽；
+        以 href 定位（locale-agnostic），不綁文案。
+        """
+        login = LoginPage(page, site_config.url)
+        login.goto()
+
+        home = HomePage(page)
+        sh = get_screenshotter(page)
+        home.click_nav_item(nav_item)
+
+        if sh: sh.full_page(f"verify_分類頁_{nav_item}")
+        expect(page).to_have_url(re.compile(re.escape(f"/Categories/{route}")), timeout=15000)
