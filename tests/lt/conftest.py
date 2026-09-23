@@ -1,16 +1,18 @@
 """
-lt 站點測試專用 conftest
-- 覆寫 site_config fixture，讓 tests/lt/ 下的測試不需加 --site=lt 即可執行
-- 覆寫 page fixture：沿用全域 _new_configured_page 的 CDP maximize，但**不注入**
-  toast-confirm-btn MutationObserver — LT 的錯誤 dialog（密碼錯/帳號錯）確定按鈕
-  也叫 button.toast-confirm-btn，被 observer 秒關會讓 wrong_password / wrong_username
-  測試 assert 不到 dialog。故傳 install_toast_observer=False。
-- 不覆寫 go_home：沿用全域版（root conftest.py）。
+lt 站點測試專用 conftest（LM來財信用網）
+
+- 覆寫 site_config：tests/lt/ 下不需加 --site=lt 即可執行。
+- **不再覆寫 page fixture**（2026-09-13）：dev-lt 換版後前台與 RC 同模板，
+  伺服器錯誤彈窗也走 `button.toast-confirm-btn`，全域 MutationObserver 對 LT 有用；
+  需斷言錯誤彈窗可見的負向登入測試改掛 `@pytest.mark.no_toast_observer`（與 RC 一致），
+  由根 conftest 的 page fixture 對該 test 單獨停用 observer。
+- 覆寫 go_home：新版首頁有 RC 型進站公告 `.popup-announcement-mask`，
+  不清會全屏攔截點擊（共用 utils/home_reset）。
 """
 
 import pytest
 from config.settings import get_site_config
-from conftest import _new_configured_page
+from utils.home_reset import reset_home_with_dismissers
 
 
 @pytest.fixture(scope="session")
@@ -20,12 +22,7 @@ def site_config():
 
 
 @pytest.fixture(scope="function")
-def page(browser):
-    """lt page fixture：與全域相同（CI viewport / 本機 CDP maximize），但不注入
-    toast-confirm-btn observer（LT 錯誤 dialog 用同一 selector，注入會破壞錯誤路徑測試）。
-    """
-    context, pg = _new_configured_page(browser, install_toast_observer=False)
-    try:
-        yield pg
-    finally:
-        context.close()
+def go_home(class_logged_in_page, site_config):
+    """[LT 覆寫] 每個測試前回首頁並清 server error / 進站公告彈窗。"""
+    reset_home_with_dismissers(class_logged_in_page, site_config.url)
+    yield

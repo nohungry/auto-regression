@@ -6,7 +6,7 @@ WAP 改版後的差異（見 memory: project_lt_site_redesign.md）：
 - 客服入口：右下浮動 `a#drag_1_container > img[alt="CS"]`，指向 `lin.ee/...`
 - 版權 footer：**已移除**（WIN-PUB-006 skip）
 - 語系切換 icon：未登入首頁無此入口，改位至登入頁 `span.lang-text`（WIN-PUB-005 skip，i18n PR 再補）
-- 未登入首頁無「熱門」分類，改為 `.cat-btn` 五類；先去逛逛後驗 `.cat-btn:has-text("遊戲大廳")`
+- 2026-09-13 換版：「先去逛逛」已移除，改驗登入頁 `img[alt="Exit"]` 回首頁
 """
 
 import re
@@ -50,24 +50,25 @@ class TestPublicFeatures:
         if sh: sh.capture(link, "verify_客服浮動連結存在")
         expect(link).to_have_attribute("href", re.compile(r"(line\.me|lin\.ee|t\.me|wa\.me|telegram)"))
 
-    def test_browse_without_login_returns_home(self, page: Page, site_config):
-        """WIN-PUB-011：登入頁「先去逛逛」可回首頁（驗首頁未登入 CTA 出現）
+    def test_leave_login_page_returns_home(self, page: Page, site_config):
+        """WIN-PUB-011：未登入者可從登入頁回到首頁（驗首頁未登入 CTA 出現）
 
-        2026-05-18 換版：button.btn-browse → button.base-btn.type2；首頁未登入錨點
-        改用 navbar 「登入」CTA（div.login-btn-with-text，未登入時才顯示）。
+        2026-09-13 第三次換版：「先去逛逛」按鈕（`button.base-btn.type2`）已移除，
+        同等功能改為登入頁右上角離開鍵 `img[alt="Exit"]`（LoginPage.exit_btn）；
+        首頁未登入錨點改為 navbar `button.nav-login-btn`。
         """
         login = LoginPage(page, site_config.url)
         login.goto_login()
         sh = get_screenshotter(page)
 
-        login.browse_btn.scroll_into_view_if_needed()
-        if sh: sh.capture(login.browse_btn, "click_先去逛逛")
-        login.browse_btn.dispatch_event("click")
+        login.exit_btn.scroll_into_view_if_needed()
+        if sh: sh.capture(login.exit_btn, "click_離開登入頁")
+        login.exit_btn.click()
 
         if sh: sh.full_page("verify_回到首頁")
         expect(page).to_have_url(
             re.compile(r"^" + re.escape(site_config.url.rstrip("/")) + r"/?$"),
-            timeout=8000,
+            timeout=10000,
         )
         # 未登入首頁錨點：navbar 「登入」CTA（locale-agnostic class）
-        expect(page.locator('div.login-btn-with-text').first).to_be_visible(timeout=5000)
+        expect(page.locator('button.nav-login-btn').first).to_be_visible(timeout=10000)

@@ -141,14 +141,14 @@ def open_member_screen(page: Page, locale: str, key: str) -> None:
     key 對應（2026-05-18 換版後對照）：
     - `bettingRecord` → `.sidebar-item.game-details`（遊戲明細，最接近投注紀錄概念）
     - `memberInfo`    → `.sidebar-item.mail`（站內信，最接近會員訊息概念）
-    - `maintenance`   → footer 第一個 .content tab（維護時間獨立為底部 footer，不在 panel 內）
+    - `maintenance`   → `.sidebar-item.maintain`（2026-09-13 換版：底部 footer 移除，維護時間改隸側欄）
     """
     if key == "maintenance":
-        # 維護時間搬到底部 footer，不需開 panel
-        maint_tab = page.locator(".footer-bg .content").nth(0)
-        maint_tab.wait_for(state="visible", timeout=5000)
-        maint_tab.scroll_into_view_if_needed()
-        maint_tab.dispatch_event("click")
+        # 2026-09-13 換版：底部 footer 已移除，維護時間改為側欄 .sidebar-item.maintain
+        # （容器寬 0 → 永遠在 viewport 外，必須 dispatch_event）
+        maint_item = page.locator(".sidebar-item.maintain").first
+        maint_item.wait_for(state="visible", timeout=8000)
+        maint_item.dispatch_event("click")
         page.wait_for_timeout(500)
         return
 

@@ -6,7 +6,7 @@
 
 # LT 站台
 
-> ⚠️ **待複驗（2026-07-24）**：LT 前台於 **2026-07** 發生**第三次換版**（目前觀望中）。本節 LT 文案對照以 **2026-05-19（desktop responsive 換版）版**為準；待換版收斂穩定後需**重新 probe 複驗**文案與 selector。RC / RD 段不受此影響。
+> ⚠️ **文案待複驗（2026-09-13）**：LT 前台 **2026-07-23 第三次換版**（RC 模板化）。**下方 selector 備註表已依 2026-09-13 實機 probe 更新**；但**各語系文案對照（placeholder / 選單字串）尚未逐語系重新 probe**，仍以 2026-05-19 desktop 版為準，引用前請先複驗。RC / RD 段不受此影響。
 
 LT 站台（SITE_LT_URL）支援五種語系：繁中（tw）、簡中（cn）、英文（en）、泰文（th）、越文（vn）。  
 語系切換方式：注入 `i18n_locale` cookie（`utils/locale_helper.set_locale()`）。
@@ -78,29 +78,37 @@ LT 站台（SITE_LT_URL）支援五種語系：繁中（tw）、簡中（cn）�
 
 ---
 
-## LT Selector 備註（desktop responsive，2026-05-18 換版後）
+## LT Selector 備註（RC 模板化，2026-09-13 probe）
+
+> 2026-07-23 第三次換版後 LT 前台與 RC 同一套模板。舊 desktop responsive 版的
+> `input.password-input` / `button.base-btn.*` / `.footer-bg` / `.nav-bg-m` /
+> `.user-info-bg` / `.dialog-mask-full` **全部不存在**。
 
 | 元素 | Selector | 說明 |
 |------|----------|------|
-| 登入頁帳號欄 | `input.input-style:not(.password-input)` | text input；placeholder 有 i18n |
-| 登入頁密碼欄 | `input.password-input` | password input；placeholder 有 i18n |
-| 登入送出按鈕 | `button.base-btn.type1` | 結構 selector；文案 i18n 變動，**禁用 `has_text`** |
-| 不登入逛逛按鈕 | `button.base-btn.type2` | 結構 selector；同上 |
-| 登入錯誤 dialog 確定 | `button.toast-confirm-btn` | ⚠️ 與全域 MutationObserver 撞 selector，LT conftest 必須不注入 observer |
-| navbar 容器 | `.nav-bg-m` | 取代舊 `.bg-navbar` |
-| navbar 信用額度 | `.coin-wrap-bg span` | 只驗非空，不寫死值 |
-| navbar 帳號 pill | `.user-info-bg p.tip-single` | 已登入顯示 username |
-| 未登入 navbar CTA | `div.login-btn-with-text` | 未登入時 navbar 右側「登入」 |
-| 底部 footer 容器 | `.footer-bg` | 取代舊 `.shadow-menubar` |
-| footer 各 tab | `.footer-bg .content` | 5 個 tab：`[0]維護 / [1]公告 / [2]中間 CTA / [3]排行榜 / [4]個人` |
-| footer 個人 tab | `.footer-bg .content` `.last` | **不用 `has_text="個人"`**，文案會 i18n |
-| footer 維護 tab | `.footer-bg .content` `.nth(0)` | 同上原則 |
-| 個人中心 panel | `.dialog-mask-full` | UA dialog 與 member panel 共用，用 `.first/.last` 區分 |
-| panel 登出按鈕 | `button.cancel-btn` filter `has_text="<locale 登出>"` | 文案有 i18n，需傳對應語系字串 |
-| UA dialog 確定 | `.dialog-mask-full div[class*='cursor-pointer']` filter `has_text="確定"` | 容器是 div，需 `dispatch_event("click")` |
-| 客服浮動按鈕 | `a.fixed-icon.fixed-telegram` | class 叫 telegram 但 href 仍是 LINE Official（`line.me/R/...`） |
-| 登入完成判定 | `DLT` cookie 存在 | **不能用 page.url**（Nuxt pushState 不更新 url 對象） |
-| 登入 click 時機 | `dispatch_event("click")` | Vue handler 攔截，raw `.click()` 不觸發 submit |
+| 登入頁帳號欄 | `input.input-style[type='text']` | placeholder 現為「用戶名」；仍不用 placeholder 當 selector |
+| 登入頁密碼欄 | `input.input-style[type='password']` | placeholder 現為「密碼」 |
+| 登入送出按鈕 | `button.primary-btn` | 文案「登入」；**禁用 `has_text`** |
+| 登入頁離開鍵 | `img[alt='Exit']` | 取代舊「先去逛逛」按鈕（已移除） |
+| 用戶協議確定 | `.dialog-container button.black-btn` | 取消為 `button.dialog-cancel-btn`；一般 `.click()` 即可 |
+| 登入錯誤 dialog 確定 | `button.toast-confirm-btn` | 與 RC 同；需斷言可見時掛 `@pytest.mark.no_toast_observer` |
+| 進站公告遮罩 | `.popup-announcement-mask` | 與 RC 同；用 `dismiss_announcement_popup_if_present()` 清 |
+| navbar 容器 | `.nav-bg` | 取代舊 `.nav-bg-m` |
+| navbar 信用額度 | `.coin-wrap-bg span` | 沿用；只驗非空，不寫死值 |
+| navbar 帳號文字 | `p.name-shadow` | 取代舊 `.user-info-bg p.tip-single` |
+| 未登入 navbar CTA | `button.nav-login-btn` | 取代舊 `div.login-btn-with-text`；點了會導向 `/login` |
+| 頭像 / 帳號下拉 | `.avatar-bg`（click 展開，hover 無效） | 下拉容器 `div:has(> div.items-container)`，預設 `display:none` |
+| navbar 登出按鈕 | `div:has(> div.items-container) > button` | 結構定位，locale-agnostic |
+| 導覽列 | `ul.nav-item a[href^='/Categories/<cat>']` | cat：casino/slots/sports/lottery/fishing/mini-game；**用 href 不用文案** |
+| 首頁區塊標題 | `.group > p.tip-single.whitespace-nowrap` | 5 個（來財獨家/活動專區/熱門遊戲/最新遊戲/爆分精選），文案未套 i18n |
+| 首頁廳館圖 | `img[src^='/img/casino/']` | t9/ob/dg/rc/mt 五廳（2026-09-23 複驗，rc 已重新上架）；廳別與廳數隨後台變動，用**路徑前綴**不綁廳名，舊 `HomePageImgcasino_` 已失效 |
+| 側欄入口 | `.sidebar-item.user / .game-details / .game-explosive / .mail / .announce / .ranking / .maintain` | 容器寬 0 → **必須 `dispatch_event("click")`** |
+| 個人資訊彈窗 | `.dialog-mask` + `.dialog-container` | 由 `.sidebar-item.user` 開啟；關閉 `img[alt='close']` |
+| 彈窗帳號欄 | `.dialog-container .input-container input.input-style`（第 1 個，disabled） | value＝登入帳號 |
+| 彈窗登出按鈕 | `.dialog-container button.dark-red-btn` | 與 navbar 下拉登出為兩個入口 |
+| 客服浮動按鈕 | `a.fixed-telegram` / `a.fixed-icon` | href 為 IM 平台（line.me / t.me） |
+| 登入完成判定 | 離開 `/login` 且 `DLT` cookie 存在 | 登出後 `DLT` 被清除（`userDLT` 等仍在） |
+| 底部 footer | **已移除** | 舊 `.footer-bg .content` 5 tab 不存在（連帶「維護時間」tab 也消失） |
 
 ---
 
